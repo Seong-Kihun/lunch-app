@@ -18,5 +18,5 @@ def get_restaurants():
     return jsonify(restaurants) # 이 정보를 웹에서 읽을 수 있는 JSON 형태로 바꿔서 돌려줍니다.
 
 # 이 파일을 직접 실행했을 때만 서버를 시작하게 합니다.
-if __name__ == '__main__':
-    app.run(debug=True) # 개발용 서버를 실행합니다. 'debug=True'는 코드를 바꾸면 자동으로 서버가 재시작됩니다.
+# if __name__ == '__main__':
+#     app.run(debug=True)
