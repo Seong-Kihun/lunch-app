@@ -6,6 +6,7 @@ import time # time 모듈 사용을 위해 추가 (매칭 요청 시간 기록)
 
 app = Flask(__name__)
 CORS(app) # 모든 경로에서 CORS 허용 (개발 단계에서만 사용)
+# 나중에 실제 배포 시에는 CORS(app, resources={r"/api/*": {"origins": "https://yourfrontend.com"}}) 처럼 특정 도메인만 허용하도록 변경합니다.
 
 # SQLite 데이터베이스 설정
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
@@ -83,11 +84,11 @@ def init_db_route():
         restaurant4 = Restaurant(name='중국집 왕룡', category='중식', rating=4.2, address='서울시 영등포구 여의대로 1', phone='02-3333-4444', description='짜장면과 탕수육이 맛있는 중식당')
         db.session.add_all([restaurant1, restaurant2, restaurant3, restaurant4])
 
-        # 초기 사용자 데이터 추가 (테스트용) - is_matching_available 초기값은 False
-        user1 = User(employee_id='KOICA001', name='홍길동', department='기획팀', lunch_preference='조용한 식사', gender='남', age_group='20대', main_dish_genre='한식')
-        user2 = User(employee_id='KOICA002', name='김철수', department='개발팀', lunch_preference='새로운 맛집 탐방', gender='남', age_group='30대', main_dish_genre='양식')
-        user3 = User(employee_id='KOICA003', name='이영희', department='인사팀', lunch_preference='대화 선호', gender='여', age_group='20대', main_dish_genre='일식')
-        user4 = User(employee_id='KOICA004', name='박지수', department='홍보팀', lunch_preference='조용한 식사', gender='여', age_group='20대', main_dish_genre='한식')
+        # 초기 사용자 데이터 추가 (테스트용) - is_matching_available 초기값은 True로 변경
+        user1 = User(employee_id='KOICA001', name='홍길동', department='기획팀', lunch_preference='조용한 식사', gender='남', age_group='20대', main_dish_genre='한식', is_matching_available=True, last_match_request=time.time())
+        user2 = User(employee_id='KOICA002', name='김철수', department='개발팀', lunch_preference='새로운 맛집 탐방', gender='남', age_group='30대', main_dish_genre='양식', is_matching_available=True, last_match_request=time.time())
+        user3 = User(employee_id='KOICA003', name='이영희', department='인사팀', lunch_preference='대화 선호', gender='여', age_group='20대', main_dish_genre='일식', is_matching_available=True, last_match_request=time.time())
+        user4 = User(employee_id='KOICA004', name='박지수', department='홍보팀', lunch_preference='조용한 식사', gender='여', age_group='20대', main_dish_genre='한식', is_matching_available=True, last_match_request=time.time())
         db.session.add_all([user1, user2, user3, user4])
 
         db.session.commit()
@@ -223,7 +224,7 @@ def get_party(party_id):
     party = Party.query.get(party_id)
     if not party:
         return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
-
+    
     party_data = {
         'id': party.id, 'host_employee_id': party.host_employee_id, 'title': party.title,
         'restaurant_name': party.restaurant_name, 'party_date': party.party_date,
@@ -244,7 +245,7 @@ def join_party(party_id):
     party = Party.query.get(party_id)
     if not party:
         return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
-
+    
     if party.current_members >= party.max_members:
         return jsonify({'message': '파티 인원이 가득 찼습니다.'}), 400
 
@@ -272,12 +273,12 @@ def request_match():
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({'message': '등록되지 않은 사용자입니다. 먼저 프로필을 설정해주세요.'}), 404
-
+    
     # 사용자의 매칭 가능 상태를 True로 업데이트하고 마지막 요청 시간 기록
     user.is_matching_available = True
     user.last_match_request = time.time()
     db.session.commit()
-
+    
     print(f"--- 디버그: {employee_id} 매칭 요청 접수됨 ---") # 디버그
     return jsonify({'message': '매칭 요청이 접수되었습니다. 매칭 상대를 찾는 중...'}), 200
 
@@ -305,10 +306,10 @@ def find_match_group():
         User.is_matching_available == True,
         User.last_match_request >= (current_time - 300) # 5분 이내 요청만 유효
     ).all()
-
+    
     # 요청자 자신을 potential_group의 첫 번째 멤버로 추가
     potential_group = [requester]
-
+    
     # 나머지 매칭 가능한 사용자들 (요청자 제외)
     other_available_users = [
         u for u in available_users_for_match
@@ -328,7 +329,7 @@ def find_match_group():
             potential_group.append(user)
         else:
             break
-
+    
     # 2차: 부족한 인원 무작위로 채우기 (성향 무관)
     # 아직 그룹이 4명 미만이고, 다른 매칭 가능한 사용자(유사 성향으로 뽑히지 않은)가 있다면 추가
     random_users = [
@@ -342,12 +343,12 @@ def find_match_group():
             potential_group.append(user)
         else:
             break
-
+    
     # 최소 2명 ~ 최대 4명 그룹 구성
     if len(potential_group) < 2:
         print(f"--- 디버그: 매칭 가능한 인원 부족 (현재 {len(potential_group)}명) ---") # 디버그
         return jsonify({'message': '현재 매칭 가능한 인원이 부족합니다. 잠시 후 다시 시도해주세요.'}), 404
-
+    
     # 매칭된 사용자들의 is_matching_available 상태를 False로 변경
     for member in potential_group:
         member.is_matching_available = False
@@ -364,7 +365,7 @@ def find_match_group():
         if member.main_dish_genre: profile_fields.append({'key': 'main_dish_genre', 'value': member.main_dish_genre}) # 주종목 추가
 
         random.shuffle(profile_fields) # 필드 순서 섞기
-
+        
         displayed_info = {}
         for i in range(min(2, len(profile_fields))): # 최대 2개만 선택
             # key 이름을 좀 더 친근하게 변경
@@ -373,15 +374,15 @@ def find_match_group():
             elif profile_fields[i]['key'] == 'age_group': display_name = '연령대'
             elif profile_fields[i]['key'] == 'lunch_preference': display_name = '성향'
             elif profile_fields[i]['key'] == 'main_dish_genre': display_name = '주종목'
-
+            
             displayed_info[display_name] = profile_fields[i]['value']
-
+        
         matched_group_info.append({
             'employee_id': member.employee_id, # 사번 (내부적으로 필요)
             'name': member.name, # 이름 (매칭 결과에는 공개 안 함, 최종 채팅방에서 공개)
             'displayed_info': displayed_info # 공개될 정보
         })
-
+    
     print(f"--- 디버그: 매칭 그룹 구성 완료. 그룹 크기: {len(matched_group_info)} ---") # 디버그
     return jsonify({
         'message': '매칭 그룹이 구성되었습니다!',
@@ -397,8 +398,9 @@ def confirm_match():
 
     if not employee_id:
         return jsonify({'message': '사번이 필요합니다.'}), 400
-
-    # 매칭 확정한 사용자들의 is_matching_available 상태를 False로 변경
+    
+    # 참여 확정한 사용자들의 is_matching_available 상태를 False로 변경
+    # (find_group에서 이미 false로 변경했지만, 혹시 모를 재확인)
     with app.app_context():
         # 그룹 멤버들 모두 is_matching_available = False로
         for member_id in group_members_ids:
@@ -406,7 +408,7 @@ def confirm_match():
             if user:
                 user.is_matching_available = False
         db.session.commit()
-
+    
     return jsonify({'message': '매칭 확인 완료!'}), 200
 
 @app.route('/match/cancel', methods=['POST'])
@@ -416,14 +418,14 @@ def cancel_match():
 
     if not employee_id:
         return jsonify({'message': '사번이 필요합니다.'}), 400
-
+    
     # 매칭 취소한 사용자의 is_matching_available 상태를 False로 변경
     with app.app_context():
         user = User.query.filter_by(employee_id=employee_id).first()
         if user:
             user.is_matching_available = False
             db.session.commit()
-
+    
     return jsonify({'message': '매칭 취소 완료!'}), 200
 
 # --- 매칭 요청 및 그룹 매칭 로직 끝 ---
