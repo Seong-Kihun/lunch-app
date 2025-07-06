@@ -556,7 +556,31 @@ def get_matching_pool_users():
         })
     return jsonify(output)
 
+# --- 여기부터 새로운 테스트용 코드 ---
+# 새로운 API: 매칭 테스트를 위해 가상 유저를 매칭 풀에 추가
+@app.route('/match/add_test_users', methods=['POST'])
+def add_test_users_to_pool():
+    # 테스트에 사용할 가상 유저 사번 목록
+    test_user_ids = ['KOICA002', 'KOICA003', 'KOICA004']
+    users_added_count = 0
+    
+    for employee_id in test_user_ids:
+        user = User.query.filter_by(employee_id=employee_id).first()
+        if user:
+            # 사용자의 매칭 가능 상태를 True로 업데이트하고 마지막 요청 시간 기록
+            user.is_matching_available = True
+            user.last_match_request = time.time()
+            db.session.commit()
+            users_added_count += 1
+            print(f"--- 디버그: 테스트 유저 {employee_id} 매칭 풀에 추가됨 ---")
+
+    if users_added_count > 0:
+        return jsonify({'message': f'{users_added_count}명의 가상 유저를 매칭 풀에 추가했습니다. 이제 매칭을 시도해보세요!'}), 200
+    else:
+        return jsonify({'message': '추가할 가상 유저를 찾지 못했습니다.'}), 404
+# --- 여기까지 새로운 테스트용 코드 ---
+
 
 # 이 파일을 직접 실행했을 때만 서버를 시작하게 합니다.
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
