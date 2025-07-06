@@ -30,12 +30,12 @@ class Restaurant(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.String(50), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    department = db.Column(db.String(100), nullable=True)
-    lunch_preference = db.Column(db.String(200), nullable=True)
+    name = db.Column(db.String(100), nullable=True) # 이름 필드는 UI에서 제거되지만 백엔드 모델은 유지 (nullable=True로 변경)
+    department = db.Column(db.String(100), nullable=True) # 부서 필드는 UI에서 제거되지만 백엔드 모델은 유지 (nullable=True로 변경)
+    lunch_preference = db.Column(db.String(200), nullable=True) # 여러 성향을 쉼표로 구분하여 저장
     gender = db.Column(db.String(10), nullable=True)
     age_group = db.Column(db.String(20), nullable=True)
-    main_dish_genre = db.Column(db.String(50), nullable=True) # 주종목 추가
+    main_dish_genre = db.Column(db.String(100), nullable=True) # 여러 주종목을 쉼표로 구분하여 저장
     is_matching_available = db.Column(db.Boolean, default=False) # 매칭 가능 상태
     last_match_request = db.Column(db.Float, nullable=True) # 마지막 매칭 요청 시간 (timestamp)
 
@@ -52,10 +52,23 @@ class Party(db.Model):
     party_time = db.Column(db.String(10), nullable=False)
     max_members = db.Column(db.Integer, nullable=False, default=2)
     current_members = db.Column(db.Integer, nullable=False, default=1)
-    members_employee_ids = db.Column(db.Text, default='')
+    members_employee_ids = db.Column(db.Text, default='') # 쉼표로 구분된 사번들
 
     def __repr__(self):
         return f"Party('{self.title}', '{self.restaurant_name}', '{self.party_date}')"
+
+# MatchGroup 모델 정의 (새로 추가: 매칭된 그룹의 상태 관리)
+class MatchGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # 쉼표로 구분된 멤버 사번들 (최대 4명)
+    member_employee_ids = db.Column(db.Text, nullable=False)
+    # 그룹 상태: 'pending' (대기), 'confirmed' (확정), 'cancelled' (취소), 'expired' (만료)
+    status = db.Column(db.String(20), default='pending', nullable=False)
+    created_at = db.Column(db.Float, default=time.time, nullable=False)
+
+    def __repr__(self):
+        return f"MatchGroup(ID:{self.id}, Members:{self.member_employee_ids}, Status:{self.status})"
+
 
 # Flask 앱 시작 전에 데이터베이스 테이블을 생성합니다.
 @app.before_request
@@ -84,12 +97,14 @@ def init_db_route():
         restaurant4 = Restaurant(name='중국집 왕룡', category='중식', rating=4.2, address='서울시 영등포구 여의대로 1', phone='02-3333-4444', description='짜장면과 탕수육이 맛있는 중식당')
         db.session.add_all([restaurant1, restaurant2, restaurant3, restaurant4])
 
-        # 초기 사용자 데이터 추가 (테스트용) - is_matching_available 초기값은 True로 변경
-        user1 = User(employee_id='KOICA001', name='홍길동', department='기획팀', lunch_preference='조용한 식사', gender='남', age_group='20대', main_dish_genre='한식', is_matching_available=True, last_match_request=time.time())
-        user2 = User(employee_id='KOICA002', name='김철수', department='개발팀', lunch_preference='새로운 맛집 탐방', gender='남', age_group='30대', main_dish_genre='양식', is_matching_available=True, last_match_request=time.time())
-        user3 = User(employee_id='KOICA003', name='이영희', department='인사팀', lunch_preference='대화 선호', gender='여', age_group='20대', main_dish_genre='일식', is_matching_available=True, last_match_request=time.time())
-        user4 = User(employee_id='KOICA004', name='박지수', department='홍보팀', lunch_preference='조용한 식사', gender='여', age_group='20대', main_dish_genre='한식', is_matching_available=True, last_match_request=time.time())
-        db.session.add_all([user1, user2, user3, user4])
+        # 초기 사용자 데이터 추가 (테스트용) - is_matching_available 초기값은 False
+        # 성향과 주종목은 쉼표로 구분된 문자열로 저장
+        user1 = User(employee_id='KOICA001', name='홍길동', department='기획팀', lunch_preference='조용한 식사,가성비 추구', gender='남', age_group='20대', main_dish_genre='한식,분식')
+        user2 = User(employee_id='KOICA002', name='김철수', department='개발팀', lunch_preference='새로운 맛집 탐방,대화 선호', gender='남', age_group='30대', main_dish_genre='양식,퓨전')
+        user3 = User(employee_id='KOICA003', name='이영희', department='인사팀', lunch_preference='대화 선호,여유로운 식사', gender='여', age_group='20대', main_dish_genre='일식,아시안')
+        user4 = User(employee_id='KOICA004', name='박지수', department='홍보팀', lunch_preference='조용한 식사,건강식 선호', gender='여', age_group='20대', main_dish_genre='한식,양식')
+        user5 = User(employee_id='KOICA005', name='최민준', department='영업팀', lunch_preference='가성비 추구,빠른 식사', gender='남', age_group='30대', main_dish_genre='중식,분식')
+        db.session.add_all([user1, user2, user3, user4, user5])
 
         db.session.commit()
         return '데이터베이스 초기화 및 맛집/사용자 데이터 추가 완료!'
@@ -111,22 +126,22 @@ def get_restaurants():
 @app.route('/users', methods=['POST'])
 def create_user():
     data = request.get_json()
-    if not data or not 'employee_id' in data or not 'name' in data:
-        return jsonify({'message': '사번과 이름은 필수입니다!'}), 400
+    if not data or not 'employee_id' in data: # 이름, 부서 필수 아님
+        return jsonify({'message': '사번은 필수입니다!'}), 400
 
     if User.query.filter_by(employee_id=data['employee_id']).first():
         return jsonify({'message': '이미 등록된 사번입니다.'}), 409
 
     new_user = User(
         employee_id=data['employee_id'],
-        name=data['name'],
-        department=data.get('department'),
+        name=data.get('name', '미등록'), # 이름, 부서 기본값
+        department=data.get('department', '미등록'),
         lunch_preference=data.get('lunch_preference'),
         gender=data.get('gender'),
         age_group=data.get('age_group'),
-        main_dish_genre=data.get('main_dish_genre'), # 추가
-        is_matching_available=False, # 초기값은 False
-        last_match_request=None # 초기값은 None
+        main_dish_genre=data.get('main_dish_genre'),
+        is_matching_available=False,
+        last_match_request=None
     )
     db.session.add(new_user)
     db.session.commit()
@@ -143,7 +158,7 @@ def get_user(employee_id):
         'id': user.id, 'employee_id': user.employee_id, 'name': user.name,
         'department': user.department, 'lunch_preference': user.lunch_preference,
         'gender': user.gender, 'age_group': user.age_group,
-        'main_dish_genre': user.main_dish_genre # 추가
+        'main_dish_genre': user.main_dish_genre
     }
     return jsonify(user_data)
 
@@ -155,16 +170,16 @@ def update_user(employee_id):
         return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
 
     data = request.get_json()
-    user.name = data.get('name', user.name)
+    user.name = data.get('name', user.name) # 이름, 부서 기본값
     user.department = data.get('department', user.department)
     user.lunch_preference = data.get('lunch_preference', user.lunch_preference)
     user.gender = data.get('gender', user.gender)
     user.age_group = data.get('age_group', user.age_group)
-    user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre) # 추가
+    user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre)
     db.session.commit()
     return jsonify({'message': '사용자 프로필 업데이트 완료!'})
 
-# 모든 사용자 조회 (gender, age_group, main_dish_genre 반환 추가)
+# 모든 사용자 조회
 @app.route('/users', methods=['GET'])
 def get_all_users():
     users = User.query.all()
@@ -174,7 +189,7 @@ def get_all_users():
             'id': user.id, 'employee_id': user.employee_id, 'name': user.name,
             'department': user.department, 'lunch_preference': user.lunch_preference,
             'gender': user.gender, 'age_group': user.age_group,
-            'main_dish_genre': user.main_dish_genre # 추가
+            'main_dish_genre': user.main_dish_genre
         })
     return jsonify(output)
 
@@ -259,7 +274,7 @@ def join_party(party_id):
     db.session.commit()
     return jsonify({'message': '파티 참여 완료!'})
 
-# --- 매칭 요청 및 그룹 매칭 로직 (새로운 로직) ---
+# --- 매칭 요청 및 그룹 매칭 로직 ---
 
 # 1. 사용자가 매칭을 요청 (매칭 가능 상태로 변경)
 @app.route('/match/request', methods=['POST'])
@@ -317,14 +332,40 @@ def find_match_group():
     ]
 
     # 1차: 성향 기반 매칭 (우선 순위)
-    # requester와 lunch_preference가 동일한 사람을 우선 찾습니다.
-    similar_users = [
-        u for u in other_available_users
-        if u.lunch_preference and requester.lunch_preference and u.lunch_preference == requester.lunch_preference
-    ]
-    random.shuffle(similar_users) # 유사 성향 사용자 섞기
+    # requester의 성향과 주종목을 리스트로 변환
+    requester_preferences = requester.lunch_preference.split(',') if requester.lunch_preference else []
+    requester_genres = requester.main_dish_genre.split(',') if requester.main_dish_genre else []
 
-    for user in similar_users:
+    # 유사 성향/주종목 사용자 찾기 (2개 이상 일치 -> 1개 일치)
+    similar_users_by_criteria = []
+    
+    # 2개 이상 일치하는 사용자 찾기
+    for user in other_available_users:
+        user_preferences = user.lunch_preference.split(',') if user.lunch_preference else []
+        user_genres = user.main_dish_genre.split(',') if user.main_dish_genre else []
+        
+        matched_criteria_count = 0
+        if requester.gender and user.gender and requester.gender == user.gender:
+            matched_criteria_count += 1
+        if requester.age_group and user.age_group and requester.age_group == user.age_group:
+            matched_criteria_count += 1
+        
+        # 성향 일치 개수
+        matched_prefs = len(set(requester_preferences) & set(user_preferences))
+        if matched_prefs > 0:
+            matched_criteria_count += matched_prefs
+            
+        # 주종목 일치 개수
+        matched_genres = len(set(requester_genres) & set(user_genres))
+        if matched_genres > 0:
+            matched_criteria_count += matched_genres
+            
+        if matched_criteria_count >= 2: # 2개 이상 일치하면 유사하다고 판단
+            similar_users_by_criteria.append(user)
+
+    random.shuffle(similar_users_by_criteria) # 유사 성향 사용자 섞기
+
+    for user in similar_users_by_criteria:
         if len(potential_group) < 4: # 최대 4명까지
             potential_group.append(user)
         else:
@@ -332,13 +373,13 @@ def find_match_group():
     
     # 2차: 부족한 인원 무작위로 채우기 (성향 무관)
     # 아직 그룹이 4명 미만이고, 다른 매칭 가능한 사용자(유사 성향으로 뽑히지 않은)가 있다면 추가
-    random_users = [
+    remaining_available_users = [
         u for u in other_available_users
-        if u not in similar_users and u.employee_id != requester_employee_id
+        if u not in similar_users_by_criteria and u.employee_id != requester_employee_id
     ]
-    random.shuffle(random_users)
+    random.shuffle(remaining_available_users)
 
-    for user in random_users:
+    for user in remaining_available_users:
         if len(potential_group) < 4:
             potential_group.append(user)
         else:
@@ -354,6 +395,15 @@ def find_match_group():
         member.is_matching_available = False
         db.session.commit() # 변경사항 저장
 
+    # 새로운 MatchGroup 생성 (그룹 매칭 성공 시)
+    new_match_group = MatchGroup(
+        member_employee_ids=','.join([m.employee_id for m in potential_group]),
+        status='pending_confirmation', # 초기 상태는 대기
+        created_at=time.time()
+    )
+    db.session.add(new_match_group)
+    db.session.commit()
+
     # 매칭된 그룹 정보 반환 (부분 정보 공개)
     matched_group_info = []
     for member in potential_group:
@@ -361,8 +411,8 @@ def find_match_group():
         profile_fields = []
         if member.gender: profile_fields.append({'key': 'gender', 'value': member.gender})
         if member.age_group: profile_fields.append({'key': 'age_group', 'value': member.age_group})
-        if member.lunch_preference: profile_fields.append({'key': 'lunch_preference', 'value': member.lunch_preference})
-        if member.main_dish_genre: profile_fields.append({'key': 'main_dish_genre', 'value': member.main_dish_genre}) # 주종목 추가
+        if member.lunch_preference: profile_fields.append({'key': 'lunch_preference', 'value': member.lunch_preference.split(',')[0] if member.lunch_preference else ''}) # 첫 번째 성향만 공개
+        if member.main_dish_genre: profile_fields.append({'key': 'main_dish_genre', 'value': member.main_dish_genre.split(',')[0] if member.main_dish_genre else ''}) # 첫 번째 주종목만 공개
 
         random.shuffle(profile_fields) # 필드 순서 섞기
         
@@ -386,6 +436,7 @@ def find_match_group():
     print(f"--- 디버그: 매칭 그룹 구성 완료. 그룹 크기: {len(matched_group_info)} ---") # 디버그
     return jsonify({
         'message': '매칭 그룹이 구성되었습니다!',
+        'group_id': new_match_group.id, # 새로 생성된 그룹 ID 반환
         'group': matched_group_info
     }), 200
 
@@ -394,19 +445,26 @@ def find_match_group():
 def confirm_match():
     data = request.get_json()
     employee_id = data.get('employee_id')
-    group_members_ids = data.get('group_members_ids', [])
+    group_id = data.get('group_id') # 그룹 ID 추가
 
-    if not employee_id:
-        return jsonify({'message': '사번이 필요합니다.'}), 400
+    if not employee_id or not group_id:
+        return jsonify({'message': '사번과 그룹 ID가 필요합니다.'}), 400
     
-    # 참여 확정한 사용자들의 is_matching_available 상태를 False로 변경
-    # (find_group에서 이미 false로 변경했지만, 혹시 모를 재확인)
-    with app.app_context():
-        # 그룹 멤버들 모두 is_matching_available = False로
-        for member_id in group_members_ids:
-            user = User.query.filter_by(employee_id=member_id).first()
-            if user:
-                user.is_matching_available = False
+    match_group = MatchGroup.query.get(group_id)
+    if not match_group:
+        return jsonify({'message': '유효하지 않은 매칭 그룹입니다.'}), 404
+    
+    # 그룹 상태 업데이트 (모든 멤버가 수락하면 'confirmed'로 변경)
+    # 여기서는 요청자만 확정했다고 표시하고, 실제 확정은 다른 로직에서 처리
+    # (예: 모든 멤버가 confirm을 보낼 때까지 대기)
+    # 단순화를 위해, 요청자가 confirm하면 해당 그룹의 status를 'confirmed'로 변경
+    match_group.status = 'confirmed'
+    db.session.commit()
+
+    # 참여 확정한 사용자의 is_matching_available 상태를 False로 변경
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if user:
+        user.is_matching_available = False
         db.session.commit()
     
     return jsonify({'message': '매칭 확인 완료!'}), 200
@@ -415,16 +473,24 @@ def confirm_match():
 def cancel_match():
     data = request.get_json()
     employee_id = data.get('employee_id')
+    group_id = data.get('group_id') # 그룹 ID 추가
 
-    if not employee_id:
-        return jsonify({'message': '사번이 필요합니다.'}), 400
+    if not employee_id or not group_id:
+        return jsonify({'message': '사번과 그룹 ID가 필요합니다.'}), 400
+
+    match_group = MatchGroup.query.get(group_id)
+    if not match_group:
+        return jsonify({'message': '유효하지 않은 매칭 그룹입니다.'}), 404
     
+    # 그룹 상태를 'cancelled'로 변경
+    match_group.status = 'cancelled'
+    db.session.commit()
+
     # 매칭 취소한 사용자의 is_matching_available 상태를 False로 변경
-    with app.app_context():
-        user = User.query.filter_by(employee_id=employee_id).first()
-        if user:
-            user.is_matching_available = False
-            db.session.commit()
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if user:
+        user.is_matching_available = False
+        db.session.commit()
     
     return jsonify({'message': '매칭 취소 완료!'}), 200
 
