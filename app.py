@@ -466,7 +466,7 @@ def confirm_match():
     match_group.status = 'confirmed'
     db.session.commit()
 
-    # 참여 확정한 사용자의 is_matching_available 상태를 False로 변경
+    # 참여 확정한 사용자들의 is_matching_available 상태를 False로 변경
     user = User.query.filter_by(employee_id=employee_id).first()
     if user:
         user.is_matching_available = False
