@@ -98,7 +98,6 @@ def get_user_and_reset_status(employee_id):
 
 # --- API 엔드포인트 ---
 
-# [복구] 개발용 테스트 유저 추가 API
 @app.route('/dev/add_test_users', methods=['POST'])
 def add_test_users():
     today_str = date.today().isoformat()
@@ -201,7 +200,7 @@ def handle_match_request():
         member_ids = [m.employee_id for m in final_group_members]
         
         User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'matched'}, synchronize_session=False)
-
+        
         lightning_party_names = ["점심 어벤져스", "오늘의 미식 탐험대", "깜짝 런치 특공대", "맛잘알 번개모임", "점심 메이트 ⚡️"]
         today_str_for_query = date.today().isoformat()
         today_lightning_count = Party.query.filter(Party.is_from_match == True, Party.party_date == today_str_for_query).count()
@@ -220,7 +219,6 @@ def handle_match_request():
         db.session.commit()
         return jsonify({'status': 'waiting', 'message': '매칭 대기열에 등록되었습니다. 동료가 생기면 알려드릴게요!'})
 
-# [수정] 모든 사용자 조회 시 매칭 상태도 함께 반환
 @app.route('/users', methods=['GET'])
 def get_all_users():
     users = User.query.all()
@@ -282,16 +280,37 @@ def join_party(party_id):
         db.session.commit()
     return jsonify({'message': '파티에 참여했습니다.'})
 
+# [수정] '번개 파티'에서도 나갈 수 있도록 로직 수정
 @app.route('/parties/<int:party_id>/leave', methods=['POST'])
 def leave_party(party_id):
     party = Party.query.get(party_id)
+    if not party:
+        return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+        
     employee_id = request.json['employee_id']
-    if employee_id == party.host_employee_id: return jsonify({'message': '파티장은 나갈 수 없습니다. 파티를 삭제해주세요.'}), 403
     members = party.members_employee_ids.split(',')
-    if employee_id in members:
-        members.remove(employee_id)
-        party.members_employee_ids = ','.join(members)
+    
+    if employee_id not in members:
+        return jsonify({'message': '파티 멤버가 아닙니다.'}), 400
+
+    # 일반 파티의 파티장은 나갈 수 없음 (삭제만 가능)
+    if not party.is_from_match and employee_id == party.host_employee_id:
+        return jsonify({'message': '파티장은 나갈 수 없습니다. 파티를 삭제해주세요.'}), 403
+    
+    members.remove(employee_id)
+    
+    # 나간 후 멤버가 아무도 없으면 파티 삭제
+    if not members:
+        db.session.delete(party)
         db.session.commit()
+        return jsonify({'message': '마지막 멤버가 파티를 나가서 파티가 삭제되었습니다.'})
+
+    # 나간 사람이 번개 파티의 파티장이었다면, 다음 사람에게 파티장 위임
+    if party.is_from_match and employee_id == party.host_employee_id:
+        party.host_employee_id = members[0]
+
+    party.members_employee_ids = ','.join(members)
+    db.session.commit()
     return jsonify({'message': '파티에서 나갔습니다.'})
 
 @app.route('/parties/<int:party_id>', methods=['DELETE'])
@@ -315,4 +334,5 @@ def get_my_chats(employee_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
