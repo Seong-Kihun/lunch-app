@@ -14,7 +14,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # --- 데이터베이스 모델 정의 ---
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.String(50), unique=True, nullable=False)
@@ -23,11 +22,7 @@ class User(db.Model):
     gender = db.Column(db.String(10), nullable=True)
     age_group = db.Column(db.String(20), nullable=True)
     main_dish_genre = db.Column(db.String(100), nullable=True)
-    
-    # [신규] 매칭 상태를 저장하기 위한 컬럼 추가
-    # idle: 기본 상태, waiting: 매칭 대기 중, matched: 오늘 매칭 완료
     matching_status = db.Column(db.String(20), default='idle') 
-    # 마지막으로 매칭을 요청한 날짜 (예: '2025-07-08')
     match_request_date = db.Column(db.String(10), nullable=True)
 
 class Restaurant(db.Model):
@@ -35,15 +30,11 @@ class Restaurant(db.Model):
     name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     reviews = db.relationship('Review', backref='restaurant', lazy=True, cascade="all, delete-orphan")
-
     @property
-    def review_count(self):
-        return len(self.reviews)
-
+    def review_count(self): return len(self.reviews)
     @property
     def avg_rating(self):
-        if not self.reviews:
-            return 0
+        if not self.reviews: return 0
         return sum(r.rating for r in self.reviews) / len(self.reviews)
 
 class Review(db.Model):
@@ -66,11 +57,9 @@ class Party(db.Model):
     max_members = db.Column(db.Integer, nullable=False, default=4)
     members_employee_ids = db.Column(db.Text, default='')
     is_from_match = db.Column(db.Boolean, default=False)
-
     @property
     def current_members(self):
-        if not self.members_employee_ids:
-            return 0
+        if not self.members_employee_ids: return 0
         return len(self.members_employee_ids.split(','))
 
 class MatchGroup(db.Model):
@@ -88,14 +77,11 @@ def create_tables_and_init_data():
             if Restaurant.query.count() == 0:
                 r1 = Restaurant(name='한식 뚝배기집', category='한식')
                 r2 = Restaurant(name='퓨전 파스타', category='양식')
-                r3 = Restaurant(name='시원한 막국수', category='한식')
-                r4 = Restaurant(name='중국집 왕룡', category='중식')
-                db.session.add_all([r1, r2, r3, r4])
+                db.session.add_all([r1, r2])
             if User.query.count() == 0:
-                u1 = User(employee_id='KOICA001', nickname='홍길동', lunch_preference='조용한 식사,가성비 추구', gender='남', age_group='30대', main_dish_genre='한식,분식')
-                u2 = User(employee_id='KOICA002', nickname='김철수', lunch_preference='새로운 맛집 탐방,대화 선호', gender='남', age_group='30대', main_dish_genre='양식,퓨전')
-                u3 = User(employee_id='KOICA003', nickname='이영희', lunch_preference='대화 선호,여유로운 식사', gender='여', age_group='20대', main_dish_genre='일식,아시안')
-                db.session.add_all([u1, u2, u3])
+                u1 = User(employee_id='KOICA001', nickname='홍길동')
+                u2 = User(employee_id='KOICA002', nickname='김철수')
+                db.session.add_all([u1, u2])
             db.session.commit()
             app._db_initialized = True
 
@@ -103,7 +89,6 @@ def create_tables_and_init_data():
 def get_user_and_reset_status(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return None
-    
     today_str = date.today().isoformat()
     if user.match_request_date != today_str:
         user.matching_status = 'idle'
@@ -112,6 +97,25 @@ def get_user_and_reset_status(employee_id):
     return user
 
 # --- API 엔드포인트 ---
+
+# [복구] 개발용 테스트 유저 추가 API
+@app.route('/dev/add_test_users', methods=['POST'])
+def add_test_users():
+    today_str = date.today().isoformat()
+    test_users_data = [
+        {'employee_id': 'TEST001', 'nickname': '테스터1', 'lunch_preference': '가성비 추구', 'main_dish_genre': '한식'},
+        {'employee_id': 'TEST002', 'nickname': '테스터2', 'lunch_preference': '대화 선호', 'main_dish_genre': '양식'},
+        {'employee_id': 'TEST003', 'nickname': '테스터3', 'lunch_preference': '새로운 맛집 탐방', 'main_dish_genre': '일식'},
+    ]
+    for user_data in test_users_data:
+        user = User.query.filter_by(employee_id=user_data['employee_id']).first()
+        if not user:
+            user = User(**user_data)
+            db.session.add(user)
+        user.matching_status = 'waiting'
+        user.match_request_date = today_str
+    db.session.commit()
+    return jsonify({'message': '가상 유저 3명이 매칭 대기열에 추가되었습니다. 지금 바로 매칭을 요청해보세요!'})
 
 @app.route('/events/<employee_id>', methods=['GET'])
 def get_events(employee_id):
@@ -198,11 +202,6 @@ def handle_match_request():
         
         User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'matched'}, synchronize_session=False)
 
-        new_match_group = MatchGroup(member_employee_ids=','.join(member_ids))
-        db.session.add(new_match_group)
-        db.session.commit()
-
-        # '번개 파티' 생성
         lightning_party_names = ["점심 어벤져스", "오늘의 미식 탐험대", "깜짝 런치 특공대", "맛잘알 번개모임", "점심 메이트 ⚡️"]
         today_str_for_query = date.today().isoformat()
         today_lightning_count = Party.query.filter(Party.is_from_match == True, Party.party_date == today_str_for_query).count()
@@ -221,10 +220,11 @@ def handle_match_request():
         db.session.commit()
         return jsonify({'status': 'waiting', 'message': '매칭 대기열에 등록되었습니다. 동료가 생기면 알려드릴게요!'})
 
+# [수정] 모든 사용자 조회 시 매칭 상태도 함께 반환
 @app.route('/users', methods=['GET'])
 def get_all_users():
     users = User.query.all()
-    return jsonify([{'employee_id': u.employee_id, 'nickname': u.nickname} for u in users])
+    return jsonify([{'employee_id': u.employee_id, 'nickname': u.nickname, 'matching_status': u.matching_status, 'match_request_date': u.match_request_date} for u in users])
 
 @app.route('/users/<employee_id>', methods=['GET'])
 def get_user(employee_id):
@@ -315,3 +315,4 @@ def get_my_chats(employee_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
