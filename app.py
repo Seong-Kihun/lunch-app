@@ -86,8 +86,23 @@ def init_db_route():
         db.session.commit()
         return '데이터베이스 초기화 및 맛집/사용자 데이터 추가 완료!'
 
-# All other APIs are included below...
-# (The code for other APIs remains the same as the last complete version)
+# --- All APIs (User, Restaurant, Party, Match, Chat) ---
+@app.route('/match/add_test_users', methods=['POST'])
+def add_test_users_to_pool():
+    test_user_ids = ['KOICA002', 'KOICA003', 'KOICA004']
+    users_added_count = 0
+    for employee_id in test_user_ids:
+        user = User.query.filter_by(employee_id=employee_id).first()
+        if user:
+            user.is_matching_available = True
+            user.last_match_request = time.time()
+            users_added_count += 1
+    db.session.commit()
+    if users_added_count > 0:
+        return jsonify({'message': f'{users_added_count}명의 가상 유저를 매칭 풀에 추가했습니다. 이제 매칭을 시도해보세요!'}), 200
+    else:
+        return jsonify({'message': '추가할 가상 유저를 찾지 못했습니다.'}), 404
+        
 @app.route('/users', methods=['GET'])
 def get_all_users():
     users = User.query.all()
@@ -98,6 +113,14 @@ def get_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     return jsonify({'employee_id': user.employee_id, 'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
+
+@app.route('/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    new_user = User(employee_id=data['employee_id'], nickname=data.get('nickname'))
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': '사용자 등록 완료'}), 201
 
 @app.route('/users/<employee_id>', methods=['PUT'])
 def update_user(employee_id):
