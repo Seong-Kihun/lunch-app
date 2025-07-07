@@ -2,9 +2,8 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
-import time
-from datetime import datetime
-from sqlalchemy import func, desc
+from datetime import datetime, date
+from sqlalchemy import desc, or_
 
 app = Flask(__name__)
 CORS(app)
@@ -16,16 +15,27 @@ db = SQLAlchemy(app)
 
 # --- 데이터베이스 모델 정의 ---
 
-# 식당 모델
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.String(50), unique=True, nullable=False)
+    nickname = db.Column(db.String(50), nullable=True)
+    lunch_preference = db.Column(db.String(200), nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+    age_group = db.Column(db.String(20), nullable=True)
+    main_dish_genre = db.Column(db.String(100), nullable=True)
+    
+    # [신규] 매칭 상태를 저장하기 위한 컬럼 추가
+    # idle: 기본 상태, waiting: 매칭 대기 중, matched: 오늘 매칭 완료
+    matching_status = db.Column(db.String(20), default='idle') 
+    # 마지막으로 매칭을 요청한 날짜 (예: '2025-07-08')
+    match_request_date = db.Column(db.String(10), nullable=True)
+
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    # backref: Restaurant 객체에서 .reviews 로 해당 식당의 모든 리뷰에 접근 가능
-    # cascade: 식당이 삭제되면 관련된 모든 리뷰도 함께 삭제
     reviews = db.relationship('Review', backref='restaurant', lazy=True, cascade="all, delete-orphan")
 
-    # [업데이트] 리뷰 개수와 평균 평점을 계산하는 속성 추가
     @property
     def review_count(self):
         return len(self.reviews)
@@ -36,28 +46,15 @@ class Restaurant(db.Model):
             return 0
         return sum(r.rating for r in self.reviews) / len(self.reviews)
 
-# 리뷰 모델
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
-    user_id = db.Column(db.String(50), nullable=False) # 리뷰 작성자 사번
-    nickname = db.Column(db.String(50), nullable=False) # 리뷰 작성자 닉네임
-    rating = db.Column(db.Integer, nullable=False) # 별점 (1~5)
-    comment = db.Column(db.Text, nullable=True) # 한줄평
-    created_at = db.Column(db.DateTime, default=datetime.utcnow) # 작성일
+    user_id = db.Column(db.String(50), nullable=False)
+    nickname = db.Column(db.String(50), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# 사용자 모델
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.String(50), unique=True, nullable=False)
-    nickname = db.Column(db.String(50), nullable=True)
-    lunch_preference = db.Column(db.String(200), nullable=True)
-    gender = db.Column(db.String(10), nullable=True)
-    age_group = db.Column(db.String(20), nullable=True)
-    main_dish_genre = db.Column(db.String(100), nullable=True)
-    last_match_request = db.Column(db.Float, nullable=True)
-
-# 파티 모델
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     host_employee_id = db.Column(db.String(50), nullable=False)
@@ -67,8 +64,8 @@ class Party(db.Model):
     party_time = db.Column(db.String(10), nullable=False)
     meeting_location = db.Column(db.String(200), nullable=True)
     max_members = db.Column(db.Integer, nullable=False, default=4)
-    members_employee_ids = db.Column(db.Text, default='') # 참여자 사번 목록 (쉼표로 구분)
-    is_from_match = db.Column(db.Boolean, default=False) # 랜덤 매칭으로 생성되었는지 여부
+    members_employee_ids = db.Column(db.Text, default='')
+    is_from_match = db.Column(db.Boolean, default=False)
 
     @property
     def current_members(self):
@@ -76,22 +73,18 @@ class Party(db.Model):
             return 0
         return len(self.members_employee_ids.split(','))
 
-# 매칭 그룹 모델 (매칭 확정 전 임시 그룹)
 class MatchGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     member_employee_ids = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), default='pending_confirmation', nullable=False) # 'pending', 'confirmed'
-    created_at = db.Column(db.Float, default=time.time, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
-    # 앱이 처음 실행될 때 한 번만 테이블을 생성하고 기본 데이터를 넣습니다.
     if not hasattr(app, '_db_initialized'):
         with app.app_context():
             db.create_all()
-            # 기본 데이터가 없으면 추가
             if Restaurant.query.count() == 0:
                 r1 = Restaurant(name='한식 뚝배기집', category='한식')
                 r2 = Restaurant(name='퓨전 파스타', category='양식')
@@ -106,19 +99,27 @@ def create_tables_and_init_data():
             db.session.commit()
             app._db_initialized = True
 
+# --- Helper Function ---
+def get_user_and_reset_status(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return None
+    
+    today_str = date.today().isoformat()
+    if user.match_request_date != today_str:
+        user.matching_status = 'idle'
+        user.match_request_date = None
+        db.session.commit()
+    return user
+
 # --- API 엔드포인트 ---
 
-# [신규] 캘린더 약속 조회 API
 @app.route('/events/<employee_id>', methods=['GET'])
 def get_events(employee_id):
-    """특정 사용자가 참여하는 모든 파티(약속) 정보를 날짜별로 반환"""
     events = {}
-    # 사용자의 사번이 포함된 모든 파티를 조회
     parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
     for p in parties:
         if p.party_date not in events:
             events[p.party_date] = []
-        # 캘린더에 표시할 약속 정보 추가
         events[p.party_date].append({
             'type': '파티' if not p.is_from_match else '번개',
             'title': p.title,
@@ -126,131 +127,99 @@ def get_events(employee_id):
         })
     return jsonify(events)
 
-# [업데이트] 맛집 목록 조회 API (검색 및 정렬 기능 강화)
 @app.route('/restaurants', methods=['GET'])
 def get_restaurants():
-    """맛집 목록을 검색어와 정렬 기준에 따라 반환"""
-    query = request.args.get('query', '') # URL 파라미터에서 검색어 가져오기
-    sort_by = request.args.get('sort_by', 'name') # URL 파라미터에서 정렬 기준 가져오기
-
-    # 검색어가 있으면 이름 또는 카테고리에서 해당 검색어를 포함하는 맛집만 필터링
-    restaurants_q = Restaurant.query.filter(db.or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()
-
-    # 정렬 기준에 따라 파이썬에서 직접 정렬
+    query = request.args.get('query', '')
+    sort_by = request.args.get('sort_by', 'name')
+    restaurants_q = Restaurant.query.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()
     if sort_by == 'rating_desc':
         restaurants_q.sort(key=lambda r: r.avg_rating, reverse=True)
     elif sort_by == 'reviews_desc':
         restaurants_q.sort(key=lambda r: r.review_count, reverse=True)
-    else: # 기본은 이름순
+    else:
         restaurants_q.sort(key=lambda r: r.name)
-
-    # JSON 형태로 변환하여 반환
-    restaurants_list = [{
-        'id': r.id,
-        'name': r.name,
-        'category': r.category,
-        'rating': round(r.avg_rating, 1),
-        'review_count': r.review_count
-    } for r in restaurants_q]
-
+    restaurants_list = [{'id': r.id, 'name': r.name, 'category': r.category, 'rating': round(r.avg_rating, 1), 'review_count': r.review_count} for r in restaurants_q]
     return jsonify(restaurants_list)
 
-# [신규] 특정 맛집의 리뷰 목록 조회 API
 @app.route('/restaurants/<int:restaurant_id>/reviews', methods=['GET'])
 def get_reviews(restaurant_id):
-    """특정 맛집에 달린 모든 리뷰를 최신순으로 반환"""
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(desc(Review.created_at)).all()
     return jsonify([{'id': r.id, 'nickname': r.nickname, 'rating': r.rating, 'comment': r.comment, 'created_at': r.created_at.strftime('%Y-%m-%d')} for r in reviews])
 
-# [신규] 리뷰 작성 API
 @app.route('/restaurants/<int:restaurant_id>/reviews', methods=['POST'])
 def add_review(restaurant_id):
-    """특정 맛집에 새로운 리뷰를 등록"""
     data = request.get_json()
     user = User.query.filter_by(employee_id=data['user_id']).first()
     if not user:
         return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-
-    new_review = Review(
-        restaurant_id=restaurant_id,
-        user_id=data['user_id'],
-        nickname=user.nickname, # user_id로 닉네임을 찾아서 저장
-        rating=data['rating'],
-        comment=data['comment']
-    )
+    new_review = Review(restaurant_id=restaurant_id, user_id=data['user_id'], nickname=user.nickname, rating=data['rating'], comment=data['comment'])
     db.session.add(new_review)
     db.session.commit()
     return jsonify({'message': '리뷰가 성공적으로 등록되었습니다.'}), 201
 
+@app.route('/match/status/<employee_id>', methods=['GET'])
+def get_match_status(employee_id):
+    user = get_user_and_reset_status(employee_id)
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    response = {'status': user.matching_status}
+    if user.matching_status == 'matched':
+        today_str = date.today().isoformat()
+        matched_party = Party.query.filter(Party.is_from_match == True, Party.party_date == today_str, Party.members_employee_ids.contains(employee_id)).first()
+        if matched_party:
+            response['party_id'] = matched_party.id
+            response['party_title'] = matched_party.title
+    return jsonify(response)
 
-# [업데이트] 매칭 확정 및 '번개 파티' 생성 API
-@app.route('/match/confirm', methods=['POST'])
-def confirm_match():
-    """매칭 그룹을 확정하고, '번개 파티'로 자동 전환"""
-    group_id = request.json.get('group_id')
-    group = MatchGroup.query.get(group_id)
-    if not group:
-        return jsonify({'message': '그룹을 찾을 수 없습니다.'}), 404
-    
-    group.status = 'confirmed'
+@app.route('/match/request', methods=['POST'])
+def handle_match_request():
+    employee_id = request.json['employee_id']
+    user = get_user_and_reset_status(employee_id)
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
 
-    # [업데이트] 재미있는 번개 파티 이름 후보
-    lightning_party_names = [
-        "점심 어벤져스", "오늘의 미식 탐험대", "깜짝 런치 특공대",
-        "맛잘알 번개모임", "점심 메이트 ⚡️", "급만남 급점심"
-    ]
-    
-    # 오늘 날짜로 생성된 번개 파티 개수 세기
-    today_str_for_query = datetime.now().strftime('%Y-%m-%d')
-    today_lightning_count = Party.query.filter(
-        Party.is_from_match == True,
-        Party.party_date == today_str_for_query
-    ).count()
+    if user.matching_status == 'waiting':
+        user.matching_status = 'idle'
+        db.session.commit()
+        return jsonify({'status': 'idle', 'message': '매칭 대기를 취소했습니다.'})
 
-    party_title = f"{random.choice(lightning_party_names)} #{today_lightning_count + 1}"
-    
-    first_member_id = group.member_employee_ids.split(',')[0]
-    
-    new_party = Party(
-        host_employee_id=first_member_id,
-        title=party_title,
-        restaurant_name="미정 (채팅으로 정해요!)",
-        party_date=today_str_for_query,
-        party_time="12:30",
-        meeting_location="회사 로비",
-        max_members=4, # 최대 인원은 4명으로 고정
-        members_employee_ids=group.member_employee_ids,
-        is_from_match=True # 번개 파티임을 표시
-    )
-    db.session.add(new_party)
-    db.session.commit()
-    
-    # 생성된 파티 정보를 함께 반환
-    return jsonify({
-        'message': '매칭이 확정되어 번개 파티가 생성되었습니다!',
-        'party_id': new_party.id,
-        'party_title': new_party.title
-    })
+    if user.matching_status == 'matched':
+        return jsonify({'status': 'matched', 'message': '이미 오늘 점심 매칭이 완료되었습니다.'})
 
-# [수정 없음] 파티 삭제 API (로직 재확인)
-@app.route('/parties/<int:party_id>', methods=['DELETE'])
-def delete_party(party_id):
-    """파티장이 파티를 삭제"""
-    party = Party.query.get(party_id)
-    if not party:
-        return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+    user.matching_status = 'waiting'
+    user.match_request_date = date.today().isoformat()
     
-    # 요청 본문에서 employee_id를 가져옴
-    employee_id = request.json.get('employee_id')
-    if employee_id != party.host_employee_id:
-        return jsonify({'message': '파티장만 삭제할 수 있습니다.'}), 403
+    waiting_pool = User.query.filter(User.match_request_date == user.match_request_date, User.matching_status == 'waiting', User.employee_id != user.employee_id).all()
+    potential_group = [user] + waiting_pool
+    
+    if len(potential_group) >= 2:
+        group_size = min(len(potential_group), 4)
+        final_group_members = random.sample(potential_group, group_size)
+        member_ids = [m.employee_id for m in final_group_members]
         
-    db.session.delete(party)
-    db.session.commit()
-    return jsonify({'message': '파티가 삭제되었습니다.'})
+        User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'matched'}, synchronize_session=False)
 
-# --- 기존 API들 (수정 없음) ---
-# (이하 기존의 /users, /parties, /match/request 등 다른 API들은 그대로 유지됩니다)
+        new_match_group = MatchGroup(member_employee_ids=','.join(member_ids))
+        db.session.add(new_match_group)
+        db.session.commit()
+
+        # '번개 파티' 생성
+        lightning_party_names = ["점심 어벤져스", "오늘의 미식 탐험대", "깜짝 런치 특공대", "맛잘알 번개모임", "점심 메이트 ⚡️"]
+        today_str_for_query = date.today().isoformat()
+        today_lightning_count = Party.query.filter(Party.is_from_match == True, Party.party_date == today_str_for_query).count()
+        party_title = f"{random.choice(lightning_party_names)} #{today_lightning_count + 1}"
+        
+        new_party = Party(
+            host_employee_id=member_ids[0], title=party_title, restaurant_name="미정 (채팅으로 정해요!)",
+            party_date=today_str_for_query, party_time="12:30", meeting_location="회사 로비",
+            max_members=4, members_employee_ids=','.join(member_ids), is_from_match=True
+        )
+        db.session.add(new_party)
+        db.session.commit()
+
+        return jsonify({'status': 'matched', 'message': '매칭에 성공했습니다!', 'party_id': new_party.id, 'party_title': new_party.title})
+    else:
+        db.session.commit()
+        return jsonify({'status': 'waiting', 'message': '매칭 대기열에 등록되었습니다. 동료가 생기면 알려드릴게요!'})
 
 @app.route('/users', methods=['GET'])
 def get_all_users():
@@ -325,6 +294,17 @@ def leave_party(party_id):
         db.session.commit()
     return jsonify({'message': '파티에서 나갔습니다.'})
 
+@app.route('/parties/<int:party_id>', methods=['DELETE'])
+def delete_party(party_id):
+    party = Party.query.get(party_id)
+    if not party: return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+    employee_id = request.json['employee_id']
+    if employee_id != party.host_employee_id:
+        return jsonify({'message': '파티장만 삭제할 수 있습니다.'}), 403
+    db.session.delete(party)
+    db.session.commit()
+    return jsonify({'message': '파티가 삭제되었습니다.'})
+
 @app.route('/chats/<employee_id>', methods=['GET'])
 def get_my_chats(employee_id):
     chat_list = []
@@ -333,59 +313,5 @@ def get_my_chats(employee_id):
         chat_list.append({'id': party.id, 'type': 'party', 'title': party.title, 'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명"})
     return jsonify(chat_list)
 
-@app.route('/match/request', methods=['POST'])
-def request_match():
-    employee_id = request.json['employee_id']
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if user:
-        user.last_match_request = time.time()
-        db.session.commit()
-    return jsonify({'message': '매칭 풀에 등록되었습니다.'})
-
-@app.route('/match/find_group', methods=['POST'])
-def find_match_group():
-    requester_id = request.json['employee_id']
-    requester = User.query.filter_by(employee_id=requester_id).first()
-    
-    # 10초 이내에 매칭을 요청한 다른 사용자들 찾기
-    ten_seconds_ago = time.time() - 10
-    pool = User.query.filter(User.last_match_request > ten_seconds_ago, User.employee_id != requester_id).all()
-    
-    if not pool:
-        return jsonify({'message': '아직 함께할 동료가 없어요. 잠시 후 다시 시도해주세요!'})
-
-    # 매칭 로직 (성향, 주종목 유사도 기반)
-    # ... (기존 로직 생략) ...
-    
-    # 임시로 랜덤 1~3명 선택
-    group_size = random.randint(1, min(3, len(pool)))
-    random_members = random.sample(pool, group_size)
-    
-    group_members = [requester] + random_members
-    member_ids_str = ','.join([m.employee_id for m in group_members])
-
-    new_group = MatchGroup(member_employee_ids=member_ids_str)
-    db.session.add(new_group)
-    db.session.commit()
-
-    displayed_info = []
-    for member in group_members:
-        info = {
-            '닉네임': member.nickname,
-            '점심 성향': member.lunch_preference,
-            '주종목': member.main_dish_genre
-        }
-        displayed_info.append({'displayed_info': info})
-
-    return jsonify({'group': displayed_info, 'group_id': new_group.id})
-
-# 개발용 테스트 유저 추가
-@app.route('/match/add_test_users', methods=['POST'])
-def add_test_users():
-    # ... (기존 코드 유지) ...
-    return jsonify({'message': '가상 유저 3명이 매칭 풀에 추가되었습니다.'})
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
-
