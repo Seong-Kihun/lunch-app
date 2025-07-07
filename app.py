@@ -11,7 +11,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- Database Models (No Changes) ---
+# --- Database Models ---
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -70,7 +70,6 @@ def init_db_route():
     with app.app_context():
         db.drop_all()
         db.create_all()
-        # [FIX] Restore all 4 restaurants and 5 users
         restaurant1 = Restaurant(name='한식 뚝배기집', category='한식', rating=4.5, address='서울시 강남구 테헤란로 123', phone='02-1234-5678', description='따뜻한 국물이 일품인 한식당')
         restaurant2 = Restaurant(name='퓨전 파스타', category='양식', rating=4.0, address='서울시 서초구 서초대로 456', phone='02-9876-5432', description='트렌디하고 맛있는 파스타 전문점')
         restaurant3 = Restaurant(name='시원한 막국수', category='한식', rating=3.8, address='서울시 종로구 종로 789', phone='02-1111-2222', description='여름에 시원하게 즐기는 막국수 맛집')
@@ -88,7 +87,6 @@ def init_db_route():
         return '데이터베이스 초기화 및 맛집/사용자 데이터 추가 완료!'
 
 # --- All APIs (User, Restaurant, Party, Match, Chat) ---
-# [FIX] Re-add test user API for easy testing
 @app.route('/match/add_test_users', methods=['POST'])
 def add_test_users_to_pool():
     test_user_ids = ['KOICA002', 'KOICA003', 'KOICA004']
@@ -98,19 +96,44 @@ def add_test_users_to_pool():
         if user:
             user.is_matching_available = True
             user.last_match_request = time.time()
-            db.session.commit()
             users_added_count += 1
+    db.session.commit()
     if users_added_count > 0:
-        return jsonify({'message': f'{users_added_count}명의 가상 유저를 매칭 풀에 추가했습니다. 이제 매칭을 시도해보세요!'}), 200
+        return jsonify({'message': f'{users_added_count}명의 가상 유저를 매칭 풀에 추가했습니다.'}), 200
     else:
         return jsonify({'message': '추가할 가상 유저를 찾지 못했습니다.'}), 404
-        
-# (All other APIs are the same as the previous complete version)
-# ... The full, correct logic for all other APIs is included here ...
+
 @app.route('/users', methods=['GET'])
 def get_all_users():
     users = User.query.all()
     return jsonify([{'employee_id': u.employee_id, 'nickname': u.nickname, 'department': u.department} for u in users])
+
+@app.route('/users/<employee_id>', methods=['GET'])
+def get_user(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    return jsonify({'employee_id': user.employee_id, 'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
+
+@app.route('/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    new_user = User(employee_id=data['employee_id'], nickname=data.get('nickname'))
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': '사용자 등록 완료'}), 201
+
+@app.route('/users/<employee_id>', methods=['PUT'])
+def update_user(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    data = request.get_json()
+    user.nickname = data.get('nickname', user.nickname)
+    user.lunch_preference = data.get('lunch_preference', user.lunch_preference)
+    user.gender = data.get('gender', user.gender)
+    user.age_group = data.get('age_group', user.age_group)
+    user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre)
+    db.session.commit()
+    return jsonify({'message': '프로필 업데이트 완료'})
 
 @app.route('/restaurants', methods=['GET'])
 def get_restaurants():
@@ -122,41 +145,120 @@ def get_all_parties():
     parties = Party.query.all()
     return jsonify([{'id': p.id, 'title': p.title, 'restaurant_name': p.restaurant_name, 'current_members': p.current_members, 'max_members': p.max_members} for p in parties])
 
+@app.route('/parties', methods=['POST'])
+def create_party():
+    data = request.get_json()
+    new_party = Party(
+        host_employee_id=data['host_employee_id'], title=data['title'], restaurant_name=data['restaurant_name'],
+        party_date=data['party_date'], party_time=data['party_time'], meeting_location=data['meeting_location'],
+        max_members=data['max_members'], members_employee_ids=data['host_employee_id']
+    )
+    db.session.add(new_party)
+    db.session.commit()
+    return jsonify({'message': '파티가 생성되었습니다.', 'party_id': new_party.id}), 201
+
+@app.route('/parties/<int:party_id>', methods=['GET'])
+def get_party(party_id):
+    party = Party.query.get(party_id)
+    if not party: return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+    member_ids = party.members_employee_ids.split(',') if party.members_employee_ids else []
+    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+    party_data = {'id': party.id, 'host_employee_id': party.host_employee_id, 'title': party.title, 'restaurant_name': party.restaurant_name, 'max_members': party.max_members, 'current_members': party.current_members, 'members': members_details}
+    return jsonify(party_data)
+
+@app.route('/parties/<int:party_id>/join', methods=['POST'])
+def join_party(party_id):
+    party = Party.query.get(party_id)
+    employee_id = request.json['employee_id']
+    if employee_id not in party.members_employee_ids.split(','):
+        party.members_employee_ids += f',{employee_id}'
+        party.current_members += 1
+        db.session.commit()
+    return jsonify({'message': '파티에 참여했습니다.'})
+
+@app.route('/parties/<int:party_id>/leave', methods=['POST'])
+def leave_party(party_id):
+    party = Party.query.get(party_id)
+    employee_id = request.json['employee_id']
+    if employee_id == party.host_employee_id: return jsonify({'message': '파티장은 나갈 수 없습니다.'}), 403
+    members = party.members_employee_ids.split(',')
+    if employee_id in members:
+        members.remove(employee_id)
+        party.members_employee_ids = ','.join(members)
+        party.current_members -= 1
+        db.session.commit()
+    return jsonify({'message': '파티에서 나갔습니다.'})
+
+@app.route('/parties/<int:party_id>', methods=['DELETE'])
+def delete_party(party_id):
+    party = Party.query.get(party_id)
+    if request.json['employee_id'] != party.host_employee_id: return jsonify({'message': '파티장만 삭제할 수 있습니다.'}), 403
+    db.session.delete(party)
+    db.session.commit()
+    return jsonify({'message': '파티가 삭제되었습니다.'})
+
+@app.route('/match/request', methods=['POST'])
+def request_match():
+    user = User.query.filter_by(employee_id=request.json['employee_id']).first()
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    user.is_matching_available = True
+    user.last_match_request = time.time()
+    db.session.commit()
+    return jsonify({'message': '매칭 요청이 접수되었습니다.'})
+
 @app.route('/match/find_group', methods=['POST'])
 def find_match_group():
     requester_id = request.json['employee_id']
     current_time = time.time()
-    # Find users available for matching
     available_users = User.query.filter(User.is_matching_available == True, User.last_match_request >= (current_time - 300)).all()
-    
-    # Exclude the requester from the pool of candidates to be sampled
     other_available_users = [u for u in available_users if u.employee_id != requester_id]
-
-    if not other_available_users: # Need at least one other person
-        return jsonify({'message': '현재 매칭 가능한 인원이 부족합니다.'}), 200
-
-    # Form a group of 2 to 4 people
+    if not other_available_users: return jsonify({'message': '현재 매칭 가능한 인원이 부족합니다.'}), 200
     group_size = random.randint(1, min(len(other_available_users), 3))
     potential_group_members = random.sample(other_available_users, group_size)
-    
     requester = User.query.filter_by(employee_id=requester_id).first()
     potential_group_members.append(requester)
-    
     group_member_ids = [u.employee_id for u in potential_group_members]
     new_group = MatchGroup(member_employee_ids=','.join(group_member_ids), status='pending_confirmation')
     db.session.add(new_group)
-    
-    for user in potential_group_members:
-        user.is_matching_available = False
+    for user in potential_group_members: user.is_matching_available = False
     db.session.commit()
-    
     group_info = [{'employee_id': u.employee_id, 'nickname': u.nickname, 'displayed_info': {'성향': u.lunch_preference.split(',')[0] if u.lunch_preference else '미정', '주종목': u.main_dish_genre.split(',')[0] if u.main_dish_genre else '미정'}} for u in potential_group_members]
     return jsonify({'message': '매칭 그룹이 구성되었습니다!', 'group_id': new_group.id, 'group': group_info})
 
-# (All other APIs like /parties/<id>, /match/confirm, /chats/<id> are also here with full logic)
-# ...
+@app.route('/match/confirm', methods=['POST'])
+def confirm_match():
+    group = MatchGroup.query.get(request.json['group_id'])
+    if not group: return jsonify({'message': '그룹을 찾을 수 없습니다.'}), 404
+    group.status = 'confirmed'
+    db.session.commit()
+    return jsonify({'message': '매칭이 확정되었습니다.'})
 
-# --- Run Server ---
+@app.route('/match/cancel', methods=['POST'])
+def cancel_match():
+    group = MatchGroup.query.get(request.json['group_id'])
+    if not group: return jsonify({'message': '그룹을 찾을 수 없습니다.'}), 404
+    group.status = 'cancelled'
+    db.session.commit()
+    return jsonify({'message': '매칭이 취소되었습니다.'})
+
+@app.route('/match/group/<int:group_id>', methods=['GET'])
+def get_match_group(group_id):
+    group = MatchGroup.query.get(group_id)
+    if not group: return jsonify({'message': '그룹을 찾을 수 없습니다.'}), 404
+    member_ids = group.member_employee_ids.split(',')
+    members = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+    return jsonify({'group_id': group.id, 'status': group.status, 'members': members})
+
+@app.route('/chats/<employee_id>', methods=['GET'])
+def get_my_chats(employee_id):
+    chat_list = []
+    confirmed_groups = MatchGroup.query.filter(MatchGroup.status == 'confirmed', MatchGroup.member_employee_ids.contains(employee_id)).all()
+    for group in confirmed_groups:
+        chat_list.append({'id': group.id, 'type': 'match', 'title': f"점심 매칭 그룹", 'subtitle': f"{len(group.member_employee_ids.split(','))}명 참여"})
+    joined_parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
+    for party in joined_parties:
+        chat_list.append({'id': party.id, 'type': 'party', 'title': party.title, 'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명"})
+    return jsonify(chat_list)
+
 if __name__ == '__main__':
     app.run(debug=True)
-
