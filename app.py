@@ -45,7 +45,7 @@ class DangolPot(db.Model):
     description = db.Column(db.Text, nullable=True)
     tags = db.Column(db.String(200), nullable=True)
     host_id = db.Column(db.String(50), nullable=False)
-    members = db.Column(db.Text, default='') # 참여자 사번 목록 (쉼표로 구분)
+    members = db.Column(db.Text, default='')
     @property
     def member_count(self):
         if not self.members: return 0
@@ -100,14 +100,6 @@ def create_tables_and_init_data():
             db.session.commit()
             app._db_initialized = True
 
-# --- Helper Function ---
-def get_user_and_reset_status(employee_id):
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user: return None
-    today_str = date.today().isoformat()
-    if user.match_request_date != today_str: user.matching_status = 'idle'; user.match_request_date = None; db.session.commit()
-    return user
-
 # --- API 엔드포인트 ---
 @app.route('/cafeteria/today', methods=['GET'])
 def get_today_menu(): return jsonify({'menu': ['제육볶음', '계란찜']})
@@ -131,6 +123,15 @@ def create_dangolpot():
 def get_dangolpots():
     pots = DangolPot.query.all()
     return jsonify([{'id': p.id, 'name': p.name, 'description': p.description, 'tags': p.tags, 'member_count': p.member_count} for p in pots])
+
+@app.route('/dangolpots/<int:pot_id>', methods=['GET'])
+def get_dangolpot_detail(pot_id):
+    pot = DangolPot.query.get(pot_id)
+    if not pot: return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+    member_ids = pot.members.split(',') if pot.members else []
+    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+    pot_data = {'id': pot.id, 'name': pot.name, 'description': pot.description, 'tags': pot.tags, 'host_id': pot.host_id, 'members': members_details}
+    return jsonify(pot_data)
 
 @app.route('/my_dangolpots/<employee_id>', methods=['GET'])
 def get_my_dangolpots(employee_id):
@@ -157,7 +158,7 @@ def get_events(employee_id):
             if p.party_date:
                 if p.party_date not in events: events[p.party_date] = []
                 member_nicknames = [u.nickname for u in User.query.filter(User.employee_id.in_(p.members_employee_ids.split(','))).all()]
-                events[p.party_date].append({'type': '파티' if not p.is_from_match else '셔플', 'title': p.title, 'restaurant': p.restaurant_name, 'members': member_nicknames})
+                events[p.party_date].append({'type': '파티' if not p.is_from_match else '랜덤 런치', 'title': p.title, 'restaurant': p.restaurant_name, 'members': member_nicknames})
         return jsonify(events)
     except Exception as e: return jsonify({'error': 'An internal server error occurred', 'details': str(e)}), 500
 
@@ -201,7 +202,7 @@ def handle_match_request():
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     if user.matching_status in ['waiting', 'pending_confirmation']:
         user.matching_status = 'idle'; db.session.commit()
-        return jsonify({'status': 'idle', 'message': '런치 셔플 대기를 취소했습니다.'})
+        return jsonify({'status': 'idle', 'message': '랜덤 런치 대기를 취소했습니다.'})
     if user.matching_status == 'matched': return jsonify({'status': 'matched', 'message': '이미 오늘 점심 매칭이 완료되었습니다.'})
     user.matching_status = 'waiting'; user.match_request_date = date.today().isoformat()
     waiting_pool = User.query.filter(User.match_request_date == user.match_request_date, User.matching_status == 'waiting', User.employee_id != user.employee_id).all()
@@ -216,7 +217,7 @@ def handle_match_request():
         return jsonify({'status': 'pending_confirmation', 'message': '매칭 그룹을 찾았습니다!', 'group': group_info, 'group_id': new_match_group.id})
     else:
         db.session.commit()
-        return jsonify({'status': 'waiting', 'message': '런치 셔플 대기열에 등록되었습니다.'})
+        return jsonify({'status': 'waiting', 'message': '랜덤 런치 대기열에 등록되었습니다.'})
 
 @app.route('/match/confirm', methods=['POST'])
 def confirm_match():
@@ -224,11 +225,11 @@ def confirm_match():
     if not match_group or match_group.status != 'pending': return jsonify({'message': '이미 처리된 매칭입니다.'}), 400
     match_group.status = 'confirmed'; member_ids = match_group.member_employee_ids.split(',')
     User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'matched'}, synchronize_session=False)
-    party_title = f"오늘의 런치 셔플 ⚡️"
+    party_title = f"오늘의 랜덤 런치 ⚡️"
     today_str = date.today().isoformat()
     new_party = Party(host_employee_id=member_ids[0], title=party_title, restaurant_name="미정", party_date=today_str, party_time="12:30", meeting_location="회사 로비", max_members=4, members_employee_ids=match_group.member_employee_ids, is_from_match=True)
     db.session.add(new_party); db.session.commit()
-    return jsonify({'status': 'matched', 'message': '런치 셔플 파티가 생성되었습니다!', 'party_id': new_party.id, 'party_title': new_party.title})
+    return jsonify({'status': 'matched', 'message': '랜덤 런치 파티가 생성되었습니다!', 'party_id': new_party.id, 'party_title': new_party.title})
 
 @app.route('/match/reject', methods=['POST'])
 def reject_match():
@@ -334,6 +335,7 @@ def get_my_chats(employee_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
