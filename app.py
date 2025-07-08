@@ -4,7 +4,6 @@ from flask_cors import CORS
 import random
 from datetime import datetime, date
 from sqlalchemy import desc, or_
-# from geopy.geocoders import Nominatim  # 주소 -> 좌표 변환 라이브러리 (실제 사용 시 설치 필요)
 
 app = Flask(__name__)
 CORS(app)
@@ -29,9 +28,9 @@ class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    address = db.Column(db.String(200), nullable=True) # [신규] 주소 컬럼
-    latitude = db.Column(db.Float, nullable=True)    # [신규] 위도 컬럼
-    longitude = db.Column(db.Float, nullable=True)   # [신규] 경도 컬럼
+    address = db.Column(db.String(200), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     reviews = db.relationship('Review', backref='restaurant', lazy=True, cascade="all, delete-orphan")
     @property
     def review_count(self): return len(self.reviews)
@@ -40,14 +39,13 @@ class Restaurant(db.Model):
         if not self.reviews: return 0
         return sum(r.rating for r in self.reviews) / len(self.reviews)
 
-# [신규] 단골팟 모델
 class DangolPot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    tags = db.Column(db.String(200), nullable=True) # 예: #마라탕,#개발팀
+    tags = db.Column(db.String(200), nullable=True)
     host_id = db.Column(db.String(50), nullable=False)
-    members = db.Column(db.Text, default='') # 참여자 사번 목록
+    members = db.Column(db.Text, default='')
 
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,7 +78,6 @@ class MatchGroup(db.Model):
     status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
@@ -88,7 +85,6 @@ def create_tables_and_init_data():
         with app.app_context():
             db.create_all()
             if Restaurant.query.count() == 0:
-                # 초기 데이터에 주소 및 좌표 추가
                 r1 = Restaurant(name='한식 뚝배기집', category='한식', address='서울특별시 성남시 수정구 시흥동 288', latitude=37.4452, longitude=127.1023)
                 r2 = Restaurant(name='퓨전 파스타', category='양식', address='서울특별시 성남시 수정구 시흥동 300', latitude=37.4468, longitude=127.1035)
                 db.session.add_all([r1, r2])
@@ -98,60 +94,24 @@ def create_tables_and_init_data():
             app._db_initialized = True
 
 # --- API 엔드포인트 ---
-
-# [신규] 오늘의 구내식당 메뉴 (AI 연동 준비)
 @app.route('/cafeteria/today', methods=['GET'])
 def get_today_menu():
-    # TODO: AI로 이미지 분석 후 DB에서 가져오는 로직 구현
-    # 현재는 더미 데이터 반환
     return jsonify({'menu': ['제육볶음', '계란찜']})
 
-# [수정] 맛집 목록 조회 (좌표 정보 포함)
-@app.route('/restaurants', methods=['GET'])
-def get_restaurants():
-    # ... 검색/정렬 로직은 동일 ...
-    query = request.args.get('query', '')
-    sort_by = request.args.get('sort_by', 'name')
-    restaurants_q = Restaurant.query.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()
-    if sort_by == 'rating_desc': restaurants_q.sort(key=lambda r: r.avg_rating, reverse=True)
-    elif sort_by == 'reviews_desc': restaurants_q.sort(key=lambda r: r.review_count, reverse=True)
-    else: restaurants_q.sort(key=lambda r: r.name)
-    
-    restaurants_list = [{'id': r.id, 'name': r.name, 'category': r.category, 'address': r.address, 'latitude': r.latitude, 'longitude': r.longitude, 'rating': round(r.avg_rating, 1), 'review_count': r.review_count} for r in restaurants_q]
-    return jsonify(restaurants_list)
-
-# [신규] 사용자 맛집 등록
 @app.route('/restaurants', methods=['POST'])
 def add_restaurant():
     data = request.get_json()
-    # TODO: 실제 서비스에서는 주소->좌표 변환 API(지오코딩) 호출 필요
-    # geolocator = Nominatim(user_agent="matjeom_app")
-    # location = geolocator.geocode(data['address'])
-    # latitude = location.latitude if location else 37.4452
-    # longitude = location.longitude if location else 127.1023
-    
-    # 현재는 더미 좌표 사용
     latitude = 37.4452 + (random.random() - 0.5) * 0.01
     longitude = 127.1023 + (random.random() - 0.5) * 0.01
-
-    new_restaurant = Restaurant(
-        name=data['name'],
-        category=data['category'],
-        address=data['address'],
-        latitude=latitude,
-        longitude=longitude
-    )
-    db.session.add(new_restaurant)
-    db.session.commit()
+    new_restaurant = Restaurant(name=data['name'], category=data['category'], address=data['address'], latitude=latitude, longitude=longitude)
+    db.session.add(new_restaurant); db.session.commit()
     return jsonify({'message': '새로운 맛집이 등록되었습니다!', 'restaurant_id': new_restaurant.id}), 201
 
-# [신규] 단골팟 관련 API
 @app.route('/dangolpots', methods=['POST'])
 def create_dangolpot():
     data = request.get_json()
     new_pot = DangolPot(name=data['name'], description=data['description'], tags=data['tags'], host_id=data['host_id'], members=data['host_id'])
-    db.session.add(new_pot)
-    db.session.commit()
+    db.session.add(new_pot); db.session.commit()
     return jsonify({'message': '새로운 단골팟이 생성되었습니다!', 'pot_id': new_pot.id}), 201
 
 @app.route('/dangolpots', methods=['GET'])
@@ -165,6 +125,12 @@ def get_my_dangolpots(employee_id):
     return jsonify([{'id': p.id, 'name': p.name, 'description': p.description, 'tags': p.tags, 'member_count': len(p.members.split(','))} for p in my_pots])
 
 # (이하 다른 모든 API는 이전 버전과 동일하게 유지됩니다)
+def get_user_and_reset_status(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return None
+    today_str = date.today().isoformat()
+    if user.match_request_date != today_str: user.matching_status = 'idle'; user.match_request_date = None; db.session.commit()
+    return user
 @app.route('/dev/add_test_users', methods=['POST'])
 def add_test_users():
     today_str = date.today().isoformat()
@@ -175,27 +141,32 @@ def add_test_users():
         user.matching_status = 'waiting'; user.match_request_date = today_str
     db.session.commit()
     return jsonify({'message': '가상 유저 3명이 매칭 대기열에 추가되었습니다.'})
-
 @app.route('/events/<employee_id>', methods=['GET'])
 def get_events(employee_id):
     try:
-        events = {}
-        parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
+        events = {}; parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
         for p in parties:
             if p.party_date:
                 if p.party_date not in events: events[p.party_date] = []
                 events[p.party_date].append({'type': '파티' if not p.is_from_match else '번개', 'title': p.title, 'restaurant': p.restaurant_name})
         return jsonify(events)
-    except Exception as e:
-        return jsonify({'error': 'An internal server error occurred', 'details': str(e)}), 500
+    except Exception as e: return jsonify({'error': 'An internal server error occurred', 'details': str(e)}), 500
+@app.route('/restaurants', methods=['GET'])
+def get_restaurants():
+    query = request.args.get('query', ''); sort_by = request.args.get('sort_by', 'name')
+    restaurants_q = Restaurant.query.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()
+    if sort_by == 'rating_desc': restaurants_q.sort(key=lambda r: r.avg_rating, reverse=True)
+    elif sort_by == 'reviews_desc': restaurants_q.sort(key=lambda r: r.review_count, reverse=True)
+    else: restaurants_q.sort(key=lambda r: r.name)
+    restaurants_list = [{'id': r.id, 'name': r.name, 'category': r.category, 'address': r.address, 'latitude': r.latitude, 'longitude': r.longitude, 'rating': round(r.avg_rating, 1), 'review_count': r.review_count} for r in restaurants_q]
+    return jsonify(restaurants_list)
 @app.route('/restaurants/<int:restaurant_id>/reviews', methods=['GET'])
 def get_reviews(restaurant_id):
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(desc(Review.created_at)).all()
     return jsonify([{'id': r.id, 'nickname': r.nickname, 'rating': r.rating, 'comment': r.comment, 'created_at': r.created_at.strftime('%Y-%m-%d')} for r in reviews])
 @app.route('/restaurants/<int:restaurant_id>/reviews', methods=['POST'])
 def add_review(restaurant_id):
-    data = request.get_json()
-    user = User.query.filter_by(employee_id=data['user_id']).first()
+    data = request.get_json(); user = User.query.filter_by(employee_id=data['user_id']).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     new_review = Review(restaurant_id=restaurant_id, user_id=data['user_id'], nickname=user.nickname, rating=data['rating'], comment=data['comment'])
     db.session.add(new_review); db.session.commit()
@@ -212,8 +183,7 @@ def get_match_status(employee_id):
     return jsonify(response)
 @app.route('/match/request', methods=['POST'])
 def handle_match_request():
-    employee_id = request.json['employee_id']
-    user = get_user_and_reset_status(employee_id)
+    employee_id = request.json['employee_id']; user = get_user_and_reset_status(employee_id)
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     if user.matching_status in ['waiting', 'pending_confirmation']:
         user.matching_status = 'idle'; db.session.commit()
@@ -223,8 +193,7 @@ def handle_match_request():
     waiting_pool = User.query.filter(User.match_request_date == user.match_request_date, User.matching_status == 'waiting', User.employee_id != user.employee_id).all()
     potential_group = [user] + waiting_pool
     if len(potential_group) >= 2:
-        group_size = min(len(potential_group), 4)
-        final_group_members = random.sample(potential_group, group_size)
+        group_size = min(len(potential_group), 4); final_group_members = random.sample(potential_group, group_size)
         member_ids = [m.employee_id for m in final_group_members]
         User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'pending_confirmation'}, synchronize_session=False)
         new_match_group = MatchGroup(member_employee_ids=','.join(member_ids))
@@ -236,11 +205,9 @@ def handle_match_request():
         return jsonify({'status': 'waiting', 'message': '매칭 대기열에 등록되었습니다.'})
 @app.route('/match/confirm', methods=['POST'])
 def confirm_match():
-    group_id = request.json['group_id']
-    match_group = MatchGroup.query.get(group_id)
+    group_id = request.json['group_id']; match_group = MatchGroup.query.get(group_id)
     if not match_group or match_group.status != 'pending': return jsonify({'message': '이미 처리된 매칭입니다.'}), 400
-    match_group.status = 'confirmed'
-    member_ids = match_group.member_employee_ids.split(',')
+    match_group.status = 'confirmed'; member_ids = match_group.member_employee_ids.split(',')
     User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'matched'}, synchronize_session=False)
     lightning_party_names = ["점심 어벤져스", "오늘의 미식 탐험대", "깜짝 런치 특공대"]
     today_str = date.today().isoformat()
@@ -251,9 +218,7 @@ def confirm_match():
     return jsonify({'status': 'matched', 'message': '번개 파티가 생성되었습니다!', 'party_id': new_party.id, 'party_title': new_party.title})
 @app.route('/match/reject', methods=['POST'])
 def reject_match():
-    group_id = request.json['group_id']
-    employee_id = request.json['employee_id']
-    match_group = MatchGroup.query.get(group_id)
+    group_id = request.json['group_id']; employee_id = request.json['employee_id']; match_group = MatchGroup.query.get(group_id)
     if not match_group or match_group.status != 'pending': return jsonify({'message': '이미 처리된 매칭입니다.'}), 400
     match_group.status = 'rejected'
     other_members = [mid for mid in match_group.member_employee_ids.split(',') if mid != employee_id]
@@ -340,4 +305,5 @@ def get_my_chats(employee_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
