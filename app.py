@@ -100,6 +100,14 @@ def create_tables_and_init_data():
             db.session.commit()
             app._db_initialized = True
 
+# --- Helper Function ---
+def get_user_and_reset_status(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return None
+    today_str = date.today().isoformat()
+    if user.match_request_date != today_str: user.matching_status = 'idle'; user.match_request_date = None; db.session.commit()
+    return user
+
 # --- API 엔드포인트 ---
 @app.route('/cafeteria/today', methods=['GET'])
 def get_today_menu(): return jsonify({'menu': ['제육볶음', '계란찜']})
@@ -152,8 +160,7 @@ def add_test_users():
 @app.route('/events/<employee_id>', methods=['GET'])
 def get_events(employee_id):
     try:
-        events = {}
-        parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
+        events = {}; parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
         for p in parties:
             if p.party_date:
                 if p.party_date not in events: events[p.party_date] = []
@@ -196,28 +203,32 @@ def get_match_status(employee_id):
         if matched_party: response['party_id'] = matched_party.id; response['party_title'] = matched_party.title
     return jsonify(response)
 
+# [수정] 랜덤 런치 요청 API 안정성 강화
 @app.route('/match/request', methods=['POST'])
 def handle_match_request():
-    employee_id = request.json['employee_id']; user = get_user_and_reset_status(employee_id)
-    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    if user.matching_status in ['waiting', 'pending_confirmation']:
-        user.matching_status = 'idle'; db.session.commit()
-        return jsonify({'status': 'idle', 'message': '랜덤 런치 대기를 취소했습니다.'})
-    if user.matching_status == 'matched': return jsonify({'status': 'matched', 'message': '이미 오늘 점심 매칭이 완료되었습니다.'})
-    user.matching_status = 'waiting'; user.match_request_date = date.today().isoformat()
-    waiting_pool = User.query.filter(User.match_request_date == user.match_request_date, User.matching_status == 'waiting', User.employee_id != user.employee_id).all()
-    potential_group = [user] + waiting_pool
-    if len(potential_group) >= 2:
-        group_size = min(len(potential_group), 4); final_group_members = random.sample(potential_group, group_size)
-        member_ids = [m.employee_id for m in final_group_members]
-        User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'pending_confirmation'}, synchronize_session=False)
-        new_match_group = MatchGroup(member_employee_ids=','.join(member_ids))
-        db.session.add(new_match_group); db.session.commit()
-        group_info = [{'nickname': m.nickname, 'lunch_preference': m.lunch_preference} for m in final_group_members]
-        return jsonify({'status': 'pending_confirmation', 'message': '매칭 그룹을 찾았습니다!', 'group': group_info, 'group_id': new_match_group.id})
-    else:
-        db.session.commit()
-        return jsonify({'status': 'waiting', 'message': '랜덤 런치 대기열에 등록되었습니다.'})
+    try:
+        employee_id = request.json['employee_id']; user = get_user_and_reset_status(employee_id)
+        if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+        if user.matching_status in ['waiting', 'pending_confirmation']:
+            user.matching_status = 'idle'; db.session.commit()
+            return jsonify({'status': 'idle', 'message': '랜덤 런치 대기를 취소했습니다.'})
+        if user.matching_status == 'matched': return jsonify({'status': 'matched', 'message': '이미 오늘 점심 매칭이 완료되었습니다.'})
+        user.matching_status = 'waiting'; user.match_request_date = date.today().isoformat()
+        waiting_pool = User.query.filter(User.match_request_date == user.match_request_date, User.matching_status == 'waiting', User.employee_id != user.employee_id).all()
+        potential_group = [user] + waiting_pool
+        if len(potential_group) >= 2:
+            group_size = min(len(potential_group), 4); final_group_members = random.sample(potential_group, group_size)
+            member_ids = [m.employee_id for m in final_group_members]
+            User.query.filter(User.employee_id.in_(member_ids)).update({'matching_status': 'pending_confirmation'}, synchronize_session=False)
+            new_match_group = MatchGroup(member_employee_ids=','.join(member_ids))
+            db.session.add(new_match_group); db.session.commit()
+            group_info = [{'nickname': m.nickname, 'lunch_preference': m.lunch_preference} for m in final_group_members]
+            return jsonify({'status': 'pending_confirmation', 'message': '매칭 그룹을 찾았습니다!', 'group': group_info, 'group_id': new_match_group.id})
+        else:
+            db.session.commit()
+            return jsonify({'status': 'waiting', 'message': '랜덤 런치 대기열에 등록되었습니다.'})
+    except Exception as e:
+        return jsonify({'error': 'An internal server error occurred', 'details': str(e)}), 500
 
 @app.route('/match/confirm', methods=['POST'])
 def confirm_match():
@@ -335,6 +346,7 @@ def get_my_chats(employee_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
