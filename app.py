@@ -409,6 +409,46 @@ def join_dangolpot(pot_id):
         db.session.commit()
     return jsonify({'message': '단골팟에 가입했습니다.'})
 
+@app.route('/dangolpots/<int:pot_id>', methods=['DELETE'])
+def delete_dangolpot(pot_id):
+    pot = DangolPot.query.get(pot_id)
+    if not pot:
+        return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+    
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    if pot.host_id != employee_id:
+        return jsonify({'message': '팟장만 삭제할 수 있습니다.'}), 403
+    
+    db.session.delete(pot)
+    db.session.commit()
+    return jsonify({'message': '단골팟이 삭제되었습니다.'})
+
+@app.route('/dangolpots/<int:pot_id>', methods=['PUT'])
+def update_dangolpot(pot_id):
+    pot = DangolPot.query.get(pot_id)
+    if not pot:
+        return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+    
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    if pot.host_id != employee_id:
+        return jsonify({'message': '팟장만 수정할 수 있습니다.'}), 403
+    
+    pot.name = data.get('name', pot.name)
+    pot.description = data.get('description', pot.description)
+    pot.tags = data.get('tags', pot.tags)
+    pot.category = data.get('category', pot.category)
+    
+    db.session.commit()
+    return jsonify({'message': '단골팟 정보가 수정되었습니다.'})
+
 @app.route('/my_dangolpots/<employee_id>', methods=['GET'])
 def get_my_dangolpots(employee_id):
     pots = DangolPot.query.all()
@@ -509,6 +549,23 @@ def join_party(party_id):
     if party and employee_id and employee_id not in party.members_employee_ids.split(','):
         party.members_employee_ids += f',{employee_id}'; db.session.commit()
     return jsonify({'message': '파티에 참여했습니다.'})
+
+@app.route('/parties/<int:party_id>', methods=['DELETE'])
+def delete_party(party_id):
+    party = Party.query.get(party_id)
+    if not party:
+        return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+    
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    if party.host_employee_id != employee_id:
+        return jsonify({'message': '파티장만 삭제할 수 있습니다.'}), 403
+    
+    db.session.delete(party)
+    db.session.commit()
+    return jsonify({'message': '파티가 삭제되었습니다.'})
 
 # --- 랜덤런치, 사용자 프로필, 소통 API 등은 이전과 동일하게 유지 ---
 @app.route('/match/status/<employee_id>', methods=['GET'])
@@ -730,4 +787,5 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
