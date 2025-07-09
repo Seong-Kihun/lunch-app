@@ -70,6 +70,13 @@ class Restaurant(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     reviews = db.relationship('Review', backref='restaurant', lazy=True, cascade="all, delete-orphan")
     
+    def __init__(self, name, category, address=None, latitude=None, longitude=None):
+        self.name = name
+        self.category = category
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+    
     @property
     def review_count(self):
         return len(self.reviews)  # type: ignore
@@ -193,6 +200,27 @@ def create_tables_and_init_data():
                         lunch_preference=user_data.get('lunch_preference'),
                         main_dish_genre=user_data.get('main_dish_genre')
                     ))
+            
+            # Restaurant 초기 데이터 추가
+            if Restaurant.query.count() == 0:
+                restaurants_data = [
+                    {'name': '판교역 맛집', 'category': '한식', 'address': '경기도 성남시 분당구 판교역로 146'},
+                    {'name': '분당 맛집', 'category': '중식', 'address': '경기도 성남시 분당구 정자로 123'},
+                    {'name': '일식당', 'category': '일식', 'address': '경기도 성남시 분당구 판교로 456'},
+                    {'name': '양식점', 'category': '양식', 'address': '경기도 성남시 분당구 정자동 789'},
+                    {'name': '분식점', 'category': '분식', 'address': '경기도 성남시 분당구 판교동 321'},
+                ]
+                # Restaurant 생성 (초기 데이터)
+                for restaurant_data in restaurants_data:
+                    lat, lon = geocode_address(restaurant_data['address'])
+                    db.session.add(Restaurant(
+                        name=restaurant_data['name'],
+                        category=restaurant_data['category'],
+                        address=restaurant_data['address'],
+                        latitude=lat,
+                        longitude=lon
+                    ))
+            
             db.session.commit()
             setattr(app, '_db_initialized', True)
 
@@ -273,12 +301,13 @@ def delete_personal_schedule(schedule_id):
 def add_restaurant():
     data = request.get_json()
     lat, lon = geocode_address(data['address'])
-    new_restaurant = Restaurant()
-    new_restaurant.name = data['name']
-    new_restaurant.category = data['category']
-    new_restaurant.address = data['address']
-    new_restaurant.latitude = lat
-    new_restaurant.longitude = lon
+    new_restaurant = Restaurant(
+        name=data['name'],
+        category=data['category'],
+        address=data['address'],
+        latitude=lat,
+        longitude=lon
+    )
     db.session.add(new_restaurant)
     db.session.commit()
     return jsonify({'message': '새로운 맛집이 등록되었습니다!', 'restaurant_id': new_restaurant.id}), 201
@@ -291,9 +320,9 @@ def get_restaurants():
 
     q = Restaurant.query
     if category_filter:
-        q = q.filter(Restaurant.category == category_filter)
+        q = q.filter(Restaurant.category == category_filter)  # type: ignore
     
-    restaurants_q = q.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()
+    restaurants_q = q.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()  # type: ignore
 
     if sort_by == 'rating_desc': restaurants_q.sort(key=lambda r: r.avg_rating, reverse=True)
     elif sort_by == 'reviews_desc': restaurants_q.sort(key=lambda r: r.review_count, reverse=True)
@@ -427,7 +456,7 @@ def create_party():
         return jsonify({'message': '최대 인원(max_members)은 숫자여야 합니다.'}), 400
 
     # 레스토랑 주소 가져오기
-    restaurant = Restaurant.query.filter_by(name=data.get('restaurant_name')).first()
+    restaurant = Restaurant.query.filter_by(name=data.get('restaurant_name')).first()  # type: ignore
     restaurant_address = restaurant.address if restaurant else None
 
     # Party 생성
@@ -568,6 +597,23 @@ def confirm_match():
     
     return jsonify({'message': '매칭이 확정되었습니다.', 'status': 'confirmed'})
 
+@app.route('/match/cancel', methods=['POST'])
+def cancel_match():
+    data = request.get_json()
+    employee_id = data['employee_id']
+    
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    if user.matching_status == 'waiting':
+        user.matching_status = 'idle'
+        user.match_request_time = None
+        db.session.commit()
+        return jsonify({'message': '매칭 대기가 취소되었습니다.', 'status': 'cancelled'})
+    else:
+        return jsonify({'message': '매칭 대기 상태가 아닙니다.'}), 400
+
 @app.route('/match/reject', methods=['POST'])
 def reject_match():
     data = request.get_json()
@@ -684,5 +730,6 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
