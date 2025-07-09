@@ -3,6 +3,7 @@ from datetime import datetime, date, timedelta, time
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from sqlalchemy import desc, or_, func
 
 app = Flask(__name__)
@@ -10,7 +11,9 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your-secret-key-here'
 db = SQLAlchemy(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- 유틸리티 함수 ---
 def get_seoul_today():
@@ -114,6 +117,15 @@ class MatchGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     member_employee_ids = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot'
+    chat_id = db.Column(db.Integer, nullable=False)  # party_id or dangolpot_id
+    sender_employee_id = db.Column(db.String(50), nullable=False)
+    sender_nickname = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # --- 앱 실행 시 초기화 ---
@@ -359,6 +371,91 @@ def get_match_status(employee_id):
             response['countdown_target'] = match_time.isoformat()
     return jsonify(response)
 
+@app.route('/match/request', methods=['POST'])
+def request_match():
+    data = request.get_json()
+    employee_id = data['employee_id']
+    
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    now = datetime.now()
+    today_10am = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    
+    # 예약 매칭 (전일 14:00 ~ 당일 10:00)
+    if now < today_10am:
+        user.matching_status = 'waiting'
+        user.match_request_time = now
+        db.session.commit()
+        return jsonify({'message': '오전 10시 매칭 대기열에 등록되었습니다.', 'status': 'waiting'})
+    
+    # 실시간 매칭 (당일 10:00 ~ 14:00)
+    else:
+        # 대기 중인 다른 사용자 찾기
+        waiting_users = User.query.filter(
+            User.matching_status == 'waiting',
+            User.employee_id != employee_id
+        ).all()
+        
+        if waiting_users:
+            # 첫 번째 대기 사용자와 매칭
+            matched_user = waiting_users[0]
+            
+            # 파티 생성
+            new_party = Party(
+                host_employee_id=employee_id,
+                title='랜덤 런치',
+                restaurant_name='랜덤 매칭',
+                party_date=now.strftime('%Y-%m-%d'),
+                party_time='12:00',
+                meeting_location='KOICA 본사',
+                max_members=2,
+                members_employee_ids=f"{employee_id},{matched_user.employee_id}",
+                is_from_match=True
+            )
+            db.session.add(new_party)
+            
+            # 두 사용자 모두 matched 상태로 변경
+            user.matching_status = 'matched'
+            matched_user.matching_status = 'matched'
+            db.session.commit()
+            
+            return jsonify({
+                'message': '매칭이 완료되었습니다!',
+                'status': 'matched',
+                'party_id': new_party.id
+            })
+        else:
+            # 대기 상태로 변경
+            user.matching_status = 'waiting'
+            user.match_request_time = now
+            db.session.commit()
+            return jsonify({'message': '매칭 대기 중입니다...', 'status': 'waiting'})
+
+@app.route('/match/confirm', methods=['POST'])
+def confirm_match():
+    data = request.get_json()
+    group_id = data['group_id']
+    employee_id = data['employee_id']
+    
+    # 매칭 그룹 확인 및 파티 생성 로직
+    # (실제 구현에서는 더 복잡한 매칭 로직이 필요)
+    
+    return jsonify({'message': '매칭이 확정되었습니다.', 'status': 'confirmed'})
+
+@app.route('/match/reject', methods=['POST'])
+def reject_match():
+    data = request.get_json()
+    employee_id = data['employee_id']
+    
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if user:
+        user.matching_status = 'idle'
+        user.match_request_time = None
+        db.session.commit()
+    
+    return jsonify({'message': '매칭을 거절했습니다.', 'status': 'rejected'})
+
 @app.route('/chats/<employee_id>', methods=['GET'])
 def get_my_chats(employee_id):
     chat_list = []
@@ -376,6 +473,91 @@ def get_user(employee_id):
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
 
-# ... (이하 생략된 다른 API들은 이전 코드와 동일) ...
+@app.route('/users/<employee_id>', methods=['PUT'])
+def update_user(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    data = request.get_json()
+    user.nickname = data.get('nickname', user.nickname)
+    user.lunch_preference = data.get('lunch_preference', user.lunch_preference)
+    user.gender = data.get('gender', user.gender)
+    user.age_group = data.get('age_group', user.age_group)
+    user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre)
+    
+    db.session.commit()
+    return jsonify({'message': '프로필이 업데이트되었습니다.'})
+
+# --- 채팅 API ---
+@app.route('/chat/messages/<chat_type>/<int:chat_id>', methods=['GET'])
+def get_chat_messages(chat_type, chat_id):
+    messages = ChatMessage.query.filter_by(chat_type=chat_type, chat_id=chat_id).order_by(ChatMessage.created_at).all()
+    return jsonify([{
+        'id': msg.id,
+        'sender_employee_id': msg.sender_employee_id,
+        'sender_nickname': msg.sender_nickname,
+        'message': msg.message,
+        'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
+    } for msg in messages])
+
+# --- WebSocket 이벤트 ---
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    chat_type = data['chat_type']
+    chat_id = data['chat_id']
+    room = f"{chat_type}_{chat_id}"
+    join_room(room)
+    print(f'Client joined room: {room}')
+
+@socketio.on('leave_chat')
+def handle_leave_chat(data):
+    chat_type = data['chat_type']
+    chat_id = data['chat_id']
+    room = f"{chat_type}_{chat_id}"
+    leave_room(room)
+    print(f'Client left room: {room}')
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    chat_type = data['chat_type']
+    chat_id = data['chat_id']
+    sender_employee_id = data['sender_employee_id']
+    message = data['message']
+    
+    # 사용자 정보 조회
+    user = User.query.filter_by(employee_id=sender_employee_id).first()
+    if not user:
+        return
+    
+    # 메시지 저장
+    new_message = ChatMessage(
+        chat_type=chat_type,
+        chat_id=chat_id,
+        sender_employee_id=sender_employee_id,
+        sender_nickname=user.nickname,
+        message=message
+    )
+    db.session.add(new_message)
+    db.session.commit()
+    
+    # 채팅방의 모든 사용자에게 메시지 전송
+    room = f"{chat_type}_{chat_id}"
+    emit('new_message', {
+        'id': new_message.id,
+        'sender_employee_id': sender_employee_id,
+        'sender_nickname': user.nickname,
+        'message': message,
+        'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
+    }, room=room)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
