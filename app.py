@@ -35,6 +35,15 @@ def extract_keywords_from_reviews(reviews):
     sorted_words = sorted(word_counts.items(), key=lambda item: item[1], reverse=True)
     return [f"#{word}" for word, count in sorted_words[:3]]
 
+# --- Helper Function ---
+def reset_user_match_status_if_needed(user):
+    today = get_seoul_today()
+    if user.match_request_time and user.match_request_time.date() != today:
+        user.matching_status = 'idle'
+        user.match_request_time = None
+        db.session.commit()
+    return user
+
 # --- 데이터베이스 모델 정의 ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +55,11 @@ class User(db.Model):
     main_dish_genre = db.Column(db.String(100), nullable=True)
     matching_status = db.Column(db.String(20), default='idle')
     match_request_time = db.Column(db.DateTime, nullable=True)
+    def __init__(self, employee_id, nickname, lunch_preference, main_dish_genre):
+        self.employee_id = employee_id
+        self.nickname = nickname
+        self.lunch_preference = lunch_preference
+        self.main_dish_genre = main_dish_genre
 
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -57,27 +71,14 @@ class Restaurant(db.Model):
     reviews = db.relationship('Review', backref='restaurant', lazy=True, cascade="all, delete-orphan")
     
     @property
-    def review_count(self): return len(self.reviews)
+    def review_count(self):
+        return len(self.reviews)  # type: ignore
     
     @property
     def avg_rating(self):
-        if not self.reviews: return 0
-        return sum(r.rating for r in self.reviews) / len(self.reviews)
-
-class DangolPot(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    tags = db.Column(db.String(200), nullable=True)
-    category = db.Column(db.String(50), nullable=True)
-    host_id = db.Column(db.String(50), nullable=False)
-    members = db.Column(db.Text, default='')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    @property
-    def member_count(self):
-        if not self.members: return 0
-        return len(self.members.split(','))
+        if self.reviews and len(self.reviews) > 0:  # type: ignore
+            return sum(r.rating for r in self.reviews) / len(self.reviews)  # type: ignore
+        return 0
 
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -87,6 +88,12 @@ class Review(db.Model):
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def __init__(self, restaurant_id, user_id, nickname, rating, comment=None):
+        self.restaurant_id = restaurant_id
+        self.user_id = user_id
+        self.nickname = nickname
+        self.rating = rating
+        self.comment = comment
 
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -100,6 +107,17 @@ class Party(db.Model):
     max_members = db.Column(db.Integer, nullable=False, default=4)
     members_employee_ids = db.Column(db.Text, default='')
     is_from_match = db.Column(db.Boolean, default=False)
+    def __init__(self, host_employee_id, title, restaurant_name, restaurant_address, party_date, party_time, meeting_location, max_members, members_employee_ids, is_from_match=False):
+        self.host_employee_id = host_employee_id
+        self.title = title
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.party_date = party_date
+        self.party_time = party_time
+        self.meeting_location = meeting_location
+        self.max_members = max_members
+        self.members_employee_ids = members_employee_ids
+        self.is_from_match = is_from_match
 
     @property
     def current_members(self):
@@ -112,6 +130,11 @@ class PersonalSchedule(db.Model):
     schedule_date = db.Column(db.String(10), nullable=False)
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    def __init__(self, employee_id, schedule_date, title, description=None):
+        self.employee_id = employee_id
+        self.schedule_date = schedule_date
+        self.title = title
+        self.description = description
 
 class MatchGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -128,6 +151,28 @@ class ChatMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class DangolPot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    tags = db.Column(db.String(200), nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    host_id = db.Column(db.String(50), nullable=False)
+    members = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def __init__(self, name, description, tags, category, host_id, members):
+        self.name = name
+        self.description = description
+        self.tags = tags
+        self.category = category
+        self.host_id = host_id
+        self.members = members
+    @property
+    def member_count(self):
+        if not self.members:
+            return 0
+        return len(self.members.split(','))
+
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
@@ -140,19 +185,16 @@ def create_tables_and_init_data():
                     {'employee_id': 'KOICA002', 'nickname': '이해외', 'lunch_preference': '대화 선호,가성비 추구', 'main_dish_genre': '한식,중식'},
                     {'employee_id': 'KOICA003', 'nickname': '박봉사', 'lunch_preference': '새로운 맛집 탐방', 'main_dish_genre': '일식,양식'},
                 ]
+                # User 생성 (초기 데이터)
                 for user_data in users_data:
-                    db.session.add(User(**user_data))
+                    db.session.add(User(
+                        employee_id=user_data.get('employee_id'),
+                        nickname=user_data.get('nickname'),
+                        lunch_preference=user_data.get('lunch_preference'),
+                        main_dish_genre=user_data.get('main_dish_genre')
+                    ))
             db.session.commit()
-            app._db_initialized = True
-
-# --- Helper Function ---
-def reset_user_match_status_if_needed(user):
-    today = get_seoul_today()
-    if user.match_request_time and user.match_request_time.date() != today:
-        user.matching_status = 'idle'
-        user.match_request_time = None
-        db.session.commit()
-    return user
+            setattr(app, '_db_initialized', True)
 
 # --- API 엔드포인트 ---
 @app.route('/cafeteria/today', methods=['GET'])
@@ -164,16 +206,18 @@ def get_events(employee_id):
     events = {}
     today = get_seoul_today()
     # 파티/랜덤런치 조회
-    parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()
+    parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).all()  # type: ignore
     for p in parties:
         # 오늘 날짜 이전의 약속은 제외
         if datetime.strptime(p.party_date, '%Y-%m-%d').date() < today:
             continue
         if p.party_date not in events: events[p.party_date] = []
-        member_ids = p.members_employee_ids.split(',')
+        member_ids = p.members_employee_ids.split(',') if p.members_employee_ids else []
         other_member_ids = [mid for mid in member_ids if mid != employee_id]
-        member_nicknames = [u.nickname for u in User.query.filter(User.employee_id.in_(other_member_ids)).all()]
-        all_member_nicknames = [u.nickname for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+        users = User.query.filter(User.employee_id.in_(other_member_ids)).all()  # type: ignore
+        member_nicknames = [user.nickname for user in users]
+        all_users = User.query.filter(User.employee_id.in_(member_ids)).all()  # type: ignore
+        all_member_nicknames = [user.nickname for user in all_users]
         events[p.party_date].append({
             'type': '랜덤 런치' if p.is_from_match else '파티',
             'id': p.id, 'title': p.title, 'restaurant': p.restaurant_name, 'address': p.restaurant_address,
@@ -194,9 +238,16 @@ def get_events(employee_id):
 # --- 개인 일정 API ---
 @app.route('/personal_schedules', methods=['POST'])
 def add_personal_schedule():
-    data = request.get_json()
-    new_schedule = PersonalSchedule(employee_id=data['employee_id'], schedule_date=data['schedule_date'], title=data['title'], description=data.get('description', ''))
-    db.session.add(new_schedule); db.session.commit()
+    data = request.get_json() or {}
+    # PersonalSchedule 생성
+    new_schedule = PersonalSchedule(
+        employee_id=data.get('employee_id'),
+        schedule_date=data.get('schedule_date'),
+        title=data.get('title'),
+        description=data.get('description', '')
+    )
+    db.session.add(new_schedule)
+    db.session.commit()
     return jsonify({'message': '개인 일정이 추가되었습니다.', 'id': new_schedule.id}), 201
 
 @app.route('/personal_schedules/<int:schedule_id>', methods=['PUT'])
@@ -222,8 +273,14 @@ def delete_personal_schedule(schedule_id):
 def add_restaurant():
     data = request.get_json()
     lat, lon = geocode_address(data['address'])
-    new_restaurant = Restaurant(name=data['name'], category=data['category'], address=data['address'], latitude=lat, longitude=lon)
-    db.session.add(new_restaurant); db.session.commit()
+    new_restaurant = Restaurant()
+    new_restaurant.name = data['name']
+    new_restaurant.category = data['category']
+    new_restaurant.address = data['address']
+    new_restaurant.latitude = lat
+    new_restaurant.longitude = lon
+    db.session.add(new_restaurant)
+    db.session.commit()
     return jsonify({'message': '새로운 맛집이 등록되었습니다!', 'restaurant_id': new_restaurant.id}), 201
 
 @app.route('/restaurants', methods=['GET'])
@@ -263,18 +320,36 @@ def get_reviews(restaurant_id):
 
 @app.route('/restaurants/<int:restaurant_id>/reviews', methods=['POST'])
 def add_review(restaurant_id):
-    data = request.get_json(); user = User.query.filter_by(employee_id=data['user_id']).first()
-    if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    new_review = Review(restaurant_id=restaurant_id, user_id=data['user_id'], nickname=user.nickname, rating=data['rating'], comment=data['comment'])
-    db.session.add(new_review); db.session.commit()
+    data = request.get_json() or {}
+    user = User.query.filter_by(employee_id=data.get('user_id')).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    # Review 생성
+    new_review = Review(
+        restaurant_id=restaurant_id,
+        user_id=data.get('user_id'),
+        nickname=user.nickname,
+        rating=data.get('rating'),
+        comment=data.get('comment')
+    )
+    db.session.add(new_review)
+    db.session.commit()
     return jsonify({'message': '리뷰가 성공적으로 등록되었습니다.'}), 201
 
 # --- 단골팟 API ---
 @app.route('/dangolpots', methods=['POST'])
 def create_dangolpot():
-    data = request.get_json()
-    new_pot = DangolPot(name=data['name'], description=data['description'], tags=data['tags'], category=data['category'], host_id=data['host_id'], members=data['host_id'])
-    db.session.add(new_pot); db.session.commit()
+    data = request.get_json() or {}
+    new_pot = DangolPot(
+        name=data.get('name'),
+        description=data.get('description'),
+        tags=data.get('tags'),
+        category=data.get('category'),
+        host_id=data.get('host_id'),
+        members=data.get('host_id')
+    )
+    db.session.add(new_pot)
+    db.session.commit()
     return jsonify({'message': '새로운 단골팟이 생성되었습니다!', 'pot_id': new_pot.id}), 201
 
 @app.route('/dangolpots', methods=['GET'])
@@ -286,19 +361,20 @@ def get_all_dangolpots():
 def get_dangolpot_detail(pot_id):
     pot = DangolPot.query.get(pot_id)
     if not pot: return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
-    member_ids = pot.members.split(',') if pot.members else []
-    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+    member_ids = pot.members.split(',') if pot and pot.members else []
+    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
     pot_data = {'id': pot.id, 'name': pot.name, 'description': pot.description, 'tags': pot.tags, 'category': pot.category, 'host_id': pot.host_id, 'members': members_details}
     return jsonify(pot_data)
 
 @app.route('/dangolpots/<int:pot_id>/join', methods=['POST'])
 def join_dangolpot(pot_id):
     pot = DangolPot.query.get(pot_id)
-    employee_id = request.json['employee_id']
+    data = request.get_json() or {}
+    employee_id = data.get('employee_id')
     if not pot: return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
     
-    member_ids = pot.members.split(',') if pot.members else []
-    if employee_id not in member_ids:
+    member_ids = pot.members.split(',') if pot and pot.members else []
+    if employee_id and employee_id not in member_ids:
         member_ids.append(employee_id)
         pot.members = ','.join(member_ids)
         db.session.commit()
@@ -306,8 +382,23 @@ def join_dangolpot(pot_id):
 
 @app.route('/my_dangolpots/<employee_id>', methods=['GET'])
 def get_my_dangolpots(employee_id):
-    my_pots = DangolPot.query.filter(DangolPot.members.contains(employee_id)).order_by(desc(DangolPot.created_at)).all()
-    return jsonify([{'id': p.id, 'name': p.name, 'description': p.description, 'tags': p.tags, 'category': p.category, 'member_count': p.member_count, 'created_at': p.created_at.strftime('%Y-%m-%d')} for p in my_pots])
+    pots = DangolPot.query.all()
+    my_pots = []
+    for pot in pots:
+        member_ids = pot.members.split(',') if pot and pot.members else []
+        if employee_id in member_ids:
+            my_pots.append(pot)
+    return jsonify([
+        {
+            'id': p.id,
+            'name': p.name,
+            'description': p.description,
+            'tags': p.tags,
+            'category': p.category,
+            'member_count': p.member_count,
+            'created_at': p.created_at.strftime('%Y-%m-%d')
+        } for p in my_pots
+    ])
 
 # --- 파티 API ---
 @app.route('/parties', methods=['GET'])
@@ -318,18 +409,50 @@ def get_all_parties():
 @app.route('/parties', methods=['POST'])
 def create_party():
     data = request.get_json()
-    restaurant = Restaurant.query.filter_by(name=data['restaurant_name']).first()
+    # 필수 입력값 체크
+    required_fields = [
+        'host_employee_id', 'title', 'restaurant_name',
+        'party_date', 'party_time', 'meeting_location', 'max_members'
+    ]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({'message': f'필수 입력값이 누락되었습니다: {field}'}), 400
+
+    # max_members 정수 변환 및 검증
+    try:
+        max_members = int(data['max_members'])
+        if max_members < 1:
+            return jsonify({'message': '최대 인원(max_members)은 1명 이상이어야 합니다.'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'message': '최대 인원(max_members)은 숫자여야 합니다.'}), 400
+
+    # 레스토랑 주소 가져오기
+    restaurant = Restaurant.query.filter_by(name=data.get('restaurant_name')).first()
     restaurant_address = restaurant.address if restaurant else None
-    new_party = Party(host_employee_id=data['host_employee_id'], title=data['title'], restaurant_name=data['restaurant_name'], restaurant_address=restaurant_address, party_date=data['party_date'], party_time=data['party_time'], meeting_location=data['meeting_location'], max_members=data['max_members'], members_employee_ids=data['host_employee_id'])
-    db.session.add(new_party); db.session.commit()
+
+    # Party 생성
+    new_party = Party(
+        host_employee_id=data['host_employee_id'],
+        title=data['title'],
+        restaurant_name=data['restaurant_name'],
+        restaurant_address=restaurant_address,
+        party_date=data['party_date'],
+        party_time=data['party_time'],
+        meeting_location=data['meeting_location'],
+        max_members=max_members,
+        members_employee_ids=str(data['host_employee_id']),
+        is_from_match=False
+    )
+    db.session.add(new_party)
+    db.session.commit()
     return jsonify({'message': '파티가 생성되었습니다.', 'party_id': new_party.id}), 201
 
 @app.route('/parties/<int:party_id>', methods=['GET'])
 def get_party(party_id):
     party = Party.query.get(party_id)
     if not party: return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
-    member_ids = party.members_employee_ids.split(',') if party.members_employee_ids else []
-    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]
+    member_ids = party.members_employee_ids.split(',') if party and party.members_employee_ids else []
+    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
     party_data = {'id': party.id, 'host_employee_id': party.host_employee_id, 'title': party.title, 'restaurant_name': party.restaurant_name, 'restaurant_address': party.restaurant_address, 'party_date': party.party_date, 'party_time': party.party_time, 'meeting_location': party.meeting_location, 'max_members': party.max_members, 'current_members': party.current_members, 'members': members_details, 'is_from_match': party.is_from_match}
     return jsonify(party_data)
 
@@ -351,9 +474,10 @@ def update_party(party_id):
 @app.route('/parties/<int:party_id>/join', methods=['POST'])
 def join_party(party_id):
     party = Party.query.get(party_id)
-    employee_id = request.json['employee_id']
-    if party.current_members >= party.max_members: return jsonify({'message': '파티 인원이 가득 찼습니다.'}), 400
-    if employee_id not in party.members_employee_ids.split(','):
+    data = request.get_json() or {}
+    employee_id = data.get('employee_id')
+    if party and party.current_members >= party.max_members: return jsonify({'message': '파티 인원이 가득 찼습니다.'}), 400
+    if party and employee_id and employee_id not in party.members_employee_ids.split(','):
         party.members_employee_ids += f',{employee_id}'; db.session.commit()
     return jsonify({'message': '파티에 참여했습니다.'})
 
@@ -393,9 +517,9 @@ def request_match():
     else:
         # 대기 중인 다른 사용자 찾기
         waiting_users = User.query.filter(
-            User.matching_status == 'waiting',
-            User.employee_id != employee_id
-        ).all()
+            User.matching_status == 'waiting',  # type: ignore
+            User.employee_id != employee_id  # type: ignore
+        ).all()  # type: ignore
         
         if waiting_users:
             # 첫 번째 대기 사용자와 매칭
@@ -406,6 +530,7 @@ def request_match():
                 host_employee_id=employee_id,
                 title='랜덤 런치',
                 restaurant_name='랜덤 매칭',
+                restaurant_address=None,
                 party_date=now.strftime('%Y-%m-%d'),
                 party_time='12:00',
                 meeting_location='KOICA 본사',
@@ -459,10 +584,10 @@ def reject_match():
 @app.route('/chats/<employee_id>', methods=['GET'])
 def get_my_chats(employee_id):
     chat_list = []
-    joined_parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).order_by(desc(Party.id)).all()
+    joined_parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).order_by(desc(Party.id)).all()  # type: ignore
     for party in joined_parties:
         chat_list.append({'id': party.id, 'type': 'party', 'title': party.title, 'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명", 'is_from_match': party.is_from_match})
-    joined_pots = DangolPot.query.filter(DangolPot.members.contains(employee_id)).order_by(desc(DangolPot.created_at)).all()
+    joined_pots = DangolPot.query.filter(DangolPot.members.contains(employee_id)).order_by(desc(DangolPot.created_at)).all()  # type: ignore
     for pot in joined_pots:
          chat_list.append({'id': pot.id, 'type': 'dangolpot', 'title': pot.name, 'subtitle': pot.tags})
     return jsonify(chat_list)
@@ -538,13 +663,12 @@ def handle_send_message(data):
         return
     
     # 메시지 저장
-    new_message = ChatMessage(
-        chat_type=chat_type,
-        chat_id=chat_id,
-        sender_employee_id=sender_employee_id,
-        sender_nickname=user.nickname,
-        message=message
-    )
+    new_message = ChatMessage()
+    new_message.chat_type = chat_type
+    new_message.chat_id = chat_id
+    new_message.sender_employee_id = sender_employee_id
+    new_message.sender_nickname = user.nickname
+    new_message.message = message
     db.session.add(new_message)
     db.session.commit()
     
@@ -556,8 +680,9 @@ def handle_send_message(data):
         'sender_nickname': user.nickname,
         'message': message,
         'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
-    }, room=room)
+    }, to=room)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
