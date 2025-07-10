@@ -210,6 +210,15 @@ def create_tables_and_init_data():
                     {'employee_id': 'KOICA001', 'nickname': '김코이카', 'lunch_preference': '조용한 식사,빠른 식사', 'main_dish_genre': '한식,분식'},
                     {'employee_id': 'KOICA002', 'nickname': '이해외', 'lunch_preference': '대화 선호,가성비 추구', 'main_dish_genre': '한식,중식'},
                     {'employee_id': 'KOICA003', 'nickname': '박봉사', 'lunch_preference': '새로운 맛집 탐방', 'main_dish_genre': '일식,양식'},
+                    {'employee_id': 'KOICA004', 'nickname': '최점심', 'lunch_preference': '맛집 탐방,사진 촬영', 'main_dish_genre': '한식,양식'},
+                    {'employee_id': 'KOICA005', 'nickname': '정식사', 'lunch_preference': '건강한 식사,채식 선호', 'main_dish_genre': '한식,샐러드'},
+                    {'employee_id': 'KOICA006', 'nickname': '한식당', 'lunch_preference': '전통 한식,가족 분위기', 'main_dish_genre': '한식,분식'},
+                    {'employee_id': 'KOICA007', 'nickname': '중국집', 'lunch_preference': '매운 음식,대량 주문', 'main_dish_genre': '중식,분식'},
+                    {'employee_id': 'KOICA008', 'nickname': '일본인', 'lunch_preference': '신선한 재료,정갈한 맛', 'main_dish_genre': '일식,한식'},
+                    {'employee_id': 'KOICA009', 'nickname': '양식당', 'lunch_preference': '분위기 좋은 곳,와인', 'main_dish_genre': '양식,한식'},
+                    {'employee_id': 'KOICA010', 'nickname': '분식왕', 'lunch_preference': '빠른 식사,가성비', 'main_dish_genre': '분식,한식'},
+                    {'employee_id': 'KOICA011', 'nickname': '카페인', 'lunch_preference': '커피와 함께,브런치', 'main_dish_genre': '양식,카페'},
+                    {'employee_id': 'KOICA012', 'nickname': '맛집탐험가', 'lunch_preference': '새로운 맛집,인스타그램', 'main_dish_genre': '한식,양식,일식'},
                 ]
                 # User 생성 (초기 데이터)
                 for user_data in users_data:
@@ -999,6 +1008,29 @@ def accept_proposal(proposal_id):
         db.session.commit()
         return jsonify({'message': '수락이 기록되었습니다. 1명 이상 더 수락하면 매칭이 성사됩니다.', 'status': 'accepted'})
 
+@app.route('/proposals/<int:proposal_id>/cancel', methods=['POST'])
+def cancel_proposal(proposal_id):
+    data = request.get_json() or {}
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({'message': 'user_id가 필요합니다.'}), 400
+    
+    proposal = LunchProposal.query.get(proposal_id)
+    if not proposal:
+        return jsonify({'message': '제안을 찾을 수 없습니다.'}), 404
+    
+    if proposal.proposer_id != user_id:
+        return jsonify({'message': '제안자만 취소할 수 있습니다.'}), 403
+    
+    if proposal.status != 'pending':
+        return jsonify({'message': '이미 처리된 제안은 취소할 수 없습니다.'}), 400
+    
+    proposal.status = 'cancelled'
+    db.session.commit()
+    
+    return jsonify({'message': '제안이 취소되었습니다.', 'status': 'cancelled'})
+
 @app.route('/chats/<employee_id>', methods=['GET'])
 def get_my_chats(employee_id):
     chat_list = []
@@ -1102,6 +1134,7 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
