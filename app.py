@@ -729,8 +729,8 @@ def get_available_dates():
         # 해당 날짜에 파티나 개인 일정이 있는지 확인
         # SQLAlchemy 쿼리 - 타입 힌팅 경고는 무시해도 됨
         party_query = Party.query.filter(
-            Party.members_employee_ids.contains(employee_id),
-            Party.party_date == date_str
+            Party.members_employee_ids.contains(employee_id),  # type: ignore
+            Party.party_date == date_str  # type: ignore
         )
         has_party = party_query.first() is not None
         
@@ -757,7 +757,7 @@ def suggest_groups():
     busy_users = set()
     
     # 파티에 참여하는 유저들
-    parties = Party.query.filter(Party.party_date == date).all()
+    parties = Party.query.filter(Party.party_date == date).all()  # type: ignore
     for party in parties:
         if party.members_employee_ids:
             busy_users.update(party.members_employee_ids.split(','))
@@ -771,7 +771,7 @@ def suggest_groups():
     busy_users.add(employee_id)
     
     # 가능한 유저들
-    available_users = User.query.filter(~User.employee_id.in_(busy_users)).all()
+    available_users = User.query.filter(~User.employee_id.in_(busy_users)).all()  # type: ignore
     
     if not available_users:
         return jsonify([])
@@ -884,14 +884,14 @@ def get_my_proposals():
     
     # 내가 받은 제안들
     received_proposals = LunchProposal.query.filter(
-        LunchProposal.recipient_ids.contains(employee_id)
+        LunchProposal.recipient_ids.contains(employee_id)  # type: ignore
     ).order_by(desc(LunchProposal.created_at)).all()
     
     def format_proposal(proposal):
         # 수락한 사람들의 닉네임 리스트
         acceptances = ProposalAcceptance.query.filter_by(proposal_id=proposal.id).all()
         accepted_user_ids = [acc.user_id for acc in acceptances]
-        accepted_users = User.query.filter(User.employee_id.in_(accepted_user_ids)).all()
+        accepted_users = User.query.filter(User.employee_id.in_(accepted_user_ids)).all()  # type: ignore
         accepted_nicknames = [user.nickname for user in accepted_users]
         
         return {
@@ -939,8 +939,8 @@ def accept_proposal(proposal_id):
     
     # 파티 확인
     has_party = Party.query.filter(
-        Party.members_employee_ids.contains(user_id),
-        Party.party_date == proposed_date
+        Party.members_employee_ids.contains(user_id),  # type: ignore
+        Party.party_date == proposed_date  # type: ignore
     ).first() is not None
     
     # 개인 일정 확인
@@ -990,8 +990,8 @@ def accept_proposal(proposal_id):
         
         # 같은 날짜의 다른 pending 제안들을 cancelled로 변경
         other_pending_proposals = LunchProposal.query.filter(
-            LunchProposal.status == 'pending',
-            LunchProposal.proposed_date == proposed_date,
+            LunchProposal.status == 'pending',  # type: ignore
+            LunchProposal.proposed_date == proposed_date,  # type: ignore
             LunchProposal.id != proposal_id
         ).all()
         
@@ -1047,6 +1047,22 @@ def get_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
     return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
+
+@app.route('/users/batch', methods=['POST'])
+def get_users_batch():
+    data = request.get_json() or {}
+    user_ids = data.get('user_ids', [])
+    
+    if not user_ids:
+        return jsonify({'message': 'user_ids가 필요합니다.'}), 400
+    
+    users = User.query.filter(User.employee_id.in_(user_ids)).all()  # type: ignore
+    return jsonify([{
+        'employee_id': user.employee_id,
+        'nickname': user.nickname,
+        'lunch_preference': user.lunch_preference,
+        'main_dish_genre': user.main_dish_genre
+    } for user in users])
 
 @app.route('/users/<employee_id>', methods=['PUT'])
 def update_user(employee_id):
@@ -1134,8 +1150,3 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-
