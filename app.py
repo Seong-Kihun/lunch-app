@@ -249,6 +249,51 @@ def create_tables_and_init_data():
                         longitude=lon
                     ))
             
+            # 성사된 랜덤런치 그룹 테스트 데이터 추가
+            if Party.query.filter_by(is_from_match=True).count() == 0:
+                test_parties = [
+                    {
+                        'host_employee_id': 'KOICA001',
+                        'title': '랜덤 런치',
+                        'restaurant_name': '판교역 맛집',
+                        'restaurant_address': '경기도 성남시 분당구 판교역로 146',
+                        'party_date': '2024-01-15',
+                        'party_time': '12:00',
+                        'meeting_location': 'KOICA 본사',
+                        'max_members': 3,
+                        'members_employee_ids': 'KOICA001,KOICA002,KOICA003',
+                        'is_from_match': True
+                    },
+                    {
+                        'host_employee_id': 'KOICA001',
+                        'title': '랜덤 런치',
+                        'restaurant_name': '분당 맛집',
+                        'restaurant_address': '경기도 성남시 분당구 정자로 123',
+                        'party_date': '2024-01-16',
+                        'party_time': '12:30',
+                        'meeting_location': 'KOICA 본사',
+                        'max_members': 4,
+                        'members_employee_ids': 'KOICA001,KOICA004,KOICA005,KOICA006',
+                        'is_from_match': True
+                    },
+                    {
+                        'host_employee_id': 'KOICA007',
+                        'title': '랜덤 런치',
+                        'restaurant_name': '일식당',
+                        'restaurant_address': '경기도 성남시 분당구 판교로 456',
+                        'party_date': '2024-01-17',
+                        'party_time': '12:00',
+                        'meeting_location': 'KOICA 본사',
+                        'max_members': 2,
+                        'members_employee_ids': 'KOICA007,KOICA001',
+                        'is_from_match': True
+                    }
+                ]
+                
+                # 테스트 파티 생성
+                for party_data in test_parties:
+                    db.session.add(Party(**party_data))
+            
             db.session.commit()
             setattr(app, '_db_initialized', True)
 
@@ -1171,4 +1216,5 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
