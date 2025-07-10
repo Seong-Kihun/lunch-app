@@ -735,8 +735,8 @@ def get_available_dates():
     
     return jsonify(available_dates)
 
-@app.route('/proposals/suggest-group', methods=['POST'])
-def suggest_group():
+@app.route('/proposals/suggest-groups', methods=['POST'])
+def suggest_groups():
     data = request.get_json() or {}
     employee_id = data.get('employee_id')
     date = data.get('date')
@@ -791,24 +791,46 @@ def suggest_group():
         
         user_scores.append((user, score))
     
-    # 점수순으로 정렬하고 상위 3명 선택
+    # 점수순으로 정렬
     user_scores.sort(key=lambda x: x[1], reverse=True)
-    selected_users = user_scores[:3]
     
-    # 부족하면 랜덤으로 추가
-    if len(selected_users) < 3:
-        remaining_users = [user for user, _ in user_scores[3:]]
-        random.shuffle(remaining_users)
-        selected_users.extend([(user, 0) for user in remaining_users[:3-len(selected_users)]])
+    # 여러 그룹 생성 (최대 5개)
+    groups = []
+    used_users = set()
     
-    return jsonify([{
-        'employee_id': user.employee_id,
-        'nickname': user.nickname,
-        'lunch_preference': user.lunch_preference,
-        'main_dish_genre': user.main_dish_genre,
-        'gender': user.gender,
-        'age_group': user.age_group
-    } for user, _ in selected_users])
+    for group_idx in range(min(5, len(user_scores) // 3 + 1)):
+        group_users = []
+        
+        # 높은 점수 순으로 그룹에 추가
+        for user, score in user_scores:
+            if len(group_users) >= 3:
+                break
+            if user.employee_id not in used_users:
+                group_users.append(user)
+                used_users.add(user.employee_id)
+        
+        # 부족하면 랜덤으로 추가
+        if len(group_users) < 3:
+            remaining_users = [user for user, _ in user_scores if user.employee_id not in used_users]
+            random.shuffle(remaining_users)
+            for user in remaining_users[:3-len(group_users)]:
+                group_users.append(user)
+                used_users.add(user.employee_id)
+        
+        if group_users:
+            groups.append({
+                'group_id': group_idx + 1,
+                'users': [{
+                    'employee_id': user.employee_id,
+                    'nickname': user.nickname,
+                    'lunch_preference': user.lunch_preference,
+                    'main_dish_genre': user.main_dish_genre,
+                    'gender': user.gender,
+                    'age_group': user.age_group
+                } for user in group_users]
+            })
+    
+    return jsonify(groups)
 
 @app.route('/proposals', methods=['POST'])
 def create_proposal():
@@ -1080,6 +1102,7 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
