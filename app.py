@@ -500,8 +500,29 @@ def get_my_dangolpots(employee_id):
 # --- 파티 API ---
 @app.route('/parties', methods=['GET'])
 def get_all_parties():
-    parties = Party.query.filter_by(is_from_match=False).order_by(desc(Party.id)).all()
-    return jsonify([{'id': p.id, 'title': p.title, 'restaurant_name': p.restaurant_name, 'current_members': p.current_members, 'max_members': p.max_members, 'party_date': p.party_date, 'party_time': p.party_time} for p in parties])
+    employee_id = request.args.get('employee_id')
+    is_from_match = request.args.get('is_from_match')
+    
+    if employee_id and is_from_match:
+        # 특정 사용자의 랜덤런치 그룹 조회
+        parties = Party.query.filter(
+            Party.is_from_match == True,  # type: ignore
+            Party.members_employee_ids.contains(employee_id)  # type: ignore
+        ).order_by(desc(Party.id)).all()
+    else:
+        # 일반 파티 조회 (랜덤런치 제외)
+        parties = Party.query.filter_by(is_from_match=False).order_by(desc(Party.id)).all()
+    
+    return jsonify([{
+        'id': p.id, 
+        'title': p.title, 
+        'restaurant_name': p.restaurant_name, 
+        'current_members': p.current_members, 
+        'max_members': p.max_members, 
+        'party_date': p.party_date, 
+        'party_time': p.party_time,
+        'is_from_match': p.is_from_match
+    } for p in parties])
 
 @app.route('/parties', methods=['POST'])
 def create_party():
@@ -1150,3 +1171,4 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
