@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, or_, func, text
 
 app = Flask(__name__)
 CORS(app)
@@ -143,11 +143,30 @@ class PersonalSchedule(db.Model):
         self.title = title
         self.description = description
 
-class MatchGroup(db.Model):
+class LunchProposal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    member_employee_ids = db.Column(db.Text, nullable=False)
+    proposer_id = db.Column(db.String(50), nullable=False)
+    recipient_ids = db.Column(db.Text, nullable=False)
+    proposed_date = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    
+    def __init__(self, proposer_id, recipient_ids, proposed_date):
+        self.proposer_id = proposer_id
+        self.recipient_ids = recipient_ids
+        self.proposed_date = proposed_date
+        self.expires_at = datetime.utcnow() + timedelta(hours=24)
+
+class ProposalAcceptance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    proposal_id = db.Column(db.Integer, db.ForeignKey('lunch_proposal.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    accepted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, proposal_id, user_id):
+        self.proposal_id = proposal_id
+        self.user_id = user_id
 
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -684,6 +703,280 @@ def reject_match():
     
     return jsonify({'message': '매칭을 거절했습니다.', 'status': 'rejected'})
 
+# --- 새로운 랜덤 런치 시스템 API ---
+@app.route('/proposals/available-dates', methods=['GET'])
+def get_available_dates():
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': 'employee_id가 필요합니다.'}), 400
+    
+    today = get_seoul_today()
+    available_dates = []
+    
+    for i in range(14):  # 오늘부터 14일 후까지
+        check_date = today + timedelta(days=i)
+        date_str = check_date.strftime('%Y-%m-%d')
+        
+        # 해당 날짜에 파티나 개인 일정이 있는지 확인
+        # SQLAlchemy 쿼리 - 타입 힌팅 경고는 무시해도 됨
+        party_query = Party.query.filter(
+            Party.members_employee_ids.contains(employee_id),
+            Party.party_date == date_str
+        )
+        has_party = party_query.first() is not None
+        
+        has_schedule = PersonalSchedule.query.filter_by(
+            employee_id=employee_id,
+            schedule_date=date_str
+        ).first() is not None
+        
+        if not has_party and not has_schedule:
+            available_dates.append(date_str)
+    
+    return jsonify(available_dates)
+
+@app.route('/proposals/suggest-group', methods=['POST'])
+def suggest_group():
+    data = request.get_json() or {}
+    employee_id = data.get('employee_id')
+    date = data.get('date')
+    
+    if not employee_id or not date:
+        return jsonify({'message': 'employee_id와 date가 필요합니다.'}), 400
+    
+    # 해당 날짜에 약속이 없는 모든 유저 찾기
+    busy_users = set()
+    
+    # 파티에 참여하는 유저들
+    parties = Party.query.filter(Party.party_date == date).all()
+    for party in parties:
+        if party.members_employee_ids:
+            busy_users.update(party.members_employee_ids.split(','))
+    
+    # 개인 일정이 있는 유저들
+    schedules = PersonalSchedule.query.filter_by(schedule_date=date).all()
+    for schedule in schedules:
+        busy_users.add(schedule.employee_id)
+    
+    # 요청자도 제외
+    busy_users.add(employee_id)
+    
+    # 가능한 유저들
+    available_users = User.query.filter(~User.employee_id.in_(busy_users)).all()
+    
+    if not available_users:
+        return jsonify([])
+    
+    # 요청자 정보 가져오기
+    proposer = User.query.filter_by(employee_id=employee_id).first()
+    if not proposer:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    # 성향 매칭 점수 계산
+    user_scores = []
+    for user in available_users:
+        score = 0
+        
+        # lunch_preference 매칭
+        if proposer.lunch_preference and user.lunch_preference:
+            proposer_prefs = set(proposer.lunch_preference.split(','))
+            user_prefs = set(user.lunch_preference.split(','))
+            score += len(proposer_prefs.intersection(user_prefs))
+        
+        # main_dish_genre 매칭
+        if proposer.main_dish_genre and user.main_dish_genre:
+            proposer_genres = set(proposer.main_dish_genre.split(','))
+            user_genres = set(user.main_dish_genre.split(','))
+            score += len(proposer_genres.intersection(user_genres))
+        
+        user_scores.append((user, score))
+    
+    # 점수순으로 정렬하고 상위 3명 선택
+    user_scores.sort(key=lambda x: x[1], reverse=True)
+    selected_users = user_scores[:3]
+    
+    # 부족하면 랜덤으로 추가
+    if len(selected_users) < 3:
+        remaining_users = [user for user, _ in user_scores[3:]]
+        random.shuffle(remaining_users)
+        selected_users.extend([(user, 0) for user in remaining_users[:3-len(selected_users)]])
+    
+    return jsonify([{
+        'employee_id': user.employee_id,
+        'nickname': user.nickname,
+        'lunch_preference': user.lunch_preference,
+        'main_dish_genre': user.main_dish_genre,
+        'gender': user.gender,
+        'age_group': user.age_group
+    } for user, _ in selected_users])
+
+@app.route('/proposals', methods=['POST'])
+def create_proposal():
+    data = request.get_json() or {}
+    proposer_id = data.get('proposer_id')
+    recipient_ids = data.get('recipient_ids')  # 리스트 형태
+    proposed_date = data.get('proposed_date')
+    
+    if not proposer_id or not recipient_ids or not proposed_date:
+        return jsonify({'message': 'proposer_id, recipient_ids, proposed_date가 필요합니다.'}), 400
+    
+    # recipient_ids를 쉼표로 구분된 문자열로 변환
+    recipient_ids_str = ','.join(recipient_ids)
+    
+    new_proposal = LunchProposal(
+        proposer_id=proposer_id,
+        recipient_ids=recipient_ids_str,
+        proposed_date=proposed_date
+    )
+    
+    db.session.add(new_proposal)
+    db.session.commit()
+    
+    return jsonify({
+        'id': new_proposal.id,
+        'proposer_id': new_proposal.proposer_id,
+        'recipient_ids': new_proposal.recipient_ids,
+        'proposed_date': new_proposal.proposed_date,
+        'status': new_proposal.status,
+        'created_at': new_proposal.created_at.strftime('%Y-%m-%d %H:%M'),
+        'expires_at': new_proposal.expires_at.strftime('%Y-%m-%d %H:%M')
+    }), 201
+
+@app.route('/proposals/mine', methods=['GET'])
+def get_my_proposals():
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': 'employee_id가 필요합니다.'}), 400
+    
+    # 내가 보낸 제안들
+    sent_proposals = LunchProposal.query.filter_by(proposer_id=employee_id).order_by(desc(LunchProposal.created_at)).all()
+    
+    # 내가 받은 제안들
+    received_proposals = LunchProposal.query.filter(
+        LunchProposal.recipient_ids.contains(employee_id)
+    ).order_by(desc(LunchProposal.created_at)).all()
+    
+    def format_proposal(proposal):
+        # 수락한 사람들의 닉네임 리스트
+        acceptances = ProposalAcceptance.query.filter_by(proposal_id=proposal.id).all()
+        accepted_user_ids = [acc.user_id for acc in acceptances]
+        accepted_users = User.query.filter(User.employee_id.in_(accepted_user_ids)).all()
+        accepted_nicknames = [user.nickname for user in accepted_users]
+        
+        return {
+            'id': proposal.id,
+            'proposer_id': proposal.proposer_id,
+            'recipient_ids': proposal.recipient_ids,
+            'proposed_date': proposal.proposed_date,
+            'status': proposal.status,
+            'created_at': proposal.created_at.strftime('%Y-%m-%d %H:%M'),
+            'expires_at': proposal.expires_at.strftime('%Y-%m-%d %H:%M'),
+            'accepted_nicknames': accepted_nicknames
+        }
+    
+    return jsonify({
+        'sent_proposals': [format_proposal(p) for p in sent_proposals],
+        'received_proposals': [format_proposal(p) for p in received_proposals]
+    })
+
+@app.route('/proposals/<int:proposal_id>/accept', methods=['POST'])
+def accept_proposal(proposal_id):
+    data = request.get_json() or {}
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({'message': 'user_id가 필요합니다.'}), 400
+    
+    # 1단계: 유효성 검사
+    proposal = LunchProposal.query.get(proposal_id)
+    if not proposal:
+        return jsonify({'message': '제안을 찾을 수 없습니다.'}), 404
+    
+    if proposal.status != 'pending':
+        return jsonify({'message': '이미 처리된 제안입니다.'}), 400
+    
+    if datetime.utcnow() > proposal.expires_at:
+        return jsonify({'message': '제안이 만료되었습니다.'}), 400
+    
+    # 요청한 user_id가 recipient_ids에 포함되는지 확인
+    recipient_ids = proposal.recipient_ids.split(',') if proposal.recipient_ids else []
+    if user_id not in recipient_ids:
+        return jsonify({'message': '이 제안의 수신자가 아닙니다.'}), 403
+    
+    # 해당 유저가 이미 제안된 날짜에 다른 약속이 있는지 확인
+    proposed_date = proposal.proposed_date
+    
+    # 파티 확인
+    has_party = Party.query.filter(
+        Party.members_employee_ids.contains(user_id),
+        Party.party_date == proposed_date
+    ).first() is not None
+    
+    # 개인 일정 확인
+    has_schedule = PersonalSchedule.query.filter_by(
+        employee_id=user_id,
+        schedule_date=proposed_date
+    ).first() is not None
+    
+    if has_party or has_schedule:
+        return jsonify({'message': '이미 다른 약속이 있어 수락할 수 없습니다.'}), 409
+    
+    # 2단계: 수락 기록
+    # 이미 수락했는지 확인
+    existing_acceptance = ProposalAcceptance.query.filter_by(
+        proposal_id=proposal_id,
+        user_id=user_id
+    ).first()
+    
+    if existing_acceptance:
+        return jsonify({'message': '이미 수락한 제안입니다.'}), 400
+    
+    new_acceptance = ProposalAcceptance(proposal_id=proposal_id, user_id=user_id)
+    db.session.add(new_acceptance)
+    
+    # 3단계: 성사 여부 확인
+    all_members = [proposal.proposer_id] + recipient_ids
+    accepted_count = ProposalAcceptance.query.filter_by(proposal_id=proposal_id).count() + 1  # +1은 현재 수락
+    
+    if accepted_count >= 2:
+        # 4단계: 성사 프로세스
+        proposal.status = 'confirmed'
+        
+        # 새로운 Party 생성
+        new_party = Party(
+            host_employee_id=proposal.proposer_id,
+            title='랜덤 런치',
+            restaurant_name='랜덤 매칭',
+            restaurant_address=None,
+            party_date=proposal.proposed_date,
+            party_time='12:00',
+            meeting_location='KOICA 본사',
+            max_members=len(all_members),
+            members_employee_ids=','.join(all_members),
+            is_from_match=True
+        )
+        db.session.add(new_party)
+        
+        # 같은 날짜의 다른 pending 제안들을 cancelled로 변경
+        other_pending_proposals = LunchProposal.query.filter(
+            LunchProposal.status == 'pending',
+            LunchProposal.proposed_date == proposed_date,
+            LunchProposal.id != proposal_id
+        ).all()
+        
+        for other_proposal in other_pending_proposals:
+            other_members = [other_proposal.proposer_id] + other_proposal.recipient_ids.split(',')
+            # 겹치는 멤버가 있는지 확인
+            if any(member in all_members for member in other_members):
+                other_proposal.status = 'cancelled'
+        
+        db.session.commit()
+        return jsonify({'message': '매칭이 성사되었습니다!', 'status': 'confirmed', 'party_id': new_party.id})
+    else:
+        # 5단계: 단순 수락
+        db.session.commit()
+        return jsonify({'message': '수락이 기록되었습니다. 1명 이상 더 수락하면 매칭이 성사됩니다.', 'status': 'accepted'})
+
 @app.route('/chats/<employee_id>', methods=['GET'])
 def get_my_chats(employee_id):
     chat_list = []
@@ -787,5 +1080,6 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
