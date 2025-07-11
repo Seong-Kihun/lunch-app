@@ -55,6 +55,12 @@ class User(db.Model):
     main_dish_genre = db.Column(db.String(100), nullable=True)
     matching_status = db.Column(db.String(20), default='idle')
     match_request_time = db.Column(db.DateTime, nullable=True)
+    # 사용자 선호도 필드들
+    food_preferences = db.Column(db.Text, nullable=True)  # 음식 선호도
+    allergies = db.Column(db.Text, nullable=True)  # 알레르기 정보
+    preferred_time = db.Column(db.String(10), nullable=True)  # 선호 시간대
+    frequent_areas = db.Column(db.Text, nullable=True)  # 자주 가는 지역
+    notification_settings = db.Column(db.Text, nullable=True)  # 알림 설정
     def __init__(self, employee_id, nickname, lunch_preference, main_dish_genre):
         self.employee_id = employee_id
         self.nickname = nickname
@@ -894,34 +900,48 @@ def request_match():
         ).all()  # type: ignore
         
         if waiting_users:
-            # 첫 번째 대기 사용자와 매칭
-            matched_user = waiting_users[0]
+            # 스마트 매칭: 선호도 기반으로 최적의 파트너 찾기
+            best_match = find_best_match(user, employee_id)
             
-            # 파티 생성
-            new_party = Party(
-                host_employee_id=employee_id,
-                title='랜덤 런치',
-                restaurant_name='랜덤 매칭',
-                restaurant_address=None,
-                party_date=now.strftime('%Y-%m-%d'),
-                party_time='12:00',
-                meeting_location='KOICA 본사',
-                max_members=2,
-                members_employee_ids=f"{employee_id},{matched_user.employee_id}",
-                is_from_match=True
-            )
-            db.session.add(new_party)
-            
-            # 두 사용자 모두 matched 상태로 변경
-            user.matching_status = 'matched'
-            matched_user.matching_status = 'matched'
-            db.session.commit()
-            
-            return jsonify({
-                'message': '매칭이 완료되었습니다!',
-                'status': 'matched',
-                'party_id': new_party.id
-            })
+            if best_match:
+                # 파티 생성
+                new_party = Party(
+                    host_employee_id=employee_id,
+                    title='스마트 런치',
+                    restaurant_name='스마트 매칭',
+                    restaurant_address=None,
+                    party_date=now.strftime('%Y-%m-%d'),
+                    party_time='12:00',
+                    meeting_location='KOICA 본사',
+                    max_members=2,
+                    members_employee_ids=f"{employee_id},{best_match.employee_id}",
+                    is_from_match=True
+                )
+                db.session.add(new_party)
+                
+                # 두 사용자 모두 matched 상태로 변경
+                user.matching_status = 'matched'
+                best_match.matching_status = 'matched'
+                db.session.commit()
+                
+                compatibility_score = calculate_compatibility_score(user, best_match)
+                
+                return jsonify({
+                    'message': '스마트 매칭이 완료되었습니다!',
+                    'status': 'matched',
+                    'party_id': new_party.id,
+                    'compatibility_score': round(compatibility_score, 2),
+                    'partner': {
+                        'employee_id': best_match.employee_id,
+                        'nickname': best_match.nickname
+                    }
+                })
+            else:
+                # 호환성 높은 파트너가 없으면 대기
+                user.matching_status = 'waiting'
+                user.match_request_time = now
+                db.session.commit()
+                return jsonify({'message': '최적의 파트너를 기다리는 중입니다...', 'status': 'waiting'})
         else:
             # 대기 상태로 변경
             user.matching_status = 'waiting'
@@ -1337,6 +1357,44 @@ def update_user(employee_id):
     db.session.commit()
     return jsonify({'message': '프로필이 업데이트되었습니다.'})
 
+@app.route('/users/<employee_id>/preferences', methods=['PUT'])
+def update_user_preferences(employee_id):
+    data = request.get_json()
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    # 사용자 선호도 정보 업데이트
+    if 'foodPreferences' in data:
+        user.food_preferences = ','.join(data['foodPreferences'])
+    if 'allergies' in data:
+        user.allergies = ','.join(data['allergies'])
+    if 'preferredTime' in data:
+        user.preferred_time = data['preferredTime']
+    if 'frequentAreas' in data:
+        user.frequent_areas = ','.join(data['frequentAreas'])
+    if 'notifications' in data:
+        user.notification_settings = ','.join(data['notifications'])
+    
+    db.session.commit()
+    return jsonify({'message': '사용자 선호도가 저장되었습니다.'})
+
+@app.route('/users/<employee_id>/preferences', methods=['GET'])
+def get_user_preferences(employee_id):
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    preferences = {
+        'foodPreferences': user.food_preferences.split(',') if user.food_preferences else [],
+        'allergies': user.allergies.split(',') if user.allergies else [],
+        'preferredTime': user.preferred_time or '',
+        'frequentAreas': user.frequent_areas.split(',') if user.frequent_areas else [],
+        'notifications': user.notification_settings.split(',') if user.notification_settings else []
+    }
+    
+    return jsonify(preferences)
+
 # --- 채팅 API ---
 @app.route('/chat/messages/<chat_type>/<int:chat_id>', methods=['GET'])
 def get_chat_messages(chat_type, chat_id):
@@ -1716,6 +1774,362 @@ def suggest_dates(room_id):
             'best_alternative': best_alternative
         })
 
+# --- AI 제목 제안 API ---
+@app.route('/ai/suggest-party-titles', methods=['POST'])
+def suggest_party_titles():
+    try:
+        data = request.get_json()
+        restaurant = data.get('restaurant', '')
+        date = data.get('date', '')
+        time = data.get('time', '')
+        location = data.get('location', '')
+        
+        # 간단한 제목 제안 로직
+        suggestions = []
+        
+        if restaurant:
+            suggestions.append(f"🍽️ {restaurant} 점심 모임")
+            suggestions.append(f"🥘 {restaurant}에서 함께 밥먹기")
+            suggestions.append(f"👥 {restaurant} 런치타임")
+        
+        if date:
+            date_obj = datetime.strptime(date, '%Y-%m-%d')
+            day_name = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
+            suggestions.append(f"📅 {day_name}요일 점심 모임")
+            suggestions.append(f"🎉 {date} 점심 파티")
+        
+        if location:
+            suggestions.append(f"📍 {location} 점심 모임")
+        
+        # 기본 제안들
+        suggestions.extend([
+            "🍕 맛있는 점심 시간",
+            "🥗 건강한 점심 모임",
+            "🍜 따뜻한 점심 타임",
+            "🍖 고기 맛집 탐방",
+            "🍱 도시락 친구들"
+        ])
+        
+        # 중복 제거 및 최대 5개 반환
+        unique_suggestions = list(dict.fromkeys(suggestions))[:5]
+        
+        return jsonify({
+            'suggestions': unique_suggestions,
+            'message': '제목 제안을 생성했습니다.'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'message': f'제목 제안 생성 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+# --- 위치 기반 서비스 ---
+@app.route('/restaurants/nearby', methods=['GET'])
+def get_nearby_restaurants():
+    """현재 위치 기반 근처 식당 추천"""
+    latitude = request.args.get('latitude', type=float)
+    longitude = request.args.get('longitude', type=float)
+    radius = request.args.get('radius', 1000, type=int)  # 기본 1km
+    
+    if not latitude or not longitude:
+        return jsonify({'message': '위치 정보가 필요합니다.'}), 400
+    
+    # 간단한 거리 계산 (실제로는 Haversine 공식 사용)
+    restaurants = Restaurant.query.filter(
+        Restaurant.latitude.isnot(None),  # type: ignore
+        Restaurant.longitude.isnot(None)  # type: ignore
+    ).all()
+    
+    nearby_restaurants = []
+    for restaurant in restaurants:
+        # 간단한 유클리드 거리 계산 (실제로는 Haversine 공식 사용)
+        distance = ((restaurant.latitude - latitude) ** 2 + 
+                   (restaurant.longitude - longitude) ** 2) ** 0.5 * 111000  # 대략적인 km 변환
+        
+        if distance <= radius:
+            nearby_restaurants.append({
+                'id': restaurant.id,
+                'name': restaurant.name,
+                'category': restaurant.category,
+                'address': restaurant.address,
+                'distance': round(distance, 1),
+                'avg_rating': restaurant.avg_rating,
+                'review_count': restaurant.review_count
+            })
+    
+    # 거리순으로 정렬
+    nearby_restaurants.sort(key=lambda x: x['distance'])
+    
+    return jsonify({
+        'restaurants': nearby_restaurants[:10],  # 최대 10개
+        'user_location': {'latitude': latitude, 'longitude': longitude}
+    })
+
+@app.route('/users/nearby', methods=['GET'])
+def get_nearby_users():
+    """근처 사용자 찾기 (같은 건물/지역)"""
+    employee_id = request.args.get('employee_id')
+    building = request.args.get('building', 'KOICA 본사')  # 기본값
+    
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    # 같은 건물의 다른 사용자들 찾기
+    nearby_users = User.query.filter(
+        User.employee_id != employee_id  # type: ignore
+    ).limit(20).all()
+    
+    # 실제로는 위치 기반 필터링이 필요
+    users_data = []
+    for user in nearby_users:
+        users_data.append({
+            'employee_id': user.employee_id,
+            'nickname': user.nickname,
+            'lunch_preference': user.lunch_preference,
+            'main_dish_genre': user.main_dish_genre,
+            'building': building
+        })
+    
+    return jsonify({
+        'nearby_users': users_data,
+        'building': building
+    })
+
+# --- 식당 추천 API ---
+@app.route('/restaurants/recommend', methods=['GET'])
+def recommend_restaurants():
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    user = User.query.filter_by(employee_id=employee_id).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    # 사용자 선호도 기반 추천
+    user_preferences = []
+    if user.food_preferences:
+        user_preferences = user.food_preferences.split(',')
+    
+            # 기본 추천 (사용자 선호도가 없으면 인기 식당)
+        if user_preferences:
+            recommended_restaurants = Restaurant.query.filter(
+                Restaurant.category.in_(user_preferences)  # type: ignore
+            ).limit(10).all()
+        else:
+            # 평점 높은 식당 추천
+            recommended_restaurants = Restaurant.query.order_by(
+                Restaurant.avg_rating.desc()  # type: ignore
+            ).limit(10).all()
+    
+    # 친구들이 좋아하는 식당 추천
+    friends = get_user_friends(employee_id)
+    friend_favorites = []
+    if friends:
+        for friend in friends:
+            friend_user = User.query.filter_by(employee_id=friend['employee_id']).first()
+            if friend_user and friend_user.main_dish_genre:
+                friend_favorites.append(friend_user.main_dish_genre)
+    
+    friend_recommendations = []
+    if friend_favorites:
+        friend_recommendations = Restaurant.query.filter(
+            Restaurant.category.in_(friend_favorites)  # type: ignore
+        ).limit(5).all()
+    
+    return jsonify({
+        'personal_recommendations': [{
+            'id': restaurant.id,
+            'name': restaurant.name,
+            'category': restaurant.category,
+            'address': restaurant.address,
+            'avg_rating': restaurant.avg_rating,
+            'review_count': restaurant.review_count
+        } for restaurant in recommended_restaurants],
+        'friend_recommendations': [{
+            'id': restaurant.id,
+            'name': restaurant.name,
+            'category': restaurant.category,
+            'address': restaurant.address,
+            'avg_rating': restaurant.avg_rating,
+            'review_count': restaurant.review_count
+        } for restaurant in friend_recommendations]
+    })
+
+def get_user_friends(employee_id):
+    """사용자의 친구 목록을 반환하는 헬퍼 함수"""
+    friendships = Friendship.query.filter(
+        and_(
+            Friendship.status == 'accepted',  # type: ignore
+            or_(
+                Friendship.requester_id == employee_id,  # type: ignore
+                Friendship.receiver_id == employee_id  # type: ignore
+            )
+        )
+    ).all()
+    
+    friends = []
+    for friendship in friendships:
+        friend_id = friendship.receiver_id if friendship.requester_id == employee_id else friendship.requester_id
+        friend = User.query.filter_by(employee_id=friend_id).first()
+        if friend:
+            friends.append({
+                'employee_id': friend.employee_id,
+                'nickname': friend.nickname
+            })
+    
+    return friends
+
+# --- 그룹 최적화 기능 ---
+@app.route('/groups/aa-calculator', methods=['POST'])
+def calculate_aa():
+    """그룹 AA 계산기"""
+    data = request.get_json()
+    expenses = data.get('expenses', [])  # [{'user_id': 'id', 'amount': 1000}, ...]
+    
+    if not expenses:
+        return jsonify({'message': '지출 정보가 필요합니다.'}), 400
+    
+    total_amount = sum(expense['amount'] for expense in expenses)
+    average_amount = total_amount / len(expenses)
+    
+    # 각 사용자별 정산 금액 계산
+    settlements = []
+    for expense in expenses:
+        user_id = expense['user_id']
+        amount = expense['amount']
+        difference = amount - average_amount
+        
+        settlements.append({
+            'user_id': user_id,
+            'paid_amount': amount,
+            'should_pay': average_amount,
+            'difference': difference,
+            'status': 'receive' if difference > 0 else 'pay' if difference < 0 else 'settled'
+        })
+    
+    return jsonify({
+        'total_amount': total_amount,
+        'average_amount': average_amount,
+        'participant_count': len(expenses),
+        'settlements': settlements
+    })
+
+@app.route('/groups/vote', methods=['POST'])
+def create_vote():
+    """그룹 투표 생성"""
+    data = request.get_json()
+    group_id = data.get('group_id')
+    title = data.get('title')
+    options = data.get('options', [])
+    end_time = data.get('end_time')
+    
+    if not all([group_id, title, options]):
+        return jsonify({'message': '필수 정보가 누락되었습니다.'}), 400
+    
+    # 실제로는 Vote 모델을 만들어야 함
+    vote_data = {
+        'id': len(votes) + 1,
+        'group_id': group_id,
+        'title': title,
+        'options': options,
+        'votes': {},
+        'end_time': end_time,
+        'created_at': datetime.utcnow().isoformat()
+    }
+    
+    votes.append(vote_data)
+    
+    return jsonify({
+        'message': '투표가 생성되었습니다.',
+        'vote_id': vote_data['id']
+    })
+
+@app.route('/groups/vote/<int:vote_id>/vote', methods=['POST'])
+def submit_vote():
+    """투표 제출"""
+    data = request.get_json()
+    vote_id = data.get('vote_id')
+    user_id = data.get('user_id')
+    option = data.get('option')
+    
+    if not all([vote_id, user_id, option]):
+        return jsonify({'message': '필수 정보가 누락되었습니다.'}), 400
+    
+    # 실제로는 데이터베이스에서 투표 정보를 가져와야 함
+    vote = next((v for v in votes if v['id'] == vote_id), None)
+    if not vote:
+        return jsonify({'message': '투표를 찾을 수 없습니다.'}), 404
+    
+    if user_id in vote['votes']:
+        return jsonify({'message': '이미 투표하셨습니다.'}), 400
+    
+    vote['votes'][user_id] = option
+    
+    return jsonify({'message': '투표가 제출되었습니다.'})
+
+# 임시 투표 데이터 (실제로는 데이터베이스 사용)
+votes = []
+
+def find_best_match(user, employee_id):
+    """선호도 기반으로 최적의 매칭 파트너를 찾습니다."""
+    waiting_users = User.query.filter(
+        and_(
+            User.matching_status == 'waiting',  # type: ignore
+            User.employee_id != employee_id  # type: ignore
+        )
+    ).all()
+    
+    if not waiting_users:
+        return None
+    
+    # 각 대기 사용자와의 호환성 점수 계산
+    best_match = None
+    best_score = 0
+    
+    for candidate in waiting_users:
+        score = calculate_compatibility_score(user, candidate)
+        if score > best_score:
+            best_score = score
+            best_match = candidate
+    
+    # 최소 호환성 점수 이상인 경우에만 매칭
+    return best_match if best_score >= 0.3 else None
+
+def calculate_compatibility_score(user1, user2):
+    """두 사용자 간의 호환성 점수를 계산합니다 (0-1)."""
+    score = 0.0
+    
+    # 음식 선호도 비교
+    if user1.food_preferences and user2.food_preferences:
+        prefs1 = set(user1.food_preferences.split(','))
+        prefs2 = set(user2.food_preferences.split(','))
+        if prefs1 & prefs2:  # 공통 선호도가 있으면
+            score += 0.3
+    
+    # 선호 시간대 비교
+    if user1.preferred_time and user2.preferred_time:
+        if user1.preferred_time == user2.preferred_time:
+            score += 0.2
+    
+    # 자주 가는 지역 비교
+    if user1.frequent_areas and user2.frequent_areas:
+        areas1 = set(user1.frequent_areas.split(','))
+        areas2 = set(user2.frequent_areas.split(','))
+        if areas1 & areas2:  # 공통 지역이 있으면
+            score += 0.2
+    
+    # 알레르기 호환성 (서로 다른 알레르기가 있으면 감점)
+    if user1.allergies and user2.allergies:
+        allergies1 = set(user1.allergies.split(','))
+        allergies2 = set(user2.allergies.split(','))
+        if not (allergies1 & allergies2):  # 공통 알레르기가 없으면
+            score += 0.1
+    
+    # 기본 점수 (무작위 매칭보다는 나음)
+    score += 0.2
+    
+    return min(score, 1.0)
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
