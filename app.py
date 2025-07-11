@@ -615,7 +615,12 @@ def get_party(party_id):
     party = Party.query.get(party_id)
     if not party: return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
     member_ids = party.members_employee_ids.split(',') if party and party.members_employee_ids else []
-    members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
+    members_details = [{
+        'employee_id': u.employee_id, 
+        'nickname': u.nickname,
+        'lunch_preference': u.lunch_preference,
+        'main_dish_genre': u.main_dish_genre
+    } for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
     party_data = {'id': party.id, 'host_employee_id': party.host_employee_id, 'title': party.title, 'restaurant_name': party.restaurant_name, 'restaurant_address': party.restaurant_address, 'party_date': party.party_date, 'party_time': party.party_time, 'meeting_location': party.meeting_location, 'max_members': party.max_members, 'current_members': party.current_members, 'members': members_details, 'is_from_match': party.is_from_match}
     return jsonify(party_data)
 
@@ -643,6 +648,34 @@ def join_party(party_id):
     if party and employee_id and employee_id not in party.members_employee_ids.split(','):
         party.members_employee_ids += f',{employee_id}'; db.session.commit()
     return jsonify({'message': '파티에 참여했습니다.'})
+
+@app.route('/parties/<int:party_id>/leave', methods=['POST'])
+def leave_party(party_id):
+    party = Party.query.get(party_id)
+    if not party:
+        return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+    
+    data = request.get_json() or {}
+    employee_id = data.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    # 파티장은 나갈 수 없음 (파티 삭제를 사용해야 함)
+    if party.host_employee_id == employee_id:
+        return jsonify({'message': '파티장은 파티를 나갈 수 없습니다. 파티 삭제를 사용해주세요.'}), 400
+    
+    # 멤버 목록에서 제거
+    if party.members_employee_ids:
+        member_ids = party.members_employee_ids.split(',')
+        if employee_id in member_ids:
+            member_ids.remove(employee_id)
+            party.members_employee_ids = ','.join(member_ids)
+            db.session.commit()
+            return jsonify({'message': '파티에서 나갔습니다.'})
+        else:
+            return jsonify({'message': '이미 파티에 참여하지 않습니다.'}), 400
+    else:
+        return jsonify({'message': '이미 파티에 참여하지 않습니다.'}), 400
 
 @app.route('/parties/<int:party_id>', methods=['DELETE'])
 def delete_party(party_id):
@@ -1216,5 +1249,6 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
