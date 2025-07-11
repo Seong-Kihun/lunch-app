@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from sqlalchemy import desc, or_, func, text
+from sqlalchemy import desc, or_, and_, func, text
 
 app = Flask(__name__)
 CORS(app)
@@ -130,6 +130,23 @@ class Party(db.Model):
     def current_members(self):
         if not self.members_employee_ids: return 0
         return len(self.members_employee_ids.split(','))
+    
+    def create_chat_room(self):
+        """파티 생성 시 자동으로 채팅방과 참여자들을 생성"""
+        # 채팅방 생성
+        chat_room = ChatRoom(
+            name=self.title,
+            type='group',
+            party_id=self.id
+        )
+        db.session.add(chat_room)
+        db.session.flush()  # ID를 얻기 위해 flush
+        
+        # 참여자들 추가
+        member_ids = self.members_employee_ids.split(',') if self.members_employee_ids else []
+        for member_id in member_ids:
+            participant = ChatParticipant(room_id=chat_room.id, user_id=member_id)
+            db.session.add(participant)
 
 class PersonalSchedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -198,6 +215,59 @@ class DangolPot(db.Model):
         if not self.members:
             return 0
         return len(self.members.split(','))
+    
+    def create_chat_room(self):
+        """단골파티 생성 시 자동으로 채팅방과 참여자들을 생성"""
+        # 채팅방 생성
+        chat_room = ChatRoom(
+            name=self.name,
+            type='dangolpot',
+            dangolpot_id=self.id
+        )
+        db.session.add(chat_room)
+        db.session.flush()  # ID를 얻기 위해 flush
+        
+        # 참여자들 추가
+        member_ids = self.members.split(',') if self.members else []
+        for member_id in member_ids:
+            participant = ChatParticipant(room_id=chat_room.id, user_id=member_id)
+            db.session.add(participant)
+
+# --- 새로운 모델들 ---
+class Friendship(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.String(50), nullable=False)
+    receiver_id = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'accepted'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, requester_id, receiver_id):
+        self.requester_id = requester_id
+        self.receiver_id = receiver_id
+
+class ChatRoom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=True)  # 그룹 채팅방 이름
+    type = db.Column(db.String(20), nullable=False)  # 'friend', 'group', 'dangolpot'
+    party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=True)
+    dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, name, type, party_id=None, dangolpot_id=None):
+        self.name = name
+        self.type = type
+        self.party_id = party_id
+        self.dangolpot_id = dangolpot_id
+
+class ChatParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('chat_room.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, room_id, user_id):
+        self.room_id = room_id
+        self.user_id = user_id
 
 # --- 앱 실행 시 초기화 ---
 @app.before_request
@@ -438,7 +508,7 @@ def add_review(restaurant_id):
     db.session.commit()
     return jsonify({'message': '리뷰가 성공적으로 등록되었습니다.'}), 201
 
-# --- 단골팟 API ---
+# --- 단골파티 API ---
 @app.route('/dangolpots', methods=['POST'])
 def create_dangolpot():
     data = request.get_json() or {}
@@ -451,8 +521,13 @@ def create_dangolpot():
         members=data.get('host_id')
     )
     db.session.add(new_pot)
+    db.session.flush()  # ID를 얻기 위해 flush
+    
+    # 채팅방 자동 생성
+    new_pot.create_chat_room()
+    
     db.session.commit()
-    return jsonify({'message': '새로운 단골팟이 생성되었습니다!', 'pot_id': new_pot.id}), 201
+    return jsonify({'message': '새로운 단골파티가 생성되었습니다!', 'pot_id': new_pot.id}), 201
 
 @app.route('/dangolpots', methods=['GET'])
 def get_all_dangolpots():
@@ -462,7 +537,7 @@ def get_all_dangolpots():
 @app.route('/dangolpots/<int:pot_id>', methods=['GET'])
 def get_dangolpot_detail(pot_id):
     pot = DangolPot.query.get(pot_id)
-    if not pot: return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+    if not pot: return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
     member_ids = pot.members.split(',') if pot and pot.members else []
     members_details = [{'employee_id': u.employee_id, 'nickname': u.nickname} for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
     pot_data = {'id': pot.id, 'name': pot.name, 'description': pot.description, 'tags': pot.tags, 'category': pot.category, 'host_id': pot.host_id, 'members': members_details}
@@ -473,37 +548,37 @@ def join_dangolpot(pot_id):
     pot = DangolPot.query.get(pot_id)
     data = request.get_json() or {}
     employee_id = data.get('employee_id')
-    if not pot: return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+    if not pot: return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
     
     member_ids = pot.members.split(',') if pot and pot.members else []
     if employee_id and employee_id not in member_ids:
         member_ids.append(employee_id)
         pot.members = ','.join(member_ids)
         db.session.commit()
-    return jsonify({'message': '단골팟에 가입했습니다.'})
+    return jsonify({'message': '단골파티에 가입했습니다.'})
 
 @app.route('/dangolpots/<int:pot_id>', methods=['DELETE'])
 def delete_dangolpot(pot_id):
     pot = DangolPot.query.get(pot_id)
     if not pot:
-        return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+        return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
     
     employee_id = request.args.get('employee_id')
     if not employee_id:
         return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
     
     if pot.host_id != employee_id:
-        return jsonify({'message': '팟장만 삭제할 수 있습니다.'}), 403
+        return jsonify({'message': '파티장만 삭제할 수 있습니다.'}), 403
     
     db.session.delete(pot)
     db.session.commit()
-    return jsonify({'message': '단골팟이 삭제되었습니다.'})
+    return jsonify({'message': '단골파티가 삭제되었습니다.'})
 
 @app.route('/dangolpots/<int:pot_id>', methods=['PUT'])
 def update_dangolpot(pot_id):
     pot = DangolPot.query.get(pot_id)
     if not pot:
-        return jsonify({'message': '단골팟을 찾을 수 없습니다.'}), 404
+        return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
     
     data = request.get_json()
     employee_id = data.get('employee_id')
@@ -512,7 +587,7 @@ def update_dangolpot(pot_id):
         return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
     
     if pot.host_id != employee_id:
-        return jsonify({'message': '팟장만 수정할 수 있습니다.'}), 403
+        return jsonify({'message': '파티장만 수정할 수 있습니다.'}), 403
     
     pot.name = data.get('name', pot.name)
     pot.description = data.get('description', pot.description)
@@ -520,7 +595,7 @@ def update_dangolpot(pot_id):
     pot.category = data.get('category', pot.category)
     
     db.session.commit()
-    return jsonify({'message': '단골팟 정보가 수정되었습니다.'})
+    return jsonify({'message': '단골파티 정보가 수정되었습니다.'})
 
 @app.route('/my_dangolpots/<employee_id>', methods=['GET'])
 def get_my_dangolpots(employee_id):
@@ -607,6 +682,11 @@ def create_party():
         is_from_match=False
     )
     db.session.add(new_party)
+    db.session.flush()  # ID를 얻기 위해 flush
+    
+    # 채팅방 자동 생성
+    new_party.create_chat_room()
+    
     db.session.commit()
     return jsonify({'message': '파티가 생성되었습니다.', 'party_id': new_party.id}), 201
 
@@ -682,13 +762,54 @@ def get_my_parties(employee_id):
     # 내가 참여한 파티들 (호스트이거나 멤버인 경우)
     my_parties = Party.query.filter(
         or_(
-            Party.host_employee_id == employee_id,
+            Party.host_employee_id == employee_id,  # type: ignore
             Party.members_employee_ids.contains(employee_id)  # type: ignore
         )
     ).all()
     
     parties_data = []
     for party in my_parties:
+        member_ids = party.members_employee_ids.split(',') if party.members_employee_ids else []
+        members_details = [{
+            'employee_id': u.employee_id, 
+            'nickname': u.nickname,
+            'lunch_preference': u.lunch_preference,
+            'main_dish_genre': u.main_dish_genre
+        } for u in User.query.filter(User.employee_id.in_(member_ids)).all()]  # type: ignore
+        
+        party_data = {
+            'id': party.id,
+            'host_employee_id': party.host_employee_id,
+            'title': party.title,
+            'restaurant_name': party.restaurant_name,
+            'restaurant_address': party.restaurant_address,
+            'party_date': party.party_date,
+            'party_time': party.party_time,
+            'meeting_location': party.meeting_location,
+            'max_members': party.max_members,
+            'current_members': party.current_members,
+            'members': members_details,
+            'is_from_match': party.is_from_match
+        }
+        parties_data.append(party_data)
+    
+    return jsonify(parties_data)
+
+@app.route('/my_regular_parties/<employee_id>', methods=['GET'])
+def get_my_regular_parties(employee_id):
+    # 내가 참여한 일반파티들만 (랜덤런치 제외)
+    my_regular_parties = Party.query.filter(
+        and_(
+            Party.is_from_match == False,  # type: ignore
+            or_(
+                Party.host_employee_id == employee_id,  # type: ignore
+                Party.members_employee_ids.contains(employee_id)  # type: ignore
+            )
+        )
+    ).all()
+    
+    parties_data = []
+    for party in my_regular_parties:
         member_ids = party.members_employee_ids.split(',') if party.members_employee_ids else []
         members_details = [{
             'employee_id': u.employee_id, 
@@ -1285,5 +1406,316 @@ def handle_send_message(data):
         'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
     }, to=room)
 
+# --- 친구 API ---
+@app.route('/users/search', methods=['GET'])
+def search_users():
+    nickname = request.args.get('nickname')
+    if not nickname:
+        return jsonify({'message': '닉네임 파라미터가 필요합니다.'}), 400
+    
+    users = User.query.filter(User.nickname.contains(nickname)).all()  # type: ignore
+    return jsonify([{
+        'employee_id': user.employee_id,
+        'nickname': user.nickname,
+        'lunch_preference': user.lunch_preference,
+        'main_dish_genre': user.main_dish_genre
+    } for user in users])
+
+@app.route('/friends/request', methods=['POST'])
+def send_friend_request():
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+    receiver_id = data.get('receiver_id')
+    
+    if not requester_id or not receiver_id:
+        return jsonify({'message': '요청자와 수신자 ID가 필요합니다.'}), 400
+    
+    if requester_id == receiver_id:
+        return jsonify({'message': '자기 자신에게 친구 요청을 보낼 수 없습니다.'}), 400
+    
+    # 이미 친구 요청이 있는지 확인
+    existing_request = Friendship.query.filter(
+        or_(
+            and_(Friendship.requester_id == requester_id, Friendship.receiver_id == receiver_id),  # type: ignore
+            and_(Friendship.requester_id == receiver_id, Friendship.receiver_id == requester_id)  # type: ignore
+        )
+    ).first()
+    
+    if existing_request:
+        if existing_request.status == 'accepted':
+            return jsonify({'message': '이미 친구입니다.'}), 400
+        elif existing_request.status == 'pending':
+            return jsonify({'message': '이미 친구 요청이 대기 중입니다.'}), 400
+    
+    new_request = Friendship(requester_id=requester_id, receiver_id=receiver_id)
+    db.session.add(new_request)
+    db.session.commit()
+    
+    return jsonify({'message': '친구 요청을 보냈습니다.'}), 201
+
+@app.route('/friends/accept', methods=['POST'])
+def accept_friend_request():
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+    receiver_id = data.get('receiver_id')
+    
+    if not requester_id or not receiver_id:
+        return jsonify({'message': '요청자와 수신자 ID가 필요합니다.'}), 400
+    
+    friendship = Friendship.query.filter_by(
+        requester_id=requester_id,
+        receiver_id=receiver_id,
+        status='pending'
+    ).first()
+    
+    if not friendship:
+        return jsonify({'message': '친구 요청을 찾을 수 없습니다.'}), 404
+    
+    friendship.status = 'accepted'
+    db.session.commit()
+    
+    return jsonify({'message': '친구 요청을 수락했습니다.'})
+
+@app.route('/friends/requests', methods=['GET'])
+def get_friend_requests():
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    requests = Friendship.query.filter_by(
+        receiver_id=employee_id,
+        status='pending'
+    ).all()
+    
+    request_data = []
+    for req in requests:
+        requester = User.query.filter_by(employee_id=req.requester_id).first()
+        if requester:
+            request_data.append({
+                'id': req.id,
+                'requester_id': req.requester_id,
+                'requester_nickname': requester.nickname,
+                'created_at': req.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    return jsonify(request_data)
+
+@app.route('/friends', methods=['GET'])
+def get_friends():
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    friendships = Friendship.query.filter(
+        and_(
+            Friendship.status == 'accepted',  # type: ignore
+            or_(
+                Friendship.requester_id == employee_id,  # type: ignore
+                Friendship.receiver_id == employee_id  # type: ignore
+            )
+        )
+    ).all()
+    
+    friends_data = []
+    for friendship in friendships:
+        # 친구의 ID 결정
+        friend_id = friendship.receiver_id if friendship.requester_id == employee_id else friendship.requester_id
+        friend = User.query.filter_by(employee_id=friend_id).first()
+        
+        if friend:
+            friends_data.append({
+                'employee_id': friend.employee_id,
+                'nickname': friend.nickname,
+                'lunch_preference': friend.lunch_preference,
+                'main_dish_genre': friend.main_dish_genre
+            })
+    
+    return jsonify(friends_data)
+
+# --- 새로운 채팅 API ---
+@app.route('/chats/friends', methods=['POST'])
+def create_friend_chat():
+    data = request.get_json()
+    user_ids = data.get('user_ids', [])
+    
+    if len(user_ids) < 2:
+        return jsonify({'message': '최소 2명의 사용자가 필요합니다.'}), 400
+    
+    # 기존 친구 채팅방이 있는지 확인
+    existing_room = None
+    for room in ChatRoom.query.filter_by(type='friend').all():
+        participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+        participant_ids = [p.user_id for p in participants]
+        
+        if set(user_ids) == set(participant_ids):
+            existing_room = room
+            break
+    
+    if existing_room:
+        return jsonify({
+            'message': '이미 존재하는 채팅방입니다.',
+            'room_id': existing_room.id
+        }), 200
+    
+    # 새 채팅방 생성
+    chat_room = ChatRoom(
+        name=None,  # 1:1 채팅은 이름 없음
+        type='friend'
+    )
+    db.session.add(chat_room)
+    db.session.flush()
+    
+    # 참여자들 추가
+    for user_id in user_ids:
+        participant = ChatParticipant(room_id=chat_room.id, user_id=user_id)
+        db.session.add(participant)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': '친구 채팅방이 생성되었습니다.',
+        'room_id': chat_room.id
+    }), 201
+
+@app.route('/chats/filtered', methods=['GET'])
+def get_filtered_chats():
+    employee_id = request.args.get('employee_id')
+    chat_type = request.args.get('type')  # 'friend', 'group', 'dangolpot' 또는 None
+    
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    # 사용자가 참여한 채팅방들 조회
+    user_participants = ChatParticipant.query.filter_by(user_id=employee_id).all()
+    room_ids = [p.room_id for p in user_participants]
+    
+    # 채팅방 정보 조회
+    if chat_type:
+        rooms = ChatRoom.query.filter(
+            ChatRoom.id.in_(room_ids),  # type: ignore
+            ChatRoom.type == chat_type  # type: ignore
+        ).all()
+    else:
+        rooms = ChatRoom.query.filter(ChatRoom.id.in_(room_ids)).all()  # type: ignore
+    
+    chats_data = []
+    for room in rooms:
+        # 참여자 정보 가져오기
+        participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+        participant_users = []
+        
+        for participant in participants:
+            user = User.query.filter_by(employee_id=participant.user_id).first()
+            if user:
+                participant_users.append({
+                    'employee_id': user.employee_id,
+                    'nickname': user.nickname
+                })
+        
+        # 마지막 메시지 가져오기
+        last_message = ChatMessage.query.filter_by(
+            chat_type=room.type,
+            chat_id=room.id
+        ).order_by(desc(ChatMessage.created_at)).first()
+        
+        chat_data = {
+            'id': room.id,
+            'name': room.name or f"{len(participant_users)}명의 채팅방",
+            'type': room.type,
+            'participants': participant_users,
+            'last_message': {
+                'sender_nickname': last_message.sender_nickname,
+                'message': last_message.message,
+                'created_at': last_message.created_at.strftime('%Y-%m-%d %H:%M')
+            } if last_message else None
+        }
+        
+        chats_data.append(chat_data)
+    
+    return jsonify(chats_data)
+
+# --- 지능형 약속 잡기 API ---
+@app.route('/chats/<int:room_id>/suggest-dates', methods=['POST'])
+def suggest_dates(room_id):
+    # 채팅방 정보 조회
+    chat_room = ChatRoom.query.get(room_id)
+    if not chat_room:
+        return jsonify({'message': '채팅방을 찾을 수 없습니다.'}), 404
+    
+    # 채팅방 참여자들 조회
+    participants = ChatParticipant.query.filter_by(room_id=room_id).all()
+    participant_ids = [p.user_id for p in participants]
+    
+    if len(participant_ids) < 2:
+        return jsonify({'message': '최소 2명의 참여자가 필요합니다.'}), 400
+    
+    today = get_seoul_today()
+    available_dates = []
+    best_alternative = {'date': None, 'available_count': 0, 'total_count': len(participant_ids)}
+    
+    # 오늘부터 14일 후까지 검사
+    for i in range(14):
+        check_date = today + timedelta(days=i)
+        date_str = check_date.strftime('%Y-%m-%d')
+        
+        # 각 참여자의 해당 날짜 약속 확인
+        available_participants = []
+        unavailable_participants = []
+        
+        for participant_id in participant_ids:
+            # 파티 약속 확인
+            has_party = Party.query.filter(
+                Party.members_employee_ids.contains(participant_id),  # type: ignore
+                Party.party_date == date_str  # type: ignore
+            ).first() is not None
+            
+            # 개인 일정 확인
+            has_schedule = PersonalSchedule.query.filter_by(
+                employee_id=participant_id,
+                schedule_date=date_str
+            ).first() is not None
+            
+            if not has_party and not has_schedule:
+                available_participants.append(participant_id)
+            else:
+                unavailable_participants.append(participant_id)
+        
+        # 모든 참여자가 가능한 경우
+        if len(available_participants) == len(participant_ids):
+            available_dates.append({
+                'date': date_str,
+                'available_participants': available_participants,
+                'unavailable_participants': unavailable_participants
+            })
+            
+            # 최대 3개까지만 반환
+            if len(available_dates) >= 3:
+                break
+        else:
+            # 대안으로 가장 많은 인원이 가능한 날짜 기록
+            if len(available_participants) > best_alternative['available_count']:
+                best_alternative = {
+                    'date': date_str,
+                    'available_count': len(available_participants),
+                    'available_participants': available_participants,
+                    'unavailable_participants': unavailable_participants,
+                    'total_count': len(participant_ids)
+                }
+    
+    # 결과 반환
+    if available_dates:
+        return jsonify({
+            'message': '공통 가능 날짜를 찾았습니다.',
+            'type': 'common',
+            'dates': available_dates
+        })
+    else:
+        return jsonify({
+            'message': '공통 가능 날짜가 없습니다. 대안을 제시합니다.',
+            'type': 'alternative',
+            'best_alternative': best_alternative
+        })
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
