@@ -1,4 +1,5 @@
 import random
+import json
 from datetime import datetime, date, timedelta, time
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -100,13 +101,18 @@ class Review(db.Model):
     nickname = db.Column(db.String(50), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text, nullable=True)
+    photo_url = db.Column(db.String(500), nullable=True)  # 사진 URL
+    tags = db.Column(db.String(200), nullable=True)  # 태그 (맛있어요, 깔끔해요 등)
+    likes = db.Column(db.Integer, default=0)  # 좋아요 수
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    def __init__(self, restaurant_id, user_id, nickname, rating, comment=None):
+    def __init__(self, restaurant_id, user_id, nickname, rating, comment=None, photo_url=None, tags=None):
         self.restaurant_id = restaurant_id
         self.user_id = user_id
         self.nickname = nickname
         self.rating = rating
         self.comment = comment
+        self.photo_url = photo_url
+        self.tags = tags
 
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -199,6 +205,66 @@ class ChatMessage(db.Model):
     sender_nickname = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # 'friend_request', 'party_invite', 'chat_message', 'review_like'
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    related_id = db.Column(db.Integer, nullable=True)  # 관련 ID (파티 ID, 채팅방 ID 등)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, type, title, message, related_id=None):
+        self.user_id = user_id
+        self.type = type
+        self.title = title
+        self.message = message
+        self.related_id = related_id
+
+class UserAnalytics(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    total_parties_joined = db.Column(db.Integer, default=0)
+    total_reviews_written = db.Column(db.Integer, default=0)
+    total_friends_added = db.Column(db.Integer, default=0)
+    favorite_restaurant_category = db.Column(db.String(50), nullable=True)
+    average_rating_given = db.Column(db.Float, default=0.0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, date):
+        self.user_id = user_id
+        self.date = date
+
+class RestaurantAnalytics(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    total_visits = db.Column(db.Integer, default=0)
+    total_reviews = db.Column(db.Integer, default=0)
+    average_rating = db.Column(db.Float, default=0.0)
+    total_likes = db.Column(db.Integer, default=0)
+    popular_tags = db.Column(db.String(500), nullable=True)  # JSON 형태로 저장
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, restaurant_id, date):
+        self.restaurant_id = restaurant_id
+        self.date = date
+
+class OfflineData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    data_type = db.Column(db.String(50), nullable=False)  # 'restaurants', 'parties', 'reviews'
+    data_json = db.Column(db.Text, nullable=False)  # JSON 형태로 저장된 데이터
+    last_sync = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, data_type, data_json):
+        self.user_id = user_id
+        self.data_type = data_type
+        self.data_json = data_json
 
 class DangolPot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -502,17 +568,297 @@ def add_review(restaurant_id):
     user = User.query.filter_by(employee_id=data.get('user_id')).first()
     if not user:
         return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    # Review 생성
+    
+    # Review 생성 (사진, 태그 포함)
     new_review = Review(
         restaurant_id=restaurant_id,
         user_id=data.get('user_id'),
         nickname=user.nickname,
         rating=data.get('rating'),
-        comment=data.get('comment')
+        comment=data.get('comment'),
+        photo_url=data.get('photo_url'),
+        tags=','.join(data.get('tags', [])) if data.get('tags') else None
     )
     db.session.add(new_review)
     db.session.commit()
     return jsonify({'message': '리뷰가 성공적으로 등록되었습니다.'}), 201
+
+@app.route('/reviews/<int:review_id>/like', methods=['POST'])
+def like_review(review_id):
+    """리뷰 좋아요"""
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({'message': '리뷰를 찾을 수 없습니다.'}), 404
+    
+    review.likes += 1
+    db.session.commit()
+    
+    return jsonify({'message': '좋아요가 추가되었습니다.', 'likes': review.likes})
+
+@app.route('/reviews/tags', methods=['GET'])
+def get_review_tags():
+    """사용 가능한 리뷰 태그 목록"""
+    tags = [
+        '맛있어요', '깔끔해요', '친절해요', '분위기 좋아요',
+        '가성비 좋아요', '양 많아요', '신선해요', '매운맛',
+        '달콤해요', '고소해요', '담백해요', '진한맛'
+    ]
+    return jsonify({'tags': tags})
+
+# --- 데이터 분석 API ---
+@app.route('/analytics/user/<employee_id>', methods=['GET'])
+def get_user_analytics(employee_id):
+    """사용자 분석 데이터 조회"""
+    try:
+        # 최근 30일 데이터
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        
+        analytics = UserAnalytics.query.filter(
+            UserAnalytics.user_id == employee_id,  # type: ignore
+            UserAnalytics.date >= start_date,  # type: ignore
+            UserAnalytics.date <= end_date  # type: ignore
+        ).all()
+        
+        # 파티 참여 통계
+        parties_joined = Party.query.filter(
+            Party.members_employee_ids.contains(employee_id)  # type: ignore
+        ).count()
+        
+        # 리뷰 작성 통계
+        reviews_written = Review.query.filter_by(user_id=employee_id).count()
+        
+        # 친구 수
+        friendships = Friendship.query.filter(
+            and_(
+                Friendship.status == 'accepted',  # type: ignore
+                or_(
+                    Friendship.requester_id == employee_id,  # type: ignore
+                    Friendship.receiver_id == employee_id  # type: ignore
+                )
+            )
+        ).count()
+        
+        # 선호 카테고리 분석
+        user_reviews = Review.query.filter_by(user_id=employee_id).all()
+        category_counts = {}
+        total_rating = 0
+        
+        for review in user_reviews:
+            restaurant = Restaurant.query.get(review.restaurant_id)
+            if restaurant:
+                category = restaurant.category
+                category_counts[category] = category_counts.get(category, 0) + 1
+                total_rating += review.rating
+        
+        favorite_category = max(category_counts.items(), key=lambda x: x[1])[0] if category_counts else None
+        avg_rating = total_rating / len(user_reviews) if user_reviews else 0
+        
+        return jsonify({
+            'parties_joined': parties_joined,
+            'reviews_written': reviews_written,
+            'friends_count': friendships,
+            'favorite_category': favorite_category,
+            'average_rating': round(avg_rating, 1),
+            'activity_trend': [a.total_parties_joined for a in analytics]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/analytics/restaurant/<int:restaurant_id>', methods=['GET'])
+def get_restaurant_analytics(restaurant_id):
+    """식당 분석 데이터 조회"""
+    try:
+        restaurant = Restaurant.query.get(restaurant_id)
+        if not restaurant:
+            return jsonify({'error': '식당을 찾을 수 없습니다.'}), 404
+        
+        # 리뷰 통계
+        reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
+        total_reviews = len(reviews)
+        total_likes = sum(review.likes for review in reviews)
+        avg_rating = sum(review.rating for review in reviews) / total_reviews if reviews else 0
+        
+        # 인기 태그 분석
+        tag_counts = {}
+        for review in reviews:
+            if review.tags:
+                tags = review.tags.split(',')
+                for tag in tags:
+                    tag = tag.strip()
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        popular_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        # 방문 통계 (파티 참여 기준)
+        visits = Party.query.filter_by(restaurant_name=restaurant.name).count()
+        
+        return jsonify({
+            'restaurant_name': restaurant.name,
+            'total_visits': visits,
+            'total_reviews': total_reviews,
+            'average_rating': round(avg_rating, 1),
+            'total_likes': total_likes,
+            'popular_tags': [{'tag': tag, 'count': count} for tag, count in popular_tags]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/analytics/trends', methods=['GET'])
+def get_trends():
+    """전체 트렌드 분석"""
+    try:
+        # 인기 식당 카테고리
+        restaurants = Restaurant.query.all()
+        category_stats = {}
+        
+        for restaurant in restaurants:
+            reviews = Review.query.filter_by(restaurant_id=restaurant.id).all()
+            if reviews:
+                avg_rating = sum(r.rating for r in reviews) / len(reviews)
+                category_stats[restaurant.category] = category_stats.get(restaurant.category, {
+                    'count': 0,
+                    'total_rating': 0,
+                    'total_reviews': 0
+                })
+                category_stats[restaurant.category]['count'] += 1
+                category_stats[restaurant.category]['total_rating'] += avg_rating
+                category_stats[restaurant.category]['total_reviews'] += len(reviews)
+        
+        # 평균 평점으로 정렬
+        popular_categories = sorted(
+            [(cat, stats) for cat, stats in category_stats.items()],
+            key=lambda x: x[1]['total_rating'] / x[1]['count'],
+            reverse=True
+        )[:5]
+        
+        # 최근 활성 사용자
+        recent_users = User.query.order_by(desc(User.id)).limit(10).all()
+        
+        return jsonify({
+            'popular_categories': [
+                {
+                    'category': cat,
+                    'average_rating': round(stats['total_rating'] / stats['count'], 1),
+                    'total_reviews': stats['total_reviews']
+                }
+                for cat, stats in popular_categories
+            ],
+            'recent_active_users': [
+                {
+                    'employee_id': user.employee_id,
+                    'nickname': user.nickname,
+                    'lunch_preference': user.lunch_preference
+                }
+                for user in recent_users
+            ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- 오프라인 데이터 API ---
+@app.route('/offline/sync', methods=['POST'])
+def sync_offline_data():
+    """오프라인 데이터 동기화"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        data_type = data.get('data_type')
+        data_json = data.get('data_json')
+        
+        if not all([user_id, data_type, data_json]):
+            return jsonify({'error': '필수 데이터가 누락되었습니다.'}), 400
+        
+        # 기존 데이터 업데이트 또는 새로 생성
+        existing_data = OfflineData.query.filter_by(
+            user_id=user_id,
+            data_type=data_type
+        ).first()
+        
+        if existing_data:
+            existing_data.data_json = data_json
+            existing_data.last_sync = datetime.utcnow()
+        else:
+            new_data = OfflineData(user_id, data_type, data_json)
+            db.session.add(new_data)
+        
+        db.session.commit()
+        return jsonify({'message': '오프라인 데이터가 동기화되었습니다.'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/offline/data/<employee_id>', methods=['GET'])
+def get_offline_data(employee_id):
+    """오프라인 데이터 조회"""
+    try:
+        data_types = request.args.getlist('types')  # 'restaurants', 'parties', 'reviews'
+        
+        if not data_types:
+            return jsonify({'error': '데이터 타입을 지정해주세요.'}), 400
+        
+        offline_data = {}
+        for data_type in data_types:
+            data = OfflineData.query.filter_by(
+                user_id=employee_id,
+                data_type=data_type
+            ).first()
+            
+            if data:
+                offline_data[data_type] = {
+                    'data': json.loads(data.data_json),
+                    'last_sync': data.last_sync.strftime('%Y-%m-%d %H:%M:%S')
+                }
+        
+        return jsonify(offline_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- 알림 API ---
+@app.route('/notifications/<employee_id>', methods=['GET'])
+def get_notifications(employee_id):
+    """사용자의 알림 목록 조회"""
+    notifications = Notification.query.filter_by(user_id=employee_id).order_by(desc(Notification.created_at)).all()
+    return jsonify([{
+        'id': n.id,
+        'type': n.type,
+        'title': n.title,
+        'message': n.message,
+        'related_id': n.related_id,
+        'is_read': n.is_read,
+        'created_at': n.created_at.strftime('%Y-%m-%d %H:%M')
+    } for n in notifications])
+
+@app.route('/notifications/<int:notification_id>/read', methods=['POST'])
+def mark_notification_read(notification_id):
+    """알림 읽음 처리"""
+    notification = Notification.query.get(notification_id)
+    if not notification:
+        return jsonify({'message': '알림을 찾을 수 없습니다.'}), 404
+    
+    notification.is_read = True
+    db.session.commit()
+    return jsonify({'message': '알림이 읽음 처리되었습니다.'})
+
+@app.route('/notifications/<employee_id>/read-all', methods=['POST'])
+def mark_all_notifications_read(employee_id):
+    """모든 알림 읽음 처리"""
+    Notification.query.filter_by(user_id=employee_id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'message': '모든 알림이 읽음 처리되었습니다.'})
+
+def create_notification(user_id, type, title, message, related_id=None):
+    """알림 생성 헬퍼 함수"""
+    notification = Notification(user_id, type, title, message, related_id)
+    db.session.add(notification)
+    db.session.commit()
+    
+    # 실시간 알림 전송
+    socketio.emit('notification', {
+        'type': type,
+        'title': title,
+        'message': message,
+        'related_id': related_id
+    }, room=user_id)  # type: ignore
 
 # --- 단골파티 API ---
 @app.route('/dangolpots', methods=['POST'])
@@ -1508,6 +1854,17 @@ def send_friend_request():
     new_request = Friendship(requester_id=requester_id, receiver_id=receiver_id)
     db.session.add(new_request)
     db.session.commit()
+    
+    # 알림 생성
+    requester = User.query.filter_by(employee_id=requester_id).first()
+    if requester:
+        create_notification(
+            receiver_id,
+            'friend_request',
+            '새로운 친구 요청',
+            f'{requester.nickname}님이 친구 요청을 보냈습니다.',
+            new_request.id
+        )
     
     return jsonify({'message': '친구 요청을 보냈습니다.'}), 201
 
