@@ -2508,18 +2508,18 @@ def get_smart_recommendations():
             # 해당 날짜에 약속이 있는지 확인
             has_party = db.session.query(Party).filter(
                 and_(
-                    Party.party_date == date_string,
+                    getattr(Party, 'party_date') == date_string,
                     or_(
-                        Party.host_employee_id == employee_id,
-                        Party.members_employee_ids.contains(employee_id)
+                        getattr(Party, 'host_employee_id') == employee_id,
+                        getattr(Party, 'members_employee_ids').contains(employee_id)
                     )
                 )
             ).first()
             
             has_personal = db.session.query(PersonalSchedule).filter(
                 and_(
-                    PersonalSchedule.schedule_date == date_string,
-                    PersonalSchedule.employee_id == employee_id
+                    getattr(PersonalSchedule, 'schedule_date') == date_string,
+                    getattr(PersonalSchedule, 'employee_id') == employee_id
                 )
             ).first()
             
@@ -2551,27 +2551,27 @@ def get_smart_recommendations():
             # 해당 날짜에 약속이 없는 다른 유저들 찾기
             available_users = db.session.query(User).filter(
                 and_(
-                    User.employee_id != employee_id,
+                    getattr(User, 'employee_id') != employee_id,
                     ~db.session.query(Party).filter(
                         and_(
-                            Party.party_date == selected_date,
+                            getattr(Party, 'party_date') == selected_date,
                             or_(
-                                Party.host_employee_id == User.employee_id,
-                                Party.members_employee_ids.contains(User.employee_id)
+                                getattr(Party, 'host_employee_id') == getattr(User, 'employee_id'),
+                                getattr(Party, 'members_employee_ids').contains(getattr(User, 'employee_id'))
                             )
                         )
                     ).exists(),
                     ~db.session.query(PersonalSchedule).filter(
                         and_(
-                            PersonalSchedule.schedule_date == selected_date,
-                            PersonalSchedule.employee_id == User.employee_id
+                            getattr(PersonalSchedule, 'schedule_date') == selected_date,
+                            getattr(PersonalSchedule, 'employee_id') == getattr(User, 'employee_id')
                         )
                     ).exists()
                 )
             ).all()
             
             # 요청자 정보 가져오기
-            requester = db.session.query(User).filter(User.employee_id == employee_id).first()
+            requester = db.session.query(User).filter(getattr(User, 'employee_id') == employee_id).first()
             if not requester:
                 continue
             
@@ -2592,12 +2592,12 @@ def get_smart_recommendations():
                 last_party = db.session.query(Party).filter(
                     and_(
                         or_(
-                            and_(Party.host_employee_id == employee_id, Party.members_employee_ids.contains(user.employee_id)),
-                            and_(Party.host_employee_id == user.employee_id, Party.members_employee_ids.contains(employee_id))
+                            and_(getattr(Party, 'host_employee_id') == employee_id, getattr(Party, 'members_employee_ids').contains(user.employee_id)),
+                            and_(getattr(Party, 'host_employee_id') == user.employee_id, getattr(Party, 'members_employee_ids').contains(employee_id))
                         ),
-                        Party.party_date < selected_date
+                        getattr(Party, 'party_date') < selected_date
                     )
-                ).order_by(desc(Party.party_date)).first()
+                ).order_by(desc(getattr(Party, 'party_date'))).first()
                 
                 # dining_history 계산
                 if last_party:
@@ -2637,6 +2637,3 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-
-
