@@ -1,5 +1,7 @@
 import random
 import json
+import os
+import base64
 from datetime import datetime, date, timedelta, time
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -204,6 +206,8 @@ class ChatMessage(db.Model):
     sender_employee_id = db.Column(db.String(50), nullable=False)
     sender_nickname = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(20), default='text')  # 'text', 'image', 'file'
+    file_url = db.Column(db.String(500), nullable=True)  # 파일/이미지 URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Notification(db.Model):
@@ -1660,10 +1664,28 @@ def get_my_chats(employee_id):
     chat_list = []
     joined_parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).order_by(desc(Party.id)).all()  # type: ignore
     for party in joined_parties:
-        chat_list.append({'id': party.id, 'type': 'party', 'title': party.title, 'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명", 'is_from_match': party.is_from_match})
+        # 마지막 메시지 조회
+        last_message = ChatMessage.query.filter_by(chat_type='party', chat_id=party.id).order_by(desc(ChatMessage.created_at)).first()
+        chat_list.append({
+            'id': party.id, 
+            'type': 'party', 
+            'title': party.title, 
+            'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명", 
+            'is_from_match': party.is_from_match,
+            'last_message': f"{last_message.sender_nickname}: {last_message.message}" if last_message else None
+        })
+    
     joined_pots = DangolPot.query.filter(DangolPot.members.contains(employee_id)).order_by(desc(DangolPot.created_at)).all()  # type: ignore
     for pot in joined_pots:
-         chat_list.append({'id': pot.id, 'type': 'dangolpot', 'title': pot.name, 'subtitle': pot.tags})
+        # 마지막 메시지 조회
+        last_message = ChatMessage.query.filter_by(chat_type='dangolpot', chat_id=pot.id).order_by(desc(ChatMessage.created_at)).first()
+        chat_list.append({
+            'id': pot.id, 
+            'type': 'dangolpot', 
+            'title': pot.name, 
+            'subtitle': pot.tags,
+            'last_message': f"{last_message.sender_nickname}: {last_message.message}" if last_message else None
+        })
     return jsonify(chat_list)
 
 @app.route('/users/<employee_id>', methods=['GET'])
@@ -1750,6 +1772,8 @@ def get_chat_messages(chat_type, chat_id):
         'sender_employee_id': msg.sender_employee_id,
         'sender_nickname': msg.sender_nickname,
         'message': msg.message,
+        'message_type': msg.message_type,
+        'file_url': msg.file_url,
         'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
     } for msg in messages])
 
@@ -1871,6 +1895,45 @@ def mark_message_read(message_id):
     # 메시지 읽음 표시 (새로운 모델이 필요할 수 있지만, 여기서는 간단히 처리)
     return jsonify({'message': '메시지가 읽음으로 표시되었습니다.'})
 
+@app.route('/chat/upload-image', methods=['POST'])
+def upload_chat_image():
+    data = request.get_json()
+    image_data = data.get('image_data')  # base64 인코딩된 이미지
+    chat_type = data.get('chat_type')
+    chat_id = data.get('chat_id')
+    sender_employee_id = data.get('sender_employee_id')
+    
+    if not all([image_data, chat_type, chat_id, sender_employee_id]):
+        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
+    
+    try:
+        # base64 디코딩
+        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+        
+        # 파일명 생성
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"chat_image_{chat_type}_{chat_id}_{timestamp}.jpg"
+        
+        # 업로드 디렉토리 생성
+        upload_dir = 'uploads/chat_images'
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # 파일 저장
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        # 파일 URL 생성 (실제 환경에서는 CDN URL로 변경)
+        file_url = f"/uploads/chat_images/{filename}"
+        
+        return jsonify({
+            'message': '이미지가 업로드되었습니다.',
+            'file_url': file_url
+        })
+        
+    except Exception as e:
+        return jsonify({'message': f'이미지 업로드 실패: {str(e)}'}), 500
+
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
 def handle_connect():
@@ -1902,6 +1965,8 @@ def handle_send_message(data):
     chat_id = data['chat_id']
     sender_employee_id = data['sender_employee_id']
     message = data['message']
+    message_type = data.get('message_type', 'text')
+    file_url = data.get('file_url', None)
     
     # 사용자 정보 조회
     user = User.query.filter_by(employee_id=sender_employee_id).first()
@@ -1915,6 +1980,8 @@ def handle_send_message(data):
     new_message.sender_employee_id = sender_employee_id
     new_message.sender_nickname = user.nickname
     new_message.message = message
+    new_message.message_type = message_type
+    new_message.file_url = file_url
     db.session.add(new_message)
     db.session.commit()
     
@@ -1925,8 +1992,38 @@ def handle_send_message(data):
         'sender_employee_id': sender_employee_id,
         'sender_nickname': user.nickname,
         'message': message,
+        'message_type': message_type,
+        'file_url': file_url,
         'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
     }, to=room)
+    
+    # 채팅방 멤버들에게 알림 생성
+    if chat_type == 'party':
+        party = Party.query.get(chat_id)
+        if party:
+            members = party.members_employee_ids.split(',') if party.members_employee_ids else []
+            for member_id in members:
+                if member_id != sender_employee_id:
+                    create_notification(
+                        member_id,
+                        'chat_message',
+                        f'{user.nickname}님이 메시지를 보냈습니다.',
+                        f'{user.nickname}: {message[:50]}{"..." if len(message) > 50 else ""}',
+                        chat_id
+                    )
+    elif chat_type == 'dangolpot':
+        pot = DangolPot.query.get(chat_id)
+        if pot:
+            members = pot.members.split(',') if pot.members else []
+            for member_id in members:
+                if member_id != sender_employee_id:
+                    create_notification(
+                        member_id,
+                        'chat_message',
+                        f'{user.nickname}님이 메시지를 보냈습니다.',
+                        f'{user.nickname}: {message[:50]}{"..." if len(message) > 50 else ""}',
+                        chat_id
+                    )
 
 # --- 친구 API ---
 @app.route('/users/search', methods=['GET'])
@@ -2756,5 +2853,6 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
