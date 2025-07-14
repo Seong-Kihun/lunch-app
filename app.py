@@ -403,7 +403,7 @@ def create_tables_and_init_data():
                         'title': '랜덤 런치',
                         'restaurant_name': '판교역 맛집',
                         'restaurant_address': '경기도 성남시 분당구 판교역로 146',
-                        'party_date': '2024-01-15',
+                        'party_date': '2024-07-30',
                         'party_time': '12:00',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 3,
@@ -411,27 +411,27 @@ def create_tables_and_init_data():
                         'is_from_match': True
                     },
                     {
-                        'host_employee_id': 'KOICA001',
+                        'host_employee_id': 'KOICA004',
                         'title': '랜덤 런치',
                         'restaurant_name': '분당 맛집',
                         'restaurant_address': '경기도 성남시 분당구 정자로 123',
-                        'party_date': '2024-01-16',
+                        'party_date': '2024-07-24',
                         'party_time': '12:30',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 4,
-                        'members_employee_ids': 'KOICA001,KOICA004,KOICA005,KOICA006',
+                        'members_employee_ids': 'KOICA004,KOICA005,KOICA006,KOICA007',
                         'is_from_match': True
                     },
                     {
-                        'host_employee_id': 'KOICA007',
+                        'host_employee_id': 'KOICA008',
                         'title': '랜덤 런치',
                         'restaurant_name': '일식당',
                         'restaurant_address': '경기도 성남시 분당구 판교로 456',
-                        'party_date': '2024-01-17',
+                        'party_date': '2024-07-30',
                         'party_time': '12:00',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 2,
-                        'members_employee_ids': 'KOICA007,KOICA001',
+                        'members_employee_ids': 'KOICA008,KOICA009',
                         'is_from_match': True
                     }
                 ]
@@ -446,6 +446,67 @@ def create_tables_and_init_data():
 # --- API 엔드포인트 ---
 @app.route('/cafeteria/today', methods=['GET'])
 def get_today_menu(): return jsonify({'menu': ['제육볶음', '계란찜']})
+
+# 테스트 데이터 초기화 API
+@app.route('/test/init-data', methods=['POST'])
+def init_test_data():
+    """테스트 데이터 초기화"""
+    try:
+        # 기존 랜덤런치 데이터 삭제
+        Party.query.filter_by(is_from_match=True).delete()
+        
+        # 새로운 테스트 데이터 추가
+        test_parties = [
+            {
+                'host_employee_id': 'KOICA001',
+                'title': '랜덤 런치',
+                'restaurant_name': '판교역 맛집',
+                'restaurant_address': '경기도 성남시 분당구 판교역로 146',
+                'party_date': '2024-07-30',
+                'party_time': '12:00',
+                'meeting_location': 'KOICA 본사',
+                'max_members': 3,
+                'members_employee_ids': 'KOICA001,KOICA002,KOICA003',
+                'is_from_match': True
+            },
+            {
+                'host_employee_id': 'KOICA004',
+                'title': '랜덤 런치',
+                'restaurant_name': '분당 맛집',
+                'restaurant_address': '경기도 성남시 분당구 정자로 123',
+                'party_date': '2024-07-24',
+                'party_time': '12:30',
+                'meeting_location': 'KOICA 본사',
+                'max_members': 4,
+                'members_employee_ids': 'KOICA004,KOICA005,KOICA006,KOICA007',
+                'is_from_match': True
+            },
+            {
+                'host_employee_id': 'KOICA008',
+                'title': '랜덤 런치',
+                'restaurant_name': '일식당',
+                'restaurant_address': '경기도 성남시 분당구 판교로 456',
+                'party_date': '2024-07-30',
+                'party_time': '12:00',
+                'meeting_location': 'KOICA 본사',
+                'max_members': 2,
+                'members_employee_ids': 'KOICA008,KOICA009',
+                'is_from_match': True
+            }
+        ]
+        
+        # 테스트 파티 생성
+        for party_data in test_parties:
+            new_party = Party(**party_data)
+            db.session.add(new_party)
+            # 채팅방 자동 생성
+            new_party.create_chat_room()
+        
+        db.session.commit()
+        return jsonify({'message': '테스트 데이터가 초기화되었습니다.', 'parties_created': len(test_parties)})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # --- 이벤트 (약속) 통합 API ---
 @app.route('/events/<employee_id>', methods=['GET'])
@@ -2853,6 +2914,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
