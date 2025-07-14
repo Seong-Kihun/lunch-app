@@ -2488,7 +2488,155 @@ def calculate_compatibility_score(user1, user2):
     
     return min(score, 1.0)
 
+# --- 스마트 랜덤 런치 API ---
+@app.route('/proposals/smart-recommendations', methods=['GET'])
+def get_smart_recommendations():
+    """스마트 랜덤 런치 추천 API"""
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'error': 'employee_id is required'}), 400
+    
+    try:
+        # 1단계: 빈 날짜 탐색 (오늘부터 14일 후까지)
+        today = get_seoul_today()
+        empty_dates = []
+        
+        for i in range(14):
+            check_date = today + timedelta(days=i)
+            date_string = check_date.strftime('%Y-%m-%d')
+            
+            # 해당 날짜에 약속이 있는지 확인
+            has_party = db.session.query(Party).filter(
+                and_(
+                    Party.party_date == date_string,
+                    or_(
+                        Party.host_employee_id == employee_id,
+                        Party.members_employee_ids.contains(employee_id)
+                    )
+                )
+            ).first()
+            
+            has_personal = db.session.query(PersonalSchedule).filter(
+                and_(
+                    PersonalSchedule.schedule_date == date_string,
+                    PersonalSchedule.employee_id == employee_id
+                )
+            ).first()
+            
+            # 약속이 없는 날짜만 추가
+            if not has_party and not has_personal:
+                empty_dates.append(date_string)
+        
+        # 2단계: 가중치 기반 추천일 선정
+        selected_dates = []
+        
+        # 가까운 3개는 100% 선정
+        for i in range(min(3, len(empty_dates))):
+            selected_dates.append(empty_dates[i])
+        
+        # 4-6번째는 50% 확률로 선정
+        for i in range(3, min(6, len(empty_dates))):
+            if random.random() < 0.5:
+                selected_dates.append(empty_dates[i])
+        
+        # 7-13번째는 25% 확률로 선정
+        for i in range(6, min(13, len(empty_dates))):
+            if random.random() < 0.25:
+                selected_dates.append(empty_dates[i])
+        
+        # 3단계: 그룹 매칭 및 식사 기록 조회
+        recommendations = []
+        
+        for selected_date in selected_dates:
+            # 해당 날짜에 약속이 없는 다른 유저들 찾기
+            available_users = db.session.query(User).filter(
+                and_(
+                    User.employee_id != employee_id,
+                    ~db.session.query(Party).filter(
+                        and_(
+                            Party.party_date == selected_date,
+                            or_(
+                                Party.host_employee_id == User.employee_id,
+                                Party.members_employee_ids.contains(User.employee_id)
+                            )
+                        )
+                    ).exists(),
+                    ~db.session.query(PersonalSchedule).filter(
+                        and_(
+                            PersonalSchedule.schedule_date == selected_date,
+                            PersonalSchedule.employee_id == User.employee_id
+                        )
+                    ).exists()
+                )
+            ).all()
+            
+            # 요청자 정보 가져오기
+            requester = db.session.query(User).filter(User.employee_id == employee_id).first()
+            if not requester:
+                continue
+            
+            # 성향 매칭 점수 계산 및 정렬
+            scored_users = []
+            for user in available_users:
+                score = calculate_compatibility_score(requester, user)
+                scored_users.append((user, score))
+            
+            # 점수순으로 정렬하고 상위 3명 선택
+            scored_users.sort(key=lambda x: x[1], reverse=True)
+            selected_group = scored_users[:3]
+            
+            # 각 멤버의 식사 기록 조회
+            group_members = []
+            for user, score in selected_group:
+                # 마지막 Party 기록 조회
+                last_party = db.session.query(Party).filter(
+                    and_(
+                        or_(
+                            and_(Party.host_employee_id == employee_id, Party.members_employee_ids.contains(user.employee_id)),
+                            and_(Party.host_employee_id == user.employee_id, Party.members_employee_ids.contains(employee_id))
+                        ),
+                        Party.party_date < selected_date
+                    )
+                ).order_by(desc(Party.party_date)).first()
+                
+                # dining_history 계산
+                if last_party:
+                    last_party_date = datetime.strptime(last_party.party_date, '%Y-%m-%d').date()
+                    days_diff = (today - last_party_date).days
+                    
+                    if days_diff == 1:
+                        dining_history = "어제 함께 식사"
+                    elif days_diff <= 7:
+                        dining_history = f"{days_diff}일 전 함께 식사"
+                    elif days_diff <= 30:
+                        dining_history = f"{days_diff//7}주 전 함께 식사"
+                    else:
+                        dining_history = "1달 이상 전"
+                else:
+                    dining_history = "처음 만나는 동료"
+                
+                group_members.append({
+                    "nickname": user.nickname,
+                    "lunch_preference": user.lunch_preference,
+                    "dining_history": dining_history
+                })
+            
+            if group_members:
+                recommendations.append({
+                    "proposed_date": selected_date,
+                    "recommended_group": group_members
+                })
+        
+        return jsonify(recommendations)
+        
+    except Exception as e:
+        print(f"Error in smart recommendations: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# --- 기존 함수들 ---
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
