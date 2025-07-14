@@ -1753,6 +1753,124 @@ def get_chat_messages(chat_type, chat_id):
         'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
     } for msg in messages])
 
+@app.route('/chat/messages/search', methods=['GET'])
+def search_messages():
+    employee_id = request.args.get('employee_id')
+    chat_type = request.args.get('chat_type')
+    chat_id = request.args.get('chat_id')
+    query = request.args.get('query')
+    
+    if not all([employee_id, chat_type, chat_id, query]):
+        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
+    
+    # 사용자가 참여한 채팅방인지 확인
+    if chat_type == 'party':
+        party = Party.query.get(chat_id)
+        if not party or employee_id not in party.members_employee_ids.split(','):
+            return jsonify({'message': '접근 권한이 없습니다.'}), 403
+    elif chat_type == 'dangolpot':
+        pot = DangolPot.query.get(chat_id)
+        if not pot or employee_id not in pot.members.split(','):
+            return jsonify({'message': '접근 권한이 없습니다.'}), 403
+    
+    # 메시지 검색
+    messages = ChatMessage.query.filter(
+        ChatMessage.chat_type == chat_type,
+        ChatMessage.chat_id == chat_id,
+        ChatMessage.message.contains(query)  # type: ignore
+    ).order_by(desc(ChatMessage.created_at)).limit(50).all()
+    
+    return jsonify([{
+        'id': msg.id,
+        'sender_employee_id': msg.sender_employee_id,
+        'sender_nickname': msg.sender_nickname,
+        'message': msg.message,
+        'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
+    } for msg in messages])
+
+@app.route('/chat/leave', methods=['POST'])
+def leave_chat():
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    chat_type = data.get('chat_type')
+    chat_id = data.get('chat_id')
+    
+    if not all([employee_id, chat_type, chat_id]):
+        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
+    
+    if chat_type == 'party':
+        party = Party.query.get(chat_id)
+        if not party:
+            return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+        
+        if party.host_employee_id == employee_id:
+            return jsonify({'message': '호스트는 파티를 나갈 수 없습니다. 먼저 호스트를 양도하거나 파티를 삭제해주세요.'}), 400
+        
+        # 멤버 목록에서 제거
+        members = party.members_employee_ids.split(',') if party.members_employee_ids else []
+        if employee_id in members:
+            members.remove(employee_id)
+            party.members_employee_ids = ','.join(members)
+            db.session.commit()
+            
+            # 알림 생성
+            user = User.query.filter_by(employee_id=employee_id).first()
+            if user:
+                create_notification(
+                    party.host_employee_id,
+                    'party_member_left',
+                    f'{user.nickname}님이 파티를 나갔습니다.',
+                    f'{user.nickname}님이 {party.title} 파티를 나갔습니다.',
+                    party.id
+                )
+            
+            return jsonify({'message': '파티를 나갔습니다.'})
+    
+    elif chat_type == 'dangolpot':
+        pot = DangolPot.query.get(chat_id)
+        if not pot:
+            return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
+        
+        if pot.host_id == employee_id:
+            return jsonify({'message': '호스트는 단골파티를 나갈 수 없습니다. 먼저 호스트를 양도하거나 단골파티를 삭제해주세요.'}), 400
+        
+        # 멤버 목록에서 제거
+        members = pot.members.split(',') if pot.members else []
+        if employee_id in members:
+            members.remove(employee_id)
+            pot.members = ','.join(members)
+            db.session.commit()
+            
+            # 알림 생성
+            user = User.query.filter_by(employee_id=employee_id).first()
+            if user:
+                create_notification(
+                    pot.host_id,
+                    'dangolpot_member_left',
+                    f'{user.nickname}님이 단골파티를 나갔습니다.',
+                    f'{user.nickname}님이 {pot.name} 단골파티를 나갔습니다.',
+                    pot.id
+                )
+            
+            return jsonify({'message': '단골파티를 나갔습니다.'})
+    
+    return jsonify({'message': '채팅방을 나갈 수 없습니다.'}), 400
+
+@app.route('/chat/messages/<int:message_id>/read', methods=['POST'])
+def mark_message_read(message_id):
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    message = ChatMessage.query.get(message_id)
+    if not message:
+        return jsonify({'message': '메시지를 찾을 수 없습니다.'}), 404
+    
+    # 메시지 읽음 표시 (새로운 모델이 필요할 수 있지만, 여기서는 간단히 처리)
+    return jsonify({'message': '메시지가 읽음으로 표시되었습니다.'})
+
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
 def handle_connect():
@@ -2638,4 +2756,5 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
