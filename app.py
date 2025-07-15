@@ -53,8 +53,6 @@ class User(db.Model):
     employee_id = db.Column(db.String(50), unique=True, nullable=False)
     nickname = db.Column(db.String(50), nullable=True)
     lunch_preference = db.Column(db.String(200), nullable=True)
-    gender = db.Column(db.String(10), nullable=True)
-    age_group = db.Column(db.String(20), nullable=True)
     main_dish_genre = db.Column(db.String(100), nullable=True)
     matching_status = db.Column(db.String(20), default='idle')
     match_request_time = db.Column(db.DateTime, nullable=True)
@@ -1753,7 +1751,7 @@ def get_my_chats(employee_id):
 def get_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
+    return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'main_dish_genre': user.main_dish_genre})
 
 @app.route('/users/batch', methods=['POST'])
 def get_users_batch():
@@ -1775,14 +1773,10 @@ def get_users_batch():
 def update_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    
     data = request.get_json()
     user.nickname = data.get('nickname', user.nickname)
     user.lunch_preference = data.get('lunch_preference', user.lunch_preference)
-    user.gender = data.get('gender', user.gender)
-    user.age_group = data.get('age_group', user.age_group)
     user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre)
-    
     db.session.commit()
     return jsonify({'message': '프로필이 업데이트되었습니다.'})
 
@@ -2914,6 +2908,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
