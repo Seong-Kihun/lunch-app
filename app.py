@@ -1751,7 +1751,14 @@ def get_my_chats(employee_id):
 def get_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'main_dish_genre': user.main_dish_genre})
+    return jsonify({
+        'nickname': user.nickname,
+        'lunch_preference': user.lunch_preference,
+        'main_dish_genre': user.main_dish_genre,
+        'food_preferences': user.food_preferences.split(',') if user.food_preferences else [],
+        'allergies': user.allergies.split(',') if user.allergies else [],
+        'preferred_time': user.preferred_time or ''
+    })
 
 @app.route('/users/batch', methods=['POST'])
 def get_users_batch():
@@ -2420,10 +2427,14 @@ def suggest_party_titles():
             suggestions.append(f"👥 {restaurant} 런치타임")
         
         if date:
-            date_obj = datetime.strptime(date, '%Y-%m-%d')
-            day_name = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
-            suggestions.append(f"📅 {day_name}요일 점심 모임")
-            suggestions.append(f"🎉 {date} 점심 파티")
+            try:
+                date_obj = datetime.strptime(date, '%Y-%m-%d')
+                day_name = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
+                suggestions.append(f"📅 {day_name}요일 점심 모임")
+                suggestions.append(f"🎉 {date} 점심 파티")
+            except Exception:
+                # 날짜 파싱 실패 시 해당 부분만 건너뜀
+                pass
         
         if location:
             suggestions.append(f"📍 {location} 점심 모임")
@@ -2904,10 +2915,19 @@ def get_smart_recommendations():
         print(f"Error in smart recommendations: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/users/check-nickname', methods=['GET'])
+def check_nickname():
+    nickname = request.args.get('nickname', '').strip()
+    if not nickname:
+        return jsonify({'error': '닉네임이 필요합니다.'}), 400
+    exists = User.query.filter(func.lower(getattr(User, 'nickname')) == nickname.lower()).first() is not None
+    return jsonify({'exists': exists})
+
 # --- 기존 함수들 ---
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
