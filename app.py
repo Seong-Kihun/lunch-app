@@ -8,13 +8,13 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # --- 유틸리티 함수 ---
 def get_seoul_today():
@@ -1914,38 +1914,55 @@ def handle_read_message(data):
     user_id = data.get('user_id')
     chat_type = data.get('chat_type')
     chat_id = data.get('chat_id')
+    
+    print(f'Read message event received: {data}')
+    
     if not message_id or not user_id or not chat_type or not chat_id:
+        print('Missing required fields in read_message event')
         return
-    # 이미 읽음 처리된 경우 중복 저장 방지
-    existing = ChatMessageRead.query.filter_by(message_id=message_id, user_id=user_id).first()
-    if not existing:
-        read = ChatMessageRead(message_id=message_id, user_id=user_id)
-        db.session.add(read)
-        db.session.commit()
-    # 채팅방 참여자 목록 구하기
-    if chat_type == 'party':
-        party = Party.query.get(chat_id)
-        member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()] if party and party.members_employee_ids else []
-    elif chat_type == 'dangolpot':
-        pot = DangolPot.query.get(chat_id)
-        member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()] if pot and pot.members else []
-    elif chat_type == 'custom':
-        room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
-        if room:
-            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
-            member_ids = [p.user_id for p in participants]
+    
+    try:
+        # 이미 읽음 처리된 경우 중복 저장 방지
+        existing = ChatMessageRead.query.filter_by(message_id=message_id, user_id=user_id).first()
+        if not existing:
+            read = ChatMessageRead(message_id=message_id, user_id=user_id)
+            db.session.add(read)
+            db.session.commit()
+            print(f'Message {message_id} marked as read by {user_id}')
+        
+        # 채팅방 참여자 목록 구하기
+        if chat_type == 'party':
+            party = Party.query.get(chat_id)
+            member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()] if party and party.members_employee_ids else []
+        elif chat_type == 'dangolpot':
+            pot = DangolPot.query.get(chat_id)
+            member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()] if pot and pot.members else []
+        elif chat_type == 'custom':
+            room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
+            if room:
+                participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+                member_ids = [p.user_id for p in participants]
+            else:
+                member_ids = []
         else:
             member_ids = []
-    else:
-        member_ids = []
-    read_count = ChatMessageRead.query.filter_by(message_id=message_id).count()
-    unread_count = max(0, len(member_ids) - read_count)
-    room_name = f"{chat_type}_{chat_id}"
-    socketio.emit('message_read', {
-        'message_id': message_id,
-        'user_id': user_id,
-        'unread_count': unread_count
-    }, to=room_name)
+        
+        read_count = ChatMessageRead.query.filter_by(message_id=message_id).count()
+        unread_count = max(0, len(member_ids) - read_count)
+        
+        room_name = f"{chat_type}_{chat_id}"
+        print(f'Emitting message_read to room {room_name}: message_id={message_id}, unread_count={unread_count}')
+        
+        socketio.emit('message_read', {
+            'message_id': message_id,
+            'user_id': user_id,
+            'unread_count': unread_count
+        }, to=room_name)
+        
+    except Exception as e:
+        print(f'Error in handle_read_message: {e}')
+        import traceback
+        traceback.print_exc()
 
 # --- 친구 API ---
 @app.route('/users/search', methods=['GET'])
@@ -2775,6 +2792,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
