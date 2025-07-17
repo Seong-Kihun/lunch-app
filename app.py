@@ -1,7 +1,5 @@
 import random
 import json
-import os
-import base64
 from datetime import datetime, date, timedelta, time
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -53,6 +51,8 @@ class User(db.Model):
     employee_id = db.Column(db.String(50), unique=True, nullable=False)
     nickname = db.Column(db.String(50), nullable=True)
     lunch_preference = db.Column(db.String(200), nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+    age_group = db.Column(db.String(20), nullable=True)
     main_dish_genre = db.Column(db.String(100), nullable=True)
     matching_status = db.Column(db.String(20), default='idle')
     match_request_time = db.Column(db.DateTime, nullable=True)
@@ -204,8 +204,6 @@ class ChatMessage(db.Model):
     sender_employee_id = db.Column(db.String(50), nullable=False)
     sender_nickname = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
-    message_type = db.Column(db.String(20), default='text')  # 'text', 'image', 'file'
-    file_url = db.Column(db.String(500), nullable=True)  # 파일/이미지 URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Notification(db.Model):
@@ -401,7 +399,7 @@ def create_tables_and_init_data():
                         'title': '랜덤 런치',
                         'restaurant_name': '판교역 맛집',
                         'restaurant_address': '경기도 성남시 분당구 판교역로 146',
-                        'party_date': '2024-07-30',
+                        'party_date': '2024-01-15',
                         'party_time': '12:00',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 3,
@@ -409,27 +407,27 @@ def create_tables_and_init_data():
                         'is_from_match': True
                     },
                     {
-                        'host_employee_id': 'KOICA004',
+                        'host_employee_id': 'KOICA001',
                         'title': '랜덤 런치',
                         'restaurant_name': '분당 맛집',
                         'restaurant_address': '경기도 성남시 분당구 정자로 123',
-                        'party_date': '2024-07-24',
+                        'party_date': '2024-01-16',
                         'party_time': '12:30',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 4,
-                        'members_employee_ids': 'KOICA004,KOICA005,KOICA006,KOICA007',
+                        'members_employee_ids': 'KOICA001,KOICA004,KOICA005,KOICA006',
                         'is_from_match': True
                     },
                     {
-                        'host_employee_id': 'KOICA008',
+                        'host_employee_id': 'KOICA007',
                         'title': '랜덤 런치',
                         'restaurant_name': '일식당',
                         'restaurant_address': '경기도 성남시 분당구 판교로 456',
-                        'party_date': '2024-07-30',
+                        'party_date': '2024-01-17',
                         'party_time': '12:00',
                         'meeting_location': 'KOICA 본사',
                         'max_members': 2,
-                        'members_employee_ids': 'KOICA008,KOICA009',
+                        'members_employee_ids': 'KOICA007,KOICA001',
                         'is_from_match': True
                     }
                 ]
@@ -444,67 +442,6 @@ def create_tables_and_init_data():
 # --- API 엔드포인트 ---
 @app.route('/cafeteria/today', methods=['GET'])
 def get_today_menu(): return jsonify({'menu': ['제육볶음', '계란찜']})
-
-# 테스트 데이터 초기화 API
-@app.route('/test/init-data', methods=['POST'])
-def init_test_data():
-    """테스트 데이터 초기화"""
-    try:
-        # 기존 랜덤런치 데이터 삭제
-        Party.query.filter_by(is_from_match=True).delete()
-        
-        # 새로운 테스트 데이터 추가
-        test_parties = [
-            {
-                'host_employee_id': 'KOICA001',
-                'title': '랜덤 런치',
-                'restaurant_name': '판교역 맛집',
-                'restaurant_address': '경기도 성남시 분당구 판교역로 146',
-                'party_date': '2024-07-30',
-                'party_time': '12:00',
-                'meeting_location': 'KOICA 본사',
-                'max_members': 3,
-                'members_employee_ids': 'KOICA001,KOICA002,KOICA003',
-                'is_from_match': True
-            },
-            {
-                'host_employee_id': 'KOICA004',
-                'title': '랜덤 런치',
-                'restaurant_name': '분당 맛집',
-                'restaurant_address': '경기도 성남시 분당구 정자로 123',
-                'party_date': '2024-07-24',
-                'party_time': '12:30',
-                'meeting_location': 'KOICA 본사',
-                'max_members': 4,
-                'members_employee_ids': 'KOICA004,KOICA005,KOICA006,KOICA007',
-                'is_from_match': True
-            },
-            {
-                'host_employee_id': 'KOICA008',
-                'title': '랜덤 런치',
-                'restaurant_name': '일식당',
-                'restaurant_address': '경기도 성남시 분당구 판교로 456',
-                'party_date': '2024-07-30',
-                'party_time': '12:00',
-                'meeting_location': 'KOICA 본사',
-                'max_members': 2,
-                'members_employee_ids': 'KOICA008,KOICA009',
-                'is_from_match': True
-            }
-        ]
-        
-        # 테스트 파티 생성
-        for party_data in test_parties:
-            new_party = Party(**party_data)
-            db.session.add(new_party)
-            # 채팅방 자동 생성
-            new_party.create_chat_room()
-        
-        db.session.commit()
-        return jsonify({'message': '테스트 데이터가 초기화되었습니다.', 'parties_created': len(test_parties)})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
 # --- 이벤트 (약속) 통합 API ---
 @app.route('/events/<employee_id>', methods=['GET'])
@@ -1723,42 +1660,17 @@ def get_my_chats(employee_id):
     chat_list = []
     joined_parties = Party.query.filter(Party.members_employee_ids.contains(employee_id)).order_by(desc(Party.id)).all()  # type: ignore
     for party in joined_parties:
-        # 마지막 메시지 조회
-        last_message = ChatMessage.query.filter_by(chat_type='party', chat_id=party.id).order_by(desc(ChatMessage.created_at)).first()
-        chat_list.append({
-            'id': party.id, 
-            'type': 'party', 
-            'title': party.title, 
-            'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명", 
-            'is_from_match': party.is_from_match,
-            'last_message': f"{last_message.sender_nickname}: {last_message.message}" if last_message else None
-        })
-    
+        chat_list.append({'id': party.id, 'type': 'party', 'title': party.title, 'subtitle': f"{party.restaurant_name} | {party.current_members}/{party.max_members}명", 'is_from_match': party.is_from_match})
     joined_pots = DangolPot.query.filter(DangolPot.members.contains(employee_id)).order_by(desc(DangolPot.created_at)).all()  # type: ignore
     for pot in joined_pots:
-        # 마지막 메시지 조회
-        last_message = ChatMessage.query.filter_by(chat_type='dangolpot', chat_id=pot.id).order_by(desc(ChatMessage.created_at)).first()
-        chat_list.append({
-            'id': pot.id, 
-            'type': 'dangolpot', 
-            'title': pot.name, 
-            'subtitle': pot.tags,
-            'last_message': f"{last_message.sender_nickname}: {last_message.message}" if last_message else None
-        })
+         chat_list.append({'id': pot.id, 'type': 'dangolpot', 'title': pot.name, 'subtitle': pot.tags})
     return jsonify(chat_list)
 
 @app.route('/users/<employee_id>', methods=['GET'])
 def get_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
-    return jsonify({
-        'nickname': user.nickname,
-        'lunch_preference': user.lunch_preference,
-        'main_dish_genre': user.main_dish_genre,
-        'food_preferences': user.food_preferences.split(',') if user.food_preferences else [],
-        'allergies': user.allergies.split(',') if user.allergies else [],
-        'preferred_time': user.preferred_time or ''
-    })
+    return jsonify({'nickname': user.nickname, 'lunch_preference': user.lunch_preference, 'gender': user.gender, 'age_group': user.age_group, 'main_dish_genre': user.main_dish_genre})
 
 @app.route('/users/batch', methods=['POST'])
 def get_users_batch():
@@ -1780,10 +1692,14 @@ def get_users_batch():
 def update_user(employee_id):
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user: return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
     data = request.get_json()
     user.nickname = data.get('nickname', user.nickname)
     user.lunch_preference = data.get('lunch_preference', user.lunch_preference)
+    user.gender = data.get('gender', user.gender)
+    user.age_group = data.get('age_group', user.age_group)
     user.main_dish_genre = data.get('main_dish_genre', user.main_dish_genre)
+    
     db.session.commit()
     return jsonify({'message': '프로필이 업데이트되었습니다.'})
 
@@ -1834,167 +1750,47 @@ def get_chat_messages(chat_type, chat_id):
         'sender_employee_id': msg.sender_employee_id,
         'sender_nickname': msg.sender_nickname,
         'message': msg.message,
-        'message_type': msg.message_type,
-        'file_url': msg.file_url,
         'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
     } for msg in messages])
 
-@app.route('/chat/messages/search', methods=['GET'])
-def search_messages():
-    employee_id = request.args.get('employee_id')
-    chat_type = request.args.get('chat_type')
-    chat_id = request.args.get('chat_id')
-    query = request.args.get('query')
-    
-    if not all([employee_id, chat_type, chat_id, query]):
-        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
-    
-    # 사용자가 참여한 채팅방인지 확인
-    if chat_type == 'party':
-        party = Party.query.get(chat_id)
-        if not party or employee_id not in party.members_employee_ids.split(','):
-            return jsonify({'message': '접근 권한이 없습니다.'}), 403
-    elif chat_type == 'dangolpot':
-        pot = DangolPot.query.get(chat_id)
-        if not pot or employee_id not in pot.members.split(','):
-            return jsonify({'message': '접근 권한이 없습니다.'}), 403
-    
-    # 메시지 검색
-    messages = ChatMessage.query.filter(
-        ChatMessage.chat_type == chat_type,
-        ChatMessage.chat_id == chat_id,
-        ChatMessage.message.contains(query)  # type: ignore
-    ).order_by(desc(ChatMessage.created_at)).limit(50).all()
-    
-    return jsonify([{
-        'id': msg.id,
-        'sender_employee_id': msg.sender_employee_id,
-        'sender_nickname': msg.sender_nickname,
-        'message': msg.message,
-        'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
-    } for msg in messages])
-
-@app.route('/chat/leave', methods=['POST'])
-def leave_chat():
+@app.route('/chat/messages', methods=['POST'])
+def send_chat_message():
     data = request.get_json()
-    employee_id = data.get('employee_id')
-    chat_type = data.get('chat_type')
-    chat_id = data.get('chat_id')
-    
-    if not all([employee_id, chat_type, chat_id]):
-        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
-    
-    if chat_type == 'party':
-        party = Party.query.get(chat_id)
-        if not party:
-            return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
-        
-        if party.host_employee_id == employee_id:
-            return jsonify({'message': '호스트는 파티를 나갈 수 없습니다. 먼저 호스트를 양도하거나 파티를 삭제해주세요.'}), 400
-        
-        # 멤버 목록에서 제거
-        members = party.members_employee_ids.split(',') if party.members_employee_ids else []
-        if employee_id in members:
-            members.remove(employee_id)
-            party.members_employee_ids = ','.join(members)
-            db.session.commit()
-            
-            # 알림 생성
-            user = User.query.filter_by(employee_id=employee_id).first()
-            if user:
-                create_notification(
-                    party.host_employee_id,
-                    'party_member_left',
-                    f'{user.nickname}님이 파티를 나갔습니다.',
-                    f'{user.nickname}님이 {party.title} 파티를 나갔습니다.',
-                    party.id
-                )
-            
-            return jsonify({'message': '파티를 나갔습니다.'})
-    
-    elif chat_type == 'dangolpot':
-        pot = DangolPot.query.get(chat_id)
-        if not pot:
-            return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
-        
-        if pot.host_id == employee_id:
-            return jsonify({'message': '호스트는 단골파티를 나갈 수 없습니다. 먼저 호스트를 양도하거나 단골파티를 삭제해주세요.'}), 400
-        
-        # 멤버 목록에서 제거
-        members = pot.members.split(',') if pot.members else []
-        if employee_id in members:
-            members.remove(employee_id)
-            pot.members = ','.join(members)
-            db.session.commit()
-            
-            # 알림 생성
-            user = User.query.filter_by(employee_id=employee_id).first()
-            if user:
-                create_notification(
-                    pot.host_id,
-                    'dangolpot_member_left',
-                    f'{user.nickname}님이 단골파티를 나갔습니다.',
-                    f'{user.nickname}님이 {pot.name} 단골파티를 나갔습니다.',
-                    pot.id
-                )
-            
-            return jsonify({'message': '단골파티를 나갔습니다.'})
-    
-    return jsonify({'message': '채팅방을 나갈 수 없습니다.'}), 400
-
-@app.route('/chat/messages/<int:message_id>/read', methods=['POST'])
-def mark_message_read(message_id):
-    data = request.get_json()
-    employee_id = data.get('employee_id')
-    
-    if not employee_id:
-        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
-    
-    message = ChatMessage.query.get(message_id)
-    if not message:
-        return jsonify({'message': '메시지를 찾을 수 없습니다.'}), 404
-    
-    # 메시지 읽음 표시 (새로운 모델이 필요할 수 있지만, 여기서는 간단히 처리)
-    return jsonify({'message': '메시지가 읽음으로 표시되었습니다.'})
-
-@app.route('/chat/upload-image', methods=['POST'])
-def upload_chat_image():
-    data = request.get_json()
-    image_data = data.get('image_data')  # base64 인코딩된 이미지
     chat_type = data.get('chat_type')
     chat_id = data.get('chat_id')
     sender_employee_id = data.get('sender_employee_id')
+    message = data.get('message')
     
-    if not all([image_data, chat_type, chat_id, sender_employee_id]):
-        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
+    if not all([chat_type, chat_id, sender_employee_id, message]):
+        return jsonify({'message': '모든 필드가 필요합니다.'}), 400
+    
+    # 사용자 정보 조회
+    user = User.query.filter_by(employee_id=sender_employee_id).first()
+    if not user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    # 메시지 저장
+    new_message = ChatMessage()
+    new_message.chat_type = chat_type
+    new_message.chat_id = chat_id
+    new_message.sender_employee_id = sender_employee_id
+    new_message.sender_nickname = user.nickname
+    new_message.message = message
     
     try:
-        # base64 디코딩
-        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
-        
-        # 파일명 생성
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"chat_image_{chat_type}_{chat_id}_{timestamp}.jpg"
-        
-        # 업로드 디렉토리 생성
-        upload_dir = 'uploads/chat_images'
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # 파일 저장
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, 'wb') as f:
-            f.write(image_bytes)
-        
-        # 파일 URL 생성 (실제 환경에서는 CDN URL로 변경)
-        file_url = f"/uploads/chat_images/{filename}"
+        db.session.add(new_message)
+        db.session.commit()
         
         return jsonify({
-            'message': '이미지가 업로드되었습니다.',
-            'file_url': file_url
-        })
-        
+            'id': new_message.id,
+            'sender_employee_id': sender_employee_id,
+            'sender_nickname': user.nickname,
+            'message': message,
+            'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
+        }), 201
     except Exception as e:
-        return jsonify({'message': f'이미지 업로드 실패: {str(e)}'}), 500
+        db.session.rollback()
+        return jsonify({'message': '메시지 저장에 실패했습니다.'}), 500
 
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
@@ -2027,8 +1823,6 @@ def handle_send_message(data):
     chat_id = data['chat_id']
     sender_employee_id = data['sender_employee_id']
     message = data['message']
-    message_type = data.get('message_type', 'text')
-    file_url = data.get('file_url', None)
     
     # 사용자 정보 조회
     user = User.query.filter_by(employee_id=sender_employee_id).first()
@@ -2042,8 +1836,6 @@ def handle_send_message(data):
     new_message.sender_employee_id = sender_employee_id
     new_message.sender_nickname = user.nickname
     new_message.message = message
-    new_message.message_type = message_type
-    new_message.file_url = file_url
     db.session.add(new_message)
     db.session.commit()
     
@@ -2054,38 +1846,8 @@ def handle_send_message(data):
         'sender_employee_id': sender_employee_id,
         'sender_nickname': user.nickname,
         'message': message,
-        'message_type': message_type,
-        'file_url': file_url,
         'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
     }, to=room)
-    
-    # 채팅방 멤버들에게 알림 생성
-    if chat_type == 'party':
-        party = Party.query.get(chat_id)
-        if party:
-            members = party.members_employee_ids.split(',') if party.members_employee_ids else []
-            for member_id in members:
-                if member_id != sender_employee_id:
-                    create_notification(
-                        member_id,
-                        'chat_message',
-                        f'{user.nickname}님이 메시지를 보냈습니다.',
-                        f'{user.nickname}: {message[:50]}{"..." if len(message) > 50 else ""}',
-                        chat_id
-                    )
-    elif chat_type == 'dangolpot':
-        pot = DangolPot.query.get(chat_id)
-        if pot:
-            members = pot.members.split(',') if pot.members else []
-            for member_id in members:
-                if member_id != sender_employee_id:
-                    create_notification(
-                        member_id,
-                        'chat_message',
-                        f'{user.nickname}님이 메시지를 보냈습니다.',
-                        f'{user.nickname}: {message[:50]}{"..." if len(message) > 50 else ""}',
-                        chat_id
-                    )
 
 # --- 친구 API ---
 @app.route('/users/search', methods=['GET'])
@@ -2427,14 +2189,10 @@ def suggest_party_titles():
             suggestions.append(f"👥 {restaurant} 런치타임")
         
         if date:
-            try:
-                date_obj = datetime.strptime(date, '%Y-%m-%d')
-                day_name = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
-                suggestions.append(f"📅 {day_name}요일 점심 모임")
-                suggestions.append(f"🎉 {date} 점심 파티")
-            except Exception:
-                # 날짜 파싱 실패 시 해당 부분만 건너뜀
-                pass
+            date_obj = datetime.strptime(date, '%Y-%m-%d')
+            day_name = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
+            suggestions.append(f"📅 {day_name}요일 점심 모임")
+            suggestions.append(f"🎉 {date} 점심 파티")
         
         if location:
             suggestions.append(f"📍 {location} 점심 모임")
@@ -2915,18 +2673,11 @@ def get_smart_recommendations():
         print(f"Error in smart recommendations: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/users/check-nickname', methods=['GET'])
-def check_nickname():
-    nickname = request.args.get('nickname', '').strip()
-    if not nickname:
-        return jsonify({'error': '닉네임이 필요합니다.'}), 400
-    exists = User.query.filter(func.lower(getattr(User, 'nickname')) == nickname.lower()).first() is not None
-    return jsonify({'exists': exists})
-
 # --- 기존 함수들 ---
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
