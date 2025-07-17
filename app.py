@@ -1863,6 +1863,117 @@ def mark_message_read():
     db.session.commit()
     return jsonify({'message': '읽음 처리 완료.'}), 201
 
+@app.route('/chat/room/title', methods=['PUT'])
+def update_chat_room_title():
+    data = request.get_json()
+    chat_type = data.get('chat_type')
+    chat_id = data.get('chat_id')
+    new_title = data.get('title')
+    user_id = data.get('user_id')
+    
+    if not all([chat_type, chat_id, new_title, user_id]):
+        return jsonify({'message': '모든 필드가 필요합니다.'}), 400
+    
+    try:
+        if chat_type == 'party':
+            party = Party.query.get(chat_id)
+            if not party:
+                return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+            if party.host_employee_id != user_id:
+                return jsonify({'message': '파티 호스트만 제목을 변경할 수 있습니다.'}), 403
+            party.title = new_title
+        elif chat_type == 'dangolpot':
+            pot = DangolPot.query.get(chat_id)
+            if not pot:
+                return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
+            if pot.host_id != user_id:
+                return jsonify({'message': '단골파티 호스트만 제목을 변경할 수 있습니다.'}), 403
+            pot.name = new_title
+        else:
+            return jsonify({'message': '지원하지 않는 채팅 타입입니다.'}), 400
+        
+        db.session.commit()
+        return jsonify({'message': '채팅방 제목이 변경되었습니다.', 'title': new_title}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': '제목 변경에 실패했습니다.'}), 500
+
+@app.route('/chat/room/members/<chat_type>/<int:chat_id>', methods=['GET'])
+def get_chat_room_members(chat_type, chat_id):
+    try:
+        if chat_type == 'party':
+            party = Party.query.get(chat_id)
+            if not party:
+                return jsonify({'message': '파티를 찾을 수 없습니다.'}), 404
+            
+            # 호스트 정보
+            host = User.query.filter_by(employee_id=party.host_employee_id).first()
+            members = [{
+                'employee_id': party.host_employee_id,
+                'nickname': host.nickname if host else '알 수 없음',
+                'is_host': True
+            }]
+            
+            # 멤버 정보
+            if party.members_employee_ids:
+                member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()]
+                for member_id in member_ids:
+                    user = User.query.filter_by(employee_id=member_id).first()
+                    if user:
+                        members.append({
+                            'employee_id': member_id,
+                            'nickname': user.nickname,
+                            'is_host': False
+                        })
+            
+        elif chat_type == 'dangolpot':
+            pot = DangolPot.query.get(chat_id)
+            if not pot:
+                return jsonify({'message': '단골파티를 찾을 수 없습니다.'}), 404
+            
+            # 호스트 정보
+            host = User.query.filter_by(employee_id=pot.host_id).first()
+            members = [{
+                'employee_id': pot.host_id,
+                'nickname': host.nickname if host else '알 수 없음',
+                'is_host': True
+            }]
+            
+            # 멤버 정보
+            if pot.members:
+                member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()]
+                for member_id in member_ids:
+                    user = User.query.filter_by(employee_id=member_id).first()
+                    if user:
+                        members.append({
+                            'employee_id': member_id,
+                            'nickname': user.nickname,
+                            'is_host': False
+                        })
+            
+        elif chat_type == 'custom':
+            # 1:1 채팅의 경우
+            room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
+            if not room:
+                return jsonify({'message': '채팅방을 찾을 수 없습니다.'}), 404
+            
+            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+            members = []
+            for participant in participants:
+                user = User.query.filter_by(employee_id=participant.user_id).first()
+                if user:
+                    members.append({
+                        'employee_id': participant.user_id,
+                        'nickname': user.nickname,
+                        'is_host': False
+                    })
+        else:
+            return jsonify({'message': '지원하지 않는 채팅 타입입니다.'}), 400
+        
+        return jsonify(members)
+    except Exception as e:
+        return jsonify({'message': '멤버 목록 조회에 실패했습니다.'}), 500
+
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
 def handle_connect():
@@ -2823,6 +2934,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
