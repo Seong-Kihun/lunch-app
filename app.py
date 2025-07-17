@@ -1878,35 +1878,54 @@ def handle_leave_chat(data):
 
 @socketio.on('send_message')
 def handle_send_message(data):
-    chat_type = data['chat_type']
-    chat_id = data['chat_id']
-    sender_employee_id = data['sender_employee_id']
-    message = data['message']
+    chat_type = data.get('chat_type')
+    chat_id = data.get('chat_id')
+    sender_employee_id = data.get('sender_employee_id')
+    message = data.get('message')
     
-    # 사용자 정보 조회
-    user = User.query.filter_by(employee_id=sender_employee_id).first()
-    if not user:
+    print(f'Send message event received: {data}')
+    
+    if not all([chat_type, chat_id, sender_employee_id, message]):
+        print('Missing required fields in send_message event')
         return
     
-    # 메시지 저장
-    new_message = ChatMessage()
-    new_message.chat_type = chat_type
-    new_message.chat_id = chat_id
-    new_message.sender_employee_id = sender_employee_id
-    new_message.sender_nickname = user.nickname
-    new_message.message = message
-    db.session.add(new_message)
-    db.session.commit()
-    
-    # 채팅방의 모든 사용자에게 메시지 전송
-    room = f"{chat_type}_{chat_id}"
-    emit('new_message', {
-        'id': new_message.id,
-        'sender_employee_id': sender_employee_id,
-        'sender_nickname': user.nickname,
-        'message': message,
-        'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
-    }, to=room)
+    try:
+        # 사용자 정보 조회
+        user = User.query.filter_by(employee_id=sender_employee_id).first()
+        if not user:
+            print(f'User not found: {sender_employee_id}')
+            return
+        
+        # 메시지 저장
+        new_message = ChatMessage()
+        new_message.chat_type = chat_type
+        new_message.chat_id = chat_id
+        new_message.sender_employee_id = sender_employee_id
+        new_message.sender_nickname = user.nickname
+        new_message.message = message
+        db.session.add(new_message)
+        db.session.commit()
+        
+        print(f'Message saved with ID: {new_message.id}')
+        
+        # 채팅방의 모든 사용자에게 메시지 전송
+        room = f"{chat_type}_{chat_id}"
+        message_data = {
+            'id': new_message.id,
+            'sender_employee_id': sender_employee_id,
+            'sender_nickname': user.nickname,
+            'message': message,
+            'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M'),
+            'unread_count': 0
+        }
+        
+        print(f'Emitting new_message to room {room}: {message_data}')
+        emit('new_message', message_data, to=room)
+        
+    except Exception as e:
+        print(f'Error in handle_send_message: {e}')
+        import traceback
+        traceback.print_exc()
 
 @socketio.on('read_message')
 def handle_read_message(data):
@@ -2792,6 +2811,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
