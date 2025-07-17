@@ -1797,10 +1797,10 @@ def get_chat_messages(chat_type, chat_id):
         read_count = ChatMessageRead.query.filter_by(message_id=msg.id).count()
         unread_count = max(0, len(member_ids) - read_count)
         result.append({
-            'id': msg.id,
-            'sender_employee_id': msg.sender_employee_id,
-            'sender_nickname': msg.sender_nickname,
-            'message': msg.message,
+        'id': msg.id,
+        'sender_employee_id': msg.sender_employee_id,
+        'sender_nickname': msg.sender_nickname,
+        'message': msg.message,
             'created_at': format_korean_time(msg.created_at),
             'unread_count': unread_count
         })
@@ -2934,6 +2934,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
