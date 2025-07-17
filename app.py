@@ -2384,6 +2384,86 @@ def get_filtered_chats():
     return jsonify(chats_data)
 
 # --- 지능형 약속 잡기 API ---
+@app.route('/intelligent/suggest-dates', methods=['POST'])
+def intelligent_suggest_dates():
+    """선택된 참가자들로 공통 가능 날짜 찾기"""
+    try:
+        data = request.get_json()
+        participant_ids = data.get('participant_ids', [])
+        
+        if len(participant_ids) < 2:
+            return jsonify({'message': '최소 2명의 참여자가 필요합니다.'}), 400
+        
+        today = get_seoul_today()
+        available_dates = []
+        best_alternative = {'date': None, 'available_count': 0, 'total_count': len(participant_ids)}
+        
+        # 오늘부터 14일 후까지 검사
+        for i in range(14):
+            check_date = today + timedelta(days=i)
+            date_str = check_date.strftime('%Y-%m-%d')
+            
+            # 각 참여자의 해당 날짜 약속 확인
+            available_participants = []
+            unavailable_participants = []
+            
+            for participant_id in participant_ids:
+                # 파티 약속 확인
+                has_party = Party.query.filter(
+                    Party.members_employee_ids.contains(participant_id),  # type: ignore
+                    Party.party_date == date_str  # type: ignore
+                ).first() is not None
+                
+                # 개인 일정 확인
+                has_schedule = PersonalSchedule.query.filter_by(
+                    employee_id=participant_id,
+                    schedule_date=date_str
+                ).first() is not None
+                
+                if not has_party and not has_schedule:
+                    available_participants.append(participant_id)
+                else:
+                    unavailable_participants.append(participant_id)
+            
+            # 모든 참여자가 가능한 경우
+            if len(available_participants) == len(participant_ids):
+                available_dates.append({
+                    'date': date_str,
+                    'available_participants': available_participants,
+                    'unavailable_participants': unavailable_participants
+                })
+                
+                # 최대 3개까지만 반환
+                if len(available_dates) >= 3:
+                    break
+            else:
+                # 대안으로 가장 많은 인원이 가능한 날짜 기록
+                if len(available_participants) > best_alternative['available_count']:
+                    best_alternative = {
+                        'date': date_str,
+                        'available_count': len(available_participants),
+                        'available_participants': available_participants,
+                        'unavailable_participants': unavailable_participants,
+                        'total_count': len(participant_ids)
+                    }
+        
+        # 결과 반환
+        if available_dates:
+            return jsonify({
+                'message': '공통 가능 날짜를 찾았습니다.',
+                'type': 'common',
+                'dates': available_dates
+            })
+        else:
+            return jsonify({
+                'message': '공통 가능 날짜가 없습니다. 대안을 제시합니다.',
+                'type': 'alternative',
+                'best_alternative': best_alternative
+            })
+            
+    except Exception as e:
+        return jsonify({'message': f'날짜 제안 중 오류가 발생했습니다: {str(e)}'}), 500
+
 @app.route('/chats/<int:room_id>/suggest-dates', methods=['POST'])
 def suggest_dates(room_id):
     # 채팅방 정보 조회
@@ -2972,6 +3052,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
