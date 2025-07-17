@@ -1908,6 +1908,45 @@ def handle_send_message(data):
         'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
     }, to=room)
 
+@socketio.on('read_message')
+def handle_read_message(data):
+    message_id = data.get('message_id')
+    user_id = data.get('user_id')
+    chat_type = data.get('chat_type')
+    chat_id = data.get('chat_id')
+    if not message_id or not user_id or not chat_type or not chat_id:
+        return
+    # 이미 읽음 처리된 경우 중복 저장 방지
+    existing = ChatMessageRead.query.filter_by(message_id=message_id, user_id=user_id).first()
+    if not existing:
+        read = ChatMessageRead(message_id=message_id, user_id=user_id)
+        db.session.add(read)
+        db.session.commit()
+    # 채팅방 참여자 목록 구하기
+    if chat_type == 'party':
+        party = Party.query.get(chat_id)
+        member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()] if party and party.members_employee_ids else []
+    elif chat_type == 'dangolpot':
+        pot = DangolPot.query.get(chat_id)
+        member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()] if pot and pot.members else []
+    elif chat_type == 'custom':
+        room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
+        if room:
+            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+            member_ids = [p.user_id for p in participants]
+        else:
+            member_ids = []
+    else:
+        member_ids = []
+    read_count = ChatMessageRead.query.filter_by(message_id=message_id).count()
+    unread_count = max(0, len(member_ids) - read_count)
+    room_name = f"{chat_type}_{chat_id}"
+    socketio.emit('message_read', {
+        'message_id': message_id,
+        'user_id': user_id,
+        'unread_count': unread_count
+    }, to=room_name)
+
 # --- 친구 API ---
 @app.route('/users/search', methods=['GET'])
 def search_users():
@@ -2736,6 +2775,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
