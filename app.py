@@ -341,6 +341,16 @@ class ChatParticipant(db.Model):
         self.room_id = room_id
         self.user_id = user_id
 
+class ChatMessageRead(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    read_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(self, message_id, user_id):
+        self.message_id = message_id
+        self.user_id = user_id
+
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
@@ -1745,13 +1755,44 @@ def get_user_preferences(employee_id):
 @app.route('/chat/messages/<chat_type>/<int:chat_id>', methods=['GET'])
 def get_chat_messages(chat_type, chat_id):
     messages = ChatMessage.query.filter_by(chat_type=chat_type, chat_id=chat_id).order_by(ChatMessage.created_at).all()
-    return jsonify([{
-        'id': msg.id,
-        'sender_employee_id': msg.sender_employee_id,
-        'sender_nickname': msg.sender_nickname,
-        'message': msg.message,
-        'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M')
-    } for msg in messages])
+
+    # 채팅방 참여자 목록 구하기
+    if chat_type == 'party':
+        party = Party.query.get(chat_id)
+        if party and party.members_employee_ids:
+            member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()]
+        else:
+            member_ids = []
+    elif chat_type == 'dangolpot':
+        pot = DangolPot.query.get(chat_id)
+        if pot and pot.members:
+            member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()]
+        else:
+            member_ids = []
+    elif chat_type == 'custom':
+        # custom(1:1) 채팅은 ChatRoom/ChatParticipant에서 조회
+        room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
+        if room:
+            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
+            member_ids = [p.user_id for p in participants]
+        else:
+            member_ids = []
+    else:
+        member_ids = []
+
+    result = []
+    for msg in messages:
+        read_count = ChatMessageRead.query.filter_by(message_id=msg.id).count()
+        unread_count = max(0, len(member_ids) - read_count)
+        result.append({
+            'id': msg.id,
+            'sender_employee_id': msg.sender_employee_id,
+            'sender_nickname': msg.sender_nickname,
+            'message': msg.message,
+            'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M'),
+            'unread_count': unread_count
+        })
+    return jsonify(result)
 
 @app.route('/chat/messages', methods=['POST'])
 def send_chat_message():
@@ -1791,6 +1832,24 @@ def send_chat_message():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': '메시지 저장에 실패했습니다.'}), 500
+
+@app.route('/chat/messages/read', methods=['POST'])
+def mark_message_read():
+    data = request.get_json()
+    message_id = data.get('message_id')
+    user_id = data.get('user_id')
+    if not message_id or not user_id:
+        return jsonify({'message': 'message_id와 user_id가 필요합니다.'}), 400
+
+    # 이미 읽음 처리된 경우 중복 저장 방지
+    existing = ChatMessageRead.query.filter_by(message_id=message_id, user_id=user_id).first()
+    if existing:
+        return jsonify({'message': '이미 읽음 처리됨.'}), 200
+
+    read = ChatMessageRead(message_id=message_id, user_id=user_id)
+    db.session.add(read)
+    db.session.commit()
+    return jsonify({'message': '읽음 처리 완료.'}), 201
 
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
@@ -2677,6 +2736,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
