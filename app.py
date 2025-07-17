@@ -20,6 +20,18 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 def get_seoul_today():
     return datetime.now().date()
 
+def get_korean_time():
+    """한국 시간을 반환하는 함수"""
+    korean_tz = datetime.now().replace(tzinfo=None) + timedelta(hours=9)
+    return korean_tz
+
+def format_korean_time(dt):
+    """한국 시간으로 포맷팅하는 함수"""
+    if dt:
+        korean_time = dt + timedelta(hours=9)
+        return korean_time.strftime('%Y-%m-%d %H:%M')
+    return None
+
 # --- AI/외부 API 연동 (가상 함수) ---
 def geocode_address(address):
     lat = 37.4452 + (random.random() - 0.5) * 0.01
@@ -1789,7 +1801,7 @@ def get_chat_messages(chat_type, chat_id):
             'sender_employee_id': msg.sender_employee_id,
             'sender_nickname': msg.sender_nickname,
             'message': msg.message,
-            'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M'),
+            'created_at': format_korean_time(msg.created_at),
             'unread_count': unread_count
         })
     return jsonify(result)
@@ -1827,7 +1839,7 @@ def send_chat_message():
             'sender_employee_id': sender_employee_id,
             'sender_nickname': user.nickname,
             'message': message,
-            'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M')
+            'created_at': format_korean_time(new_message.created_at)
         }), 201
     except Exception as e:
         db.session.rollback()
@@ -1915,7 +1927,7 @@ def handle_send_message(data):
             'sender_employee_id': sender_employee_id,
             'sender_nickname': user.nickname,
             'message': message,
-            'created_at': new_message.created_at.strftime('%Y-%m-%d %H:%M'),
+            'created_at': format_korean_time(new_message.created_at),
             'unread_count': 0
         }
         
@@ -2811,6 +2823,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
