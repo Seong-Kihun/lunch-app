@@ -2028,7 +2028,6 @@ def handle_send_message(data):
         new_message.message = message
         db.session.add(new_message)
         db.session.commit()
-        
         print(f'Message saved with ID: {new_message.id}')
         
         # 채팅방의 모든 사용자에게 메시지 전송
@@ -2041,10 +2040,9 @@ def handle_send_message(data):
             'created_at': format_korean_time(new_message.created_at),
             'unread_count': 0
         }
-        
         print(f'Emitting new_message to room {room}: {message_data}')
         emit('new_message', message_data, to=room)
-        
+    
     except Exception as e:
         print(f'Error in handle_send_message: {e}')
         import traceback
@@ -2934,6 +2932,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
