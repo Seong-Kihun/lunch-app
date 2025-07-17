@@ -1863,6 +1863,42 @@ def mark_message_read():
     db.session.commit()
     return jsonify({'message': '읽음 처리 완료.'}), 201
 
+@app.route('/chat/messages/search', methods=['GET'])
+def search_messages():
+    employee_id = request.args.get('employee_id')
+    chat_type = request.args.get('chat_type')
+    chat_id = request.args.get('chat_id')
+    query = request.args.get('query')
+    
+    if not all([employee_id, chat_type, chat_id, query]):
+        return jsonify({'message': '모든 파라미터가 필요합니다.'}), 400
+    
+    try:
+        if chat_id is None:
+            return jsonify({'message': 'chat_id가 필요합니다.'}), 400
+        chat_id = int(chat_id)
+    except ValueError:
+        return jsonify({'message': 'chat_id는 숫자여야 합니다.'}), 400
+    
+    # 해당 채팅방의 메시지들 중에서 검색어가 포함된 메시지 찾기
+    messages = ChatMessage.query.filter(
+        ChatMessage.chat_type == chat_type,
+        ChatMessage.chat_id == chat_id,
+        ChatMessage.message.contains(query)
+    ).order_by(ChatMessage.created_at.desc()).all()
+    
+    result = []
+    for msg in messages:
+        result.append({
+            'id': msg.id,
+            'sender_employee_id': msg.sender_employee_id,
+            'sender_nickname': msg.sender_nickname,
+            'message': msg.message,
+            'created_at': format_korean_time(msg.created_at)
+        })
+    
+    return jsonify(result)
+
 @app.route('/chat/room/title', methods=['PUT'])
 def update_chat_room_title():
     data = request.get_json()
@@ -1914,17 +1950,19 @@ def get_chat_room_members(chat_type, chat_id):
                 'is_host': True
             }]
             
-            # 멤버 정보
+            # 멤버 정보 (호스트 제외)
             if party.members_employee_ids:
                 member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()]
                 for member_id in member_ids:
-                    user = User.query.filter_by(employee_id=member_id).first()
-                    if user:
-                        members.append({
-                            'employee_id': member_id,
-                            'nickname': user.nickname,
-                            'is_host': False
-                        })
+                    # 호스트는 이미 위에서 추가했으므로 중복 제외
+                    if member_id != party.host_employee_id:
+                        user = User.query.filter_by(employee_id=member_id).first()
+                        if user:
+                            members.append({
+                                'employee_id': member_id,
+                                'nickname': user.nickname,
+                                'is_host': False
+                            })
             
         elif chat_type == 'dangolpot':
             pot = DangolPot.query.get(chat_id)
@@ -1939,17 +1977,19 @@ def get_chat_room_members(chat_type, chat_id):
                 'is_host': True
             }]
             
-            # 멤버 정보
+            # 멤버 정보 (호스트 제외)
             if pot.members:
                 member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()]
                 for member_id in member_ids:
-                    user = User.query.filter_by(employee_id=member_id).first()
-                    if user:
-                        members.append({
-                            'employee_id': member_id,
-                            'nickname': user.nickname,
-                            'is_host': False
-                        })
+                    # 호스트는 이미 위에서 추가했으므로 중복 제외
+                    if member_id != pot.host_id:
+                        user = User.query.filter_by(employee_id=member_id).first()
+                        if user:
+                            members.append({
+                                'employee_id': member_id,
+                                'nickname': user.nickname,
+                                'is_host': False
+                            })
             
         elif chat_type == 'custom':
             # 1:1 채팅의 경우
@@ -2932,6 +2972,7 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
