@@ -3110,11 +3110,13 @@ def create_intelligent_schedule():
         participants = json.loads(selected_participants)
         for participant_id in participants:
             if participant_id != host_id:
+                user = User.query.filter_by(employee_id=host_id).first()
+                host_nickname = user.nickname if user is not None else ""
                 create_notification(
                     participant_id,
                     'intelligent_schedule',
                     f'새로운 점심 약속 제안: {title}',
-                    f'{User.query.filter_by(employee_id=host_id).first().nickname}님이 점심 약속을 제안했습니다.',
+                    f'{host_nickname}님이 점심 약속을 제안했습니다.',
                     schedule.id
                 )
         
@@ -3204,11 +3206,13 @@ def confirm_schedule(schedule_id):
         participants = json.loads(schedule.selected_participants)
         for participant_id in participants:
             if participant_id != host_id:
+                user = User.query.filter_by(employee_id=host_id).first()
+                host_nickname = user.nickname if user is not None else ""
                 create_notification(
                     participant_id,
                     'schedule_confirmed',
                     f'점심 약속 확정: {schedule.title}',
-                    f'{confirmed_date}에 점심 약속이 확정되었습니다.',
+                    f'{host_nickname}님이 {confirmed_date}에 점심 약속이 확정되었습니다.',
                     schedule.id
                 )
         
@@ -3363,6 +3367,7 @@ def get_common_available_dates():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
