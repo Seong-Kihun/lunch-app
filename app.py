@@ -3343,9 +3343,11 @@ def get_common_available_dates():
                 ).first()
                 
                 # 파티 일정 확인
-                party_schedule = Party.query.filter(
-                    Party.party_date == date_str,
-                    Party.members_employee_ids.contains(participant_id)
+                party_schedule = db.session.query(Party).filter(
+                    db.text("party_date = :date_str AND members_employee_ids LIKE :participant_pattern")
+                ).params(
+                    date_str=date_str,
+                    participant_pattern=f'%{participant_id}%'
                 ).first()
                 
                 if personal_schedule or party_schedule:
@@ -3367,6 +3369,7 @@ def get_common_available_dates():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
