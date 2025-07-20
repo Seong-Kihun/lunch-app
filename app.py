@@ -882,6 +882,27 @@ def create_notification(user_id, type, title, message, related_id=None):
         'related_id': related_id
     }, room=user_id)  # type: ignore
 
+@app.route('/notifications', methods=['POST'])
+def create_notification_api():
+    """알림 생성 API"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        type = data.get('type')
+        title = data.get('title')
+        message = data.get('message')
+        related_id = data.get('related_id')
+        
+        if not all([user_id, type, title, message]):
+            return jsonify({'message': '필수 필드가 누락되었습니다.'}), 400
+        
+        create_notification(user_id, type, title, message, related_id)
+        
+        return jsonify({'message': '알림이 생성되었습니다.'}), 201
+            
+    except Exception as e:
+        return jsonify({'message': f'알림 생성 중 오류가 발생했습니다: {str(e)}'}), 500
+
 # --- 단골파티 API ---
 @app.route('/dangolpots', methods=['POST'])
 def create_dangolpot():
@@ -1042,6 +1063,12 @@ def create_party():
     restaurant = Restaurant.query.filter_by(name=data.get('restaurant_name')).first()  # type: ignore
     restaurant_address = restaurant.address if restaurant else None
 
+    # 멤버 ID 처리 - 프론트엔드에서 전달된 값이 있으면 사용, 없으면 호스트만
+    members_employee_ids = data.get('members_employee_ids', str(data['host_employee_id']))
+    if isinstance(members_employee_ids, list):
+        # 리스트인 경우 문자열로 변환
+        members_employee_ids = ','.join(members_employee_ids)
+
     # Party 생성
     new_party = Party(
         host_employee_id=data['host_employee_id'],
@@ -1052,8 +1079,8 @@ def create_party():
         party_time=data['party_time'],
         meeting_location=data['meeting_location'],
         max_members=max_members,
-        members_employee_ids=str(data['host_employee_id']),
-        is_from_match=False
+        members_employee_ids=members_employee_ids,
+        is_from_match=data.get('is_from_match', False)
     )
     db.session.add(new_party)
     db.session.flush()  # ID를 얻기 위해 flush
@@ -3072,4 +3099,5 @@ def get_smart_recommendations():
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
