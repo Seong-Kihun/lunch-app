@@ -363,6 +363,47 @@ class ChatMessageRead(db.Model):
         self.message_id = message_id
         self.user_id = user_id
 
+class VotingSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chat_room_id = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    restaurant_name = db.Column(db.String(100), nullable=True)
+    restaurant_address = db.Column(db.String(200), nullable=True)
+    meeting_location = db.Column(db.String(200), nullable=True)
+    meeting_time = db.Column(db.String(10), nullable=True)
+    participants = db.Column(db.Text, nullable=False)  # JSON 형태로 참가자 목록
+    available_dates = db.Column(db.Text, nullable=True)  # JSON 형태로 가능한 날짜 목록
+    expires_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default='active')  # active, completed, cancelled
+    created_by = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    confirmed_date = db.Column(db.String(20), nullable=True)  # 확정된 날짜
+    confirmed_at = db.Column(db.DateTime, nullable=True)
+
+    def __init__(self, chat_room_id, title, participants, created_by, expires_at, restaurant_name=None, 
+                 restaurant_address=None, meeting_location=None, meeting_time=None):
+        self.chat_room_id = chat_room_id
+        self.title = title
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.meeting_location = meeting_location
+        self.meeting_time = meeting_time
+        self.participants = participants
+        self.created_by = created_by
+        self.expires_at = expires_at
+
+class DateVote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    voting_session_id = db.Column(db.Integer, db.ForeignKey('voting_session.id'), nullable=False)
+    voter_id = db.Column(db.String(50), nullable=False)
+    voted_date = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(self, voting_session_id, voter_id, voted_date):
+        self.voting_session_id = voting_session_id
+        self.voter_id = voter_id
+        self.voted_date = voted_date
+
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
@@ -3095,9 +3136,302 @@ def get_smart_recommendations():
         print(f"Error in smart recommendations: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+# --- 새로운 투표 시스템 API ---
+
+@app.route('/voting-sessions', methods=['POST'])
+def create_voting_session():
+    """새로운 투표 세션 생성"""
+    try:
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        required_fields = ['chat_room_id', 'title', 'participants', 'created_by', 'expires_hours']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field}가 필요합니다.'}), 400
+        
+        # 만료 시간 계산
+        expires_at = datetime.utcnow() + timedelta(hours=data['expires_hours'])
+        
+        # 참가자들의 가능한 날짜 계산
+        participant_ids = data['participants']
+        available_dates, alternative_dates = find_available_dates_for_participants(participant_ids, max_days=30)
+        
+        # 새로운 투표 세션 생성
+        voting_session = VotingSession(
+            chat_room_id=data['chat_room_id'],
+            title=data['title'],
+            participants=json.dumps(participant_ids),
+            created_by=data['created_by'],
+            expires_at=expires_at,
+            restaurant_name=data.get('restaurant_name'),
+            restaurant_address=data.get('restaurant_address'),
+            meeting_location=data.get('meeting_location'),
+            meeting_time=data.get('meeting_time')
+        )
+        
+        # 가능한 날짜 저장
+        voting_session.available_dates = json.dumps([date_info['date'] for date_info in available_dates])
+        
+        db.session.add(voting_session)
+        db.session.commit()
+        
+        # WebSocket으로 참가자들에게 알림
+        room = f"party_{data['chat_room_id']}"
+        socketio.emit('new_voting_session', {
+            'session_id': voting_session.id,
+            'title': voting_session.title,
+            'expires_at': voting_session.expires_at.strftime('%Y-%m-%d %H:%M'),
+            'available_dates': available_dates
+        }, room=room)
+        
+        return jsonify({
+            'id': voting_session.id,
+            'title': voting_session.title,
+            'available_dates': available_dates,
+            'expires_at': voting_session.expires_at.strftime('%Y-%m-%d %H:%M'),
+            'status': voting_session.status
+        }), 201
+        
+    except Exception as e:
+        print(f"Error creating voting session: {e}")
+        return jsonify({'error': '투표 세션 생성에 실패했습니다.'}), 500
+
+@app.route('/voting-sessions/<int:session_id>', methods=['GET'])
+def get_voting_session(session_id):
+    """투표 세션 정보 조회"""
+    try:
+        session = VotingSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
+        
+        # 투표 현황 조회
+        votes = DateVote.query.filter_by(voting_session_id=session_id).all()
+        vote_counts = {}
+        voter_info = {}
+        
+        for vote in votes:
+            date = vote.voted_date
+            if date not in vote_counts:
+                vote_counts[date] = 0
+                voter_info[date] = []
+            vote_counts[date] += 1
+            
+            # 투표자 정보
+            voter = User.query.filter_by(employee_id=vote.voter_id).first()
+            if voter:
+                voter_info[date].append({
+                    'employee_id': vote.voter_id,
+                    'nickname': voter.nickname
+                })
+        
+        # 참가자 목록
+        participant_ids = json.loads(session.participants)
+        participants = User.query.filter(User.employee_id.in_(participant_ids)).all()
+        participant_list = [{
+            'employee_id': p.employee_id,
+            'nickname': p.nickname
+        } for p in participants]
+        
+        # 투표율 계산
+        voted_users = set(vote.voter_id for vote in votes)
+        vote_rate = len(voted_users) / len(participant_ids) if participant_ids else 0
+        
+        return jsonify({
+            'id': session.id,
+            'title': session.title,
+            'restaurant_name': session.restaurant_name,
+            'meeting_location': session.meeting_location,
+            'meeting_time': session.meeting_time,
+            'participants': participant_list,
+            'available_dates': json.loads(session.available_dates) if session.available_dates else [],
+            'vote_counts': vote_counts,
+            'voter_info': voter_info,
+            'vote_rate': vote_rate,
+            'voted_count': len(voted_users),
+            'total_participants': len(participant_ids),
+            'expires_at': session.expires_at.strftime('%Y-%m-%d %H:%M'),
+            'status': session.status,
+            'confirmed_date': session.confirmed_date
+        })
+        
+    except Exception as e:
+        print(f"Error getting voting session: {e}")
+        return jsonify({'error': '투표 세션 조회에 실패했습니다.'}), 500
+
+@app.route('/voting-sessions/<int:session_id>/vote', methods=['POST'])
+def vote_for_date(session_id):
+    """날짜에 투표하기"""
+    try:
+        data = request.get_json()
+        voter_id = data.get('voter_id')
+        voted_date = data.get('voted_date')
+        
+        if not voter_id or not voted_date:
+            return jsonify({'error': 'voter_id와 voted_date가 필요합니다.'}), 400
+        
+        # 투표 세션 확인
+        session = VotingSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
+        
+        if session.status != 'active':
+            return jsonify({'error': '종료된 투표입니다.'}), 400
+        
+        if datetime.utcnow() > session.expires_at:
+            return jsonify({'error': '투표 기간이 만료되었습니다.'}), 400
+        
+        # 참가자 확인
+        participant_ids = json.loads(session.participants)
+        if voter_id not in participant_ids:
+            return jsonify({'error': '투표 권한이 없습니다.'}), 403
+        
+        # 기존 투표 확인 및 삭제 (재투표 허용)
+        existing_vote = DateVote.query.filter_by(
+            voting_session_id=session_id,
+            voter_id=voter_id
+        ).first()
+        
+        if existing_vote:
+            db.session.delete(existing_vote)
+        
+        # 새로운 투표 생성
+        new_vote = DateVote(
+            voting_session_id=session_id,
+            voter_id=voter_id,
+            voted_date=voted_date
+        )
+        
+        db.session.add(new_vote)
+        db.session.commit()
+        
+        # 투표 결과 확인 (모든 참가자가 투표했는지)
+        total_votes = DateVote.query.filter_by(voting_session_id=session_id).count()
+        
+        # WebSocket으로 실시간 업데이트
+        room = f"party_{session.chat_room_id}"
+        socketio.emit('vote_updated', {
+            'session_id': session_id,
+            'voter_id': voter_id,
+            'voted_date': voted_date,
+            'total_votes': total_votes,
+            'total_participants': len(participant_ids)
+        }, room=room)
+        
+        # 모든 참가자가 투표했으면 자동 확정 (선택사항)
+        if total_votes >= len(participant_ids):
+            # 가장 많은 표를 받은 날짜 찾기
+            vote_counts = {}
+            votes = DateVote.query.filter_by(voting_session_id=session_id).all()
+            for vote in votes:
+                vote_counts[vote.voted_date] = vote_counts.get(vote.voted_date, 0) + 1
+            
+            if vote_counts:
+                winning_date = max(vote_counts.keys(), key=lambda x: vote_counts[x])
+                winning_count = vote_counts[winning_date]
+                
+                # 동점 처리: 가장 가까운 날짜 선택
+                max_votes = max(vote_counts.values())
+                winning_dates = [date for date, count in vote_counts.items() if count == max_votes]
+                winning_date = min(winning_dates)  # 가장 가까운 날짜
+                
+                # 투표 세션 완료
+                session.status = 'completed'
+                session.confirmed_date = winning_date
+                session.confirmed_at = datetime.utcnow()
+                db.session.commit()
+                
+                # 파티 자동 생성
+                auto_create_party_from_voting(session)
+        
+        return jsonify({
+            'message': '투표가 완료되었습니다.',
+            'voted_date': voted_date,
+            'total_votes': total_votes,
+            'total_participants': len(participant_ids)
+        })
+        
+    except Exception as e:
+        print(f"Error voting for date: {e}")
+        return jsonify({'error': '투표에 실패했습니다.'}), 500
+
+@app.route('/voting-sessions/<int:session_id>/cancel', methods=['POST'])
+def cancel_voting_session(session_id):
+    """투표 세션 취소"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        session = VotingSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
+        
+        if session.created_by != user_id:
+            return jsonify({'error': '투표를 생성한 사용자만 취소할 수 있습니다.'}), 403
+        
+        if session.status != 'active':
+            return jsonify({'error': '이미 완료되거나 취소된 투표입니다.'}), 400
+        
+        session.status = 'cancelled'
+        db.session.commit()
+        
+        # WebSocket으로 알림
+        room = f"party_{session.chat_room_id}"
+        socketio.emit('voting_cancelled', {
+            'session_id': session_id,
+            'message': '투표가 취소되었습니다.'
+        }, room=room)
+        
+        return jsonify({'message': '투표가 취소되었습니다.'})
+        
+    except Exception as e:
+        print(f"Error cancelling voting session: {e}")
+        return jsonify({'error': '투표 취소에 실패했습니다.'}), 500
+
+def auto_create_party_from_voting(session):
+    """투표 결과로 자동 파티 생성"""
+    try:
+        if not session.confirmed_date:
+            return
+        
+        # 파티 생성
+        new_party = Party(
+            host_employee_id=session.created_by,
+            title=session.title,
+            restaurant_name=session.restaurant_name or '미정',
+            restaurant_address=session.restaurant_address,
+            party_date=session.confirmed_date,
+            party_time=session.meeting_time or '12:00',
+            meeting_location=session.meeting_location or '미정',
+            max_members=len(json.loads(session.participants)),
+            members_employee_ids=','.join(json.loads(session.participants)),
+            is_from_match=False
+        )
+        
+        db.session.add(new_party)
+        db.session.flush()
+        
+        # 채팅방 생성
+        new_party.create_chat_room()
+        db.session.commit()
+        
+        # WebSocket으로 파티 생성 알림
+        room = f"party_{session.chat_room_id}"
+        socketio.emit('party_created_from_voting', {
+            'party_id': new_party.id,
+            'title': new_party.title,
+            'date': new_party.party_date,
+            'time': new_party.party_time,
+            'restaurant': new_party.restaurant_name
+        }, room=room)
+        
+    except Exception as e:
+        print(f"Error auto creating party: {e}")
+
 # --- 기존 함수들 ---
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
