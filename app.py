@@ -1900,6 +1900,13 @@ def get_chat_messages(chat_type, chat_id):
               ('⏰' in msg.message and '투표가 마감되었습니다' in msg.message) or
               ('🎉' in msg.message and '투표가 완료되었습니다' in msg.message)):
             message_data['message_type'] = 'voting_completed'
+            # 투표 완료 메시지에서 투표 세션 ID 찾기
+            completed_voting = VotingSession.query.filter_by(
+                chat_room_id=chat_id,
+                status='completed'
+            ).order_by(desc(VotingSession.confirmed_at)).first()
+            if completed_voting:
+                message_data['voting_session_id'] = completed_voting.id
         
         result.append(message_data)
     return jsonify(result)
@@ -3703,6 +3710,7 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
