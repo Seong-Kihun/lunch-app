@@ -1895,6 +1895,12 @@ def get_chat_messages(chat_type, chat_id):
               '투표가 삭제되었습니다' in msg.message):
             message_data['message_type'] = 'voting_cancelled'
         
+        # 투표 완료 메시지인지 확인
+        elif (msg.sender_employee_id == 'SYSTEM' and 
+              ('⏰' in msg.message and '투표가 마감되었습니다' in msg.message) or
+              ('🎉' in msg.message and '투표가 완료되었습니다' in msg.message)):
+            message_data['message_type'] = 'voting_completed'
+        
         result.append(message_data)
     return jsonify(result)
 
@@ -3291,10 +3297,52 @@ def get_voting_session(session_id):
                 session.status = 'completed'
                 session.confirmed_date = winning_date
                 session.confirmed_at = datetime.utcnow()
+                
+                # 요일 계산
+                weekday = datetime.strptime(winning_date, '%Y-%m-%d').weekday()
+                weekday_name = ['월', '화', '수', '목', '금', '토', '일'][weekday]
+                
+                # 채팅방에 투표 마감 시스템 메시지 추가
+                completion_message = f"⏰ '{session.title}' 투표가 마감되었습니다!\n\n🎉 확정 날짜: {winning_date} ({weekday_name})"
+                if session.restaurant_name:
+                    completion_message += f"\n🍽️ 식당: {session.restaurant_name}"
+                if session.meeting_time:
+                    completion_message += f"\n🕐 시간: {session.meeting_time}"
+                if session.meeting_location:
+                    completion_message += f"\n📍 장소: {session.meeting_location}"
+                completion_message += f"\n\n일정이 자동으로 저장되었습니다 📅"
+                
+                chat_message = ChatMessage(
+                    chat_type='party',
+                    chat_id=session.chat_room_id,
+                    sender_employee_id='SYSTEM',
+                    sender_nickname='시스템',
+                    message=completion_message
+                )
+                chat_message.created_at = datetime.now()
+                db.session.add(chat_message)
+                
                 db.session.commit()
                 
                 # 파티 자동 생성
                 auto_create_party_from_voting(session)
+                
+                # 개인 일정 자동 저장
+                save_personal_schedules_from_voting(session)
+                
+                # WebSocket으로 실시간 알림
+                room = f"party_{session.chat_room_id}"
+                socketio.emit('new_message', {
+                    'id': chat_message.id,
+                    'sender_employee_id': 'SYSTEM',
+                    'sender_nickname': '시스템',
+                    'message': completion_message,
+                    'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'message_type': 'voting_completed',
+                    'voting_session_id': session.id,
+                    'chat_type': 'party',
+                    'chat_id': session.chat_room_id
+                }, room=room)
             else:
                 # 투표가 없으면 취소 처리
                 session.status = 'cancelled'
@@ -3441,10 +3489,51 @@ def vote_for_date(session_id):
                 session.status = 'completed'
                 session.confirmed_date = winning_date
                 session.confirmed_at = datetime.utcnow()
+                
+                # 요일 계산
+                weekday = datetime.strptime(winning_date, '%Y-%m-%d').weekday()
+                weekday_name = ['월', '화', '수', '목', '금', '토', '일'][weekday]
+                
+                # 채팅방에 투표 완료 시스템 메시지 추가
+                completion_message = f"🎉 '{session.title}' 투표가 완료되었습니다!\n모든 참가자가 투표를 완료했습니다.\n\n✅ 확정 날짜: {winning_date} ({weekday_name})"
+                if session.restaurant_name:
+                    completion_message += f"\n🍽️ 식당: {session.restaurant_name}"
+                if session.meeting_time:
+                    completion_message += f"\n🕐 시간: {session.meeting_time}"
+                if session.meeting_location:
+                    completion_message += f"\n📍 장소: {session.meeting_location}"
+                completion_message += f"\n\n일정이 자동으로 저장되었습니다 📅"
+                
+                chat_message = ChatMessage(
+                    chat_type='party',
+                    chat_id=session.chat_room_id,
+                    sender_employee_id='SYSTEM',
+                    sender_nickname='시스템',
+                    message=completion_message
+                )
+                chat_message.created_at = datetime.now()
+                db.session.add(chat_message)
+                
                 db.session.commit()
                 
                 # 파티 자동 생성
                 auto_create_party_from_voting(session)
+                
+                # 개인 일정 자동 저장
+                save_personal_schedules_from_voting(session)
+                
+                # WebSocket으로 실시간 알림
+                socketio.emit('new_message', {
+                    'id': chat_message.id,
+                    'sender_employee_id': 'SYSTEM',
+                    'sender_nickname': '시스템',
+                    'message': completion_message,
+                    'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'message_type': 'voting_completed',
+                    'voting_session_id': session.id,
+                    'chat_type': 'party',
+                    'chat_id': session.chat_room_id
+                }, room=room)
         
         return jsonify({
             'message': action,
@@ -3523,6 +3612,59 @@ def cancel_voting_session(session_id):
         print(f"Error cancelling voting session: {e}")
         return jsonify({'error': '투표 취소에 실패했습니다.'}), 500
 
+def save_personal_schedules_from_voting(session):
+    """투표 결과로 참가자들의 개인 일정 자동 저장"""
+    try:
+        if not session.confirmed_date:
+            return
+        
+        participant_ids = json.loads(session.participants)
+        
+        # 일정 제목 생성
+        schedule_title = session.title
+        
+        # 일정 설명 생성
+        description_parts = []
+        if session.restaurant_name:
+            description_parts.append(f"🍽️ 식당: {session.restaurant_name}")
+        if session.meeting_time:
+            description_parts.append(f"🕐 시간: {session.meeting_time}")
+        if session.meeting_location:
+            description_parts.append(f"📍 장소: {session.meeting_location}")
+        
+        # 참가자 목록 추가
+        participants = User.query.filter(User.employee_id.in_(participant_ids)).all()
+        participant_names = [p.nickname for p in participants]
+        if participant_names:
+            description_parts.append(f"👥 참가자: {', '.join(participant_names)}")
+        
+        description = '\n'.join(description_parts)
+        
+        # 각 참가자의 개인 일정에 저장
+        for participant_id in participant_ids:
+            # 이미 해당 날짜에 동일한 일정이 있는지 확인
+            existing_schedule = PersonalSchedule.query.filter_by(
+                employee_id=participant_id,
+                schedule_date=session.confirmed_date,
+                title=schedule_title
+            ).first()
+            
+            if not existing_schedule:
+                personal_schedule = PersonalSchedule(
+                    employee_id=participant_id,
+                    schedule_date=session.confirmed_date,
+                    title=schedule_title,
+                    description=description
+                )
+                db.session.add(personal_schedule)
+        
+        db.session.commit()
+        print(f"개인 일정 저장 완료: {len(participant_ids)}명")
+        
+    except Exception as e:
+        print(f"개인 일정 저장 실패: {e}")
+        db.session.rollback()
+
 def auto_create_party_from_voting(session):
     """투표 결과로 자동 파티 생성"""
     try:
@@ -3567,4 +3709,5 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
