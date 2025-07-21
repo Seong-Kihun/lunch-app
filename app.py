@@ -3624,20 +3624,31 @@ def save_personal_schedules_from_voting(session):
         # 일정 제목 생성
         schedule_title = session.title
         
-        # 일정 설명 생성
+        # 일정 설명 생성 (더 상세하게)
         description_parts = []
+        description_parts.append(f"📅 모임명: {schedule_title}")
+        description_parts.append(f"📆 날짜: {session.confirmed_date}")
+        
         if session.restaurant_name:
             description_parts.append(f"🍽️ 식당: {session.restaurant_name}")
+        else:
+            description_parts.append(f"🍽️ 식당: 미정")
+            
         if session.meeting_time:
-            description_parts.append(f"🕐 시간: {session.meeting_time}")
+            description_parts.append(f"🕐 모이는 시간: {session.meeting_time}")
+        else:
+            description_parts.append(f"🕐 모이는 시간: 12:00")
+            
         if session.meeting_location:
-            description_parts.append(f"📍 장소: {session.meeting_location}")
+            description_parts.append(f"📍 모이는 장소: {session.meeting_location}")
+        else:
+            description_parts.append(f"📍 모이는 장소: 1층 로비")
         
         # 참가자 목록 추가
         participants = User.query.filter(User.employee_id.in_(participant_ids)).all()
         participant_names = [p.nickname for p in participants]
         if participant_names:
-            description_parts.append(f"👥 참가자: {', '.join(participant_names)}")
+            description_parts.append(f"👥 참석자: {', '.join(participant_names)} ({len(participant_names)}명)")
         
         description = '\n'.join(description_parts)
         
@@ -3710,7 +3721,3 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-
-
-
