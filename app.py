@@ -3132,17 +3132,39 @@ def create_voting_session():
         data = request.get_json()
         
         # 필수 필드 검증
-        required_fields = ['chat_room_id', 'title', 'participants', 'created_by', 'expires_hours']
+        required_fields = ['chat_room_id', 'title', 'participants', 'created_by', 'expires_at']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field}가 필요합니다.'}), 400
         
-        # 만료 시간 계산
-        expires_at = datetime.utcnow() + timedelta(hours=data['expires_hours'])
+        # 정확한 만료 시간 파싱 (ISO 형식)
+        try:
+            expires_at = datetime.fromisoformat(data['expires_at'].replace('Z', '+00:00'))
+            if expires_at.tzinfo:
+                expires_at = expires_at.replace(tzinfo=None)  # UTC로 저장
+        except:
+            expires_at = datetime.utcnow() + timedelta(hours=24)  # 기본값 24시간
         
         # 참가자들의 가능한 날짜 계산
         participant_ids = data['participants']
-        available_dates, alternative_dates = find_available_dates_for_participants(participant_ids, max_days=30)
+        
+        # 프론트엔드에서 전달한 선택된 날짜들 우선 사용
+        if data.get('available_dates'):
+            # 전달받은 날짜들이 실제로 모든 참가자가 가능한지 검증
+            all_available_dates, _ = find_available_dates_for_participants(participant_ids, max_days=365*3)
+            all_available_dates_set = set(date_info['date'] for date_info in all_available_dates)
+            
+            # 선택된 날짜 중 모든 참가자가 가능한 날짜만 필터링
+            valid_dates = [date for date in data['available_dates'] if date in all_available_dates_set]
+            
+            if valid_dates:
+                available_dates = [{'date': date, 'type': 'selected'} for date in valid_dates]
+            else:
+                # 선택된 날짜가 모두 불가능한 경우 일반 계산 사용
+                available_dates, _ = find_available_dates_for_participants(participant_ids, max_days=30)
+        else:
+            # 기본 가능한 날짜 계산
+            available_dates, alternative_dates = find_available_dates_for_participants(participant_ids, max_days=30)
         
         # 새로운 투표 세션 생성
         voting_session = VotingSession(
@@ -3315,14 +3337,14 @@ def vote_for_date(session_id):
         if voter_id not in participant_ids:
             return jsonify({'error': '투표 권한이 없습니다.'}), 403
         
-        # 기존 투표 확인 및 삭제 (재투표 허용)
-        existing_vote = DateVote.query.filter_by(
+        # 기존 모든 투표 삭제 (복수 투표 지원을 위해)
+        existing_votes = DateVote.query.filter_by(
             voting_session_id=session_id,
             voter_id=voter_id
-        ).first()
+        ).all()
         
-        if existing_vote:
-            db.session.delete(existing_vote)
+        for vote in existing_votes:
+            db.session.delete(vote)
         
         # 새로운 투표 생성
         new_vote = DateVote(
@@ -3336,6 +3358,7 @@ def vote_for_date(session_id):
         
         # 투표 결과 확인 (모든 참가자가 투표했는지)
         total_votes = DateVote.query.filter_by(voting_session_id=session_id).count()
+        voted_users = set(vote.voter_id for vote in DateVote.query.filter_by(voting_session_id=session_id).all())
         
         # WebSocket으로 실시간 업데이트
         room = f"party_{session.chat_room_id}"
@@ -3344,11 +3367,12 @@ def vote_for_date(session_id):
             'voter_id': voter_id,
             'voted_date': voted_date,
             'total_votes': total_votes,
-            'total_participants': len(participant_ids)
+            'total_participants': len(participant_ids),
+            'voted_users_count': len(voted_users)
         }, room=room)
         
-        # 모든 참가자가 투표했으면 자동 확정 (선택사항)
-        if total_votes >= len(participant_ids):
+        # 모든 참가자가 투표했으면 자동 확정
+        if len(voted_users) >= len(participant_ids):
             # 가장 많은 표를 받은 날짜 찾기
             vote_counts = {}
             votes = DateVote.query.filter_by(voting_session_id=session_id).all()
@@ -3461,6 +3485,7 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
