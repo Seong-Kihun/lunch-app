@@ -3145,8 +3145,49 @@ def create_voting_session():
         db.session.add(voting_session)
         db.session.commit()
         
-        # WebSocket으로 참가자들에게 알림
+        # 채팅방에 투표 시작 시스템 메시지 추가
+        system_message = f"📊 새로운 투표가 시작되었습니다!\n'{voting_session.title}'\n마감: {voting_session.expires_at.strftime('%m월 %d일 %H:%M')}\n\n이 메시지를 터치하여 투표에 참여하세요 👆"
+        
+        chat_message = ChatMessage(
+            chat_type='party',
+            chat_id=data['chat_room_id'],
+            sender_employee_id='SYSTEM',
+            sender_nickname='시스템',
+            message=system_message
+        )
+        chat_message.created_at = datetime.now()  # 한국 시간으로 설정
+        db.session.add(chat_message)
+        
+        # 참가자들에게 알림 생성
+        active_participants = data.get('participants', [])
+        for participant_id in active_participants:
+            if participant_id != data['created_by']:  # 투표 생성자 제외
+                notification = Notification(
+                    user_id=participant_id,
+                    type='voting_started',
+                    title=f"새 투표: {voting_session.title}",
+                    message=f"'{voting_session.title}' 투표가 시작되었습니다. 원하는 날짜에 투표해주세요!",
+                    related_id=voting_session.id
+                )
+                db.session.add(notification)
+        
+        db.session.commit()
+        
+        # WebSocket으로 실시간 알림
         room = f"party_{data['chat_room_id']}"
+        
+        # 채팅 메시지 알림
+        socketio.emit('new_message', {
+            'id': chat_message.id,
+            'sender_employee_id': 'SYSTEM',
+            'sender_nickname': '시스템',
+            'message': system_message,
+            'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'message_type': 'voting_notification',
+            'voting_session_id': voting_session.id
+        }, room=room)
+        
+        # 투표 세션 알림
         socketio.emit('new_voting_session', {
             'session_id': voting_session.id,
             'title': voting_session.title,
@@ -3401,6 +3442,7 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
