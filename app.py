@@ -1864,14 +1864,32 @@ def get_chat_messages(chat_type, chat_id):
     for msg in messages:
         read_count = ChatMessageRead.query.filter_by(message_id=msg.id).count()
         unread_count = max(0, len(member_ids) - read_count)
-        result.append({
-        'id': msg.id,
-        'sender_employee_id': msg.sender_employee_id,
-        'sender_nickname': msg.sender_nickname,
-        'message': msg.message,
+        
+        message_data = {
+            'id': msg.id,
+            'sender_employee_id': msg.sender_employee_id,
+            'sender_nickname': msg.sender_nickname,
+            'message': msg.message,
             'created_at': format_korean_time(msg.created_at),
             'unread_count': unread_count
-        })
+        }
+        
+        # 투표 알림 메시지인지 확인 (시스템 메시지 + 특정 패턴)
+        if (msg.sender_employee_id == 'SYSTEM' and 
+            '📊 새로운 투표가 시작되었습니다!' in msg.message and
+            '이 메시지를 터치하여 투표에 참여하세요' in msg.message):
+            message_data['message_type'] = 'voting_notification'
+            
+            # 해당 채팅방의 최신 투표 세션 ID 찾기
+            latest_voting = VotingSession.query.filter_by(
+                chat_room_id=chat_id,
+                status='active'
+            ).order_by(VotingSession.created_at.desc()).first()
+            
+            if latest_voting:
+                message_data['voting_session_id'] = latest_voting.id
+        
+        result.append(message_data)
     return jsonify(result)
 
 @app.route('/chat/messages', methods=['POST'])
@@ -3158,25 +3176,24 @@ def create_voting_session():
         chat_message.created_at = datetime.now()  # 한국 시간으로 설정
         db.session.add(chat_message)
         
-        # 참가자들에게 알림 생성
+        # 참가자들에게 알림 생성 (투표 생성자도 포함)
         active_participants = data.get('participants', [])
         for participant_id in active_participants:
-            if participant_id != data['created_by']:  # 투표 생성자 제외
-                notification = Notification(
-                    user_id=participant_id,
-                    type='voting_started',
-                    title=f"새 투표: {voting_session.title}",
-                    message=f"'{voting_session.title}' 투표가 시작되었습니다. 원하는 날짜에 투표해주세요!",
-                    related_id=voting_session.id
-                )
-                db.session.add(notification)
+            notification = Notification(
+                user_id=participant_id,
+                type='voting_started',
+                title=f"새 투표: {voting_session.title}",
+                message=f"'{voting_session.title}' 투표가 시작되었습니다. 원하는 날짜에 투표해주세요!",
+                related_id=voting_session.id
+            )
+            db.session.add(notification)
         
         db.session.commit()
         
         # WebSocket으로 실시간 알림
         room = f"party_{data['chat_room_id']}"
         
-        # 채팅 메시지 알림
+        # 채팅 메시지 알림 (WebSocket을 통해 voting_session_id 전달)
         socketio.emit('new_message', {
             'id': chat_message.id,
             'sender_employee_id': 'SYSTEM',
@@ -3184,7 +3201,9 @@ def create_voting_session():
             'message': system_message,
             'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'message_type': 'voting_notification',
-            'voting_session_id': voting_session.id
+            'voting_session_id': voting_session.id,
+            'chat_type': 'party',
+            'chat_id': data['chat_room_id']
         }, room=room)
         
         # 투표 세션 알림
@@ -3442,6 +3461,7 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
