@@ -3324,10 +3324,7 @@ def get_voting_session(session_id):
                 
                 db.session.commit()
                 
-                # 파티 자동 생성
-                auto_create_party_from_voting(session)
-                
-                # 개인 일정 자동 저장
+                # 개인 일정 자동 저장 (파티는 생성하지 않고 개인 일정만 생성)
                 save_personal_schedules_from_voting(session)
                 
                 # WebSocket으로 실시간 알림
@@ -3393,7 +3390,7 @@ def get_voting_session(session_id):
             'vote_rate': vote_rate,
             'voted_count': len(voted_users),
             'total_participants': len(participant_ids),
-            'expires_at': session.expires_at.strftime('%Y-%m-%d %H:%M'),
+            'expires_at': format_korean_time(session.expires_at),
             'status': session.status,
             'confirmed_date': session.confirmed_date,
             'created_by': session.created_by  # 생성자 정보 추가
@@ -3516,10 +3513,7 @@ def vote_for_date(session_id):
                 
                 db.session.commit()
                 
-                # 파티 자동 생성
-                auto_create_party_from_voting(session)
-                
-                # 개인 일정 자동 저장
+                # 개인 일정 자동 저장 (파티는 생성하지 않고 개인 일정만 생성)
                 save_personal_schedules_from_voting(session)
                 
                 # WebSocket으로 실시간 알림
@@ -3709,5 +3703,6 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
