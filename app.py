@@ -3139,10 +3139,20 @@ def create_voting_session():
         
         # 정확한 만료 시간 파싱 (ISO 형식)
         try:
-            expires_at = datetime.fromisoformat(data['expires_at'].replace('Z', '+00:00'))
+            expires_at_str = data['expires_at']
+            if expires_at_str.endswith('Z'):
+                expires_at_str = expires_at_str[:-1] + '+00:00'
+            
+            expires_at = datetime.fromisoformat(expires_at_str)
+            
+            # 타임존이 있으면 UTC로 변환 후 naive datetime으로 저장
             if expires_at.tzinfo:
-                expires_at = expires_at.replace(tzinfo=None)  # UTC로 저장
-        except:
+                expires_at = expires_at.utctimetuple()
+                expires_at = datetime(*expires_at[:6])
+            
+            print(f"Parsed expires_at: {expires_at}")  # 디버깅용
+        except Exception as e:
+            print(f"Error parsing expires_at: {e}")
             expires_at = datetime.utcnow() + timedelta(hours=24)  # 기본값 24시간
         
         # 참가자들의 가능한 날짜 계산
@@ -3256,6 +3266,34 @@ def get_voting_session(session_id):
         if not session:
             return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
         
+        # 마감 시간 체크 및 자동 확정
+        if session.status == 'active' and datetime.utcnow() > session.expires_at:
+            # 투표 현황 조회
+            votes = DateVote.query.filter_by(voting_session_id=session_id).all()
+            vote_counts = {}
+            
+            for vote in votes:
+                vote_counts[vote.voted_date] = vote_counts.get(vote.voted_date, 0) + 1
+            
+            if vote_counts:
+                # 가장 많은 표를 받은 날짜 찾기
+                max_votes = max(vote_counts.values())
+                winning_dates = [date for date, count in vote_counts.items() if count == max_votes]
+                winning_date = min(winning_dates)  # 동점 시 가장 빠른 날짜
+                
+                # 투표 세션 완료
+                session.status = 'completed'
+                session.confirmed_date = winning_date
+                session.confirmed_at = datetime.utcnow()
+                db.session.commit()
+                
+                # 파티 자동 생성
+                auto_create_party_from_voting(session)
+            else:
+                # 투표가 없으면 취소 처리
+                session.status = 'cancelled'
+                db.session.commit()
+        
         # 투표 현황 조회
         votes = DateVote.query.filter_by(voting_session_id=session_id).all()
         vote_counts = {}
@@ -3303,7 +3341,8 @@ def get_voting_session(session_id):
             'total_participants': len(participant_ids),
             'expires_at': session.expires_at.strftime('%Y-%m-%d %H:%M'),
             'status': session.status,
-            'confirmed_date': session.confirmed_date
+            'confirmed_date': session.confirmed_date,
+            'created_by': session.created_by  # 생성자 정보 추가
         })
         
     except Exception as e:
@@ -3337,23 +3376,27 @@ def vote_for_date(session_id):
         if voter_id not in participant_ids:
             return jsonify({'error': '투표 권한이 없습니다.'}), 403
         
-        # 기존 모든 투표 삭제 (복수 투표 지원을 위해)
-        existing_votes = DateVote.query.filter_by(
-            voting_session_id=session_id,
-            voter_id=voter_id
-        ).all()
-        
-        for vote in existing_votes:
-            db.session.delete(vote)
-        
-        # 새로운 투표 생성
-        new_vote = DateVote(
+        # 이미 해당 날짜에 투표했는지 확인
+        existing_vote = DateVote.query.filter_by(
             voting_session_id=session_id,
             voter_id=voter_id,
             voted_date=voted_date
-        )
+        ).first()
         
-        db.session.add(new_vote)
+        if existing_vote:
+            # 이미 투표한 날짜면 투표 취소
+            db.session.delete(existing_vote)
+            action = '투표가 취소되었습니다.'
+        else:
+            # 새로운 투표 추가
+            new_vote = DateVote(
+                voting_session_id=session_id,
+                voter_id=voter_id,
+                voted_date=voted_date
+            )
+            db.session.add(new_vote)
+            action = '투표가 완료되었습니다.'
+        
         db.session.commit()
         
         # 투표 결과 확인 (모든 참가자가 투표했는지)
@@ -3398,7 +3441,7 @@ def vote_for_date(session_id):
                 auto_create_party_from_voting(session)
         
         return jsonify({
-            'message': '투표가 완료되었습니다.',
+            'message': action,
             'voted_date': voted_date,
             'total_votes': total_votes,
             'total_participants': len(participant_ids)
@@ -3485,10 +3528,3 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-
-
-
