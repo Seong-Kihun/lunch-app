@@ -1908,6 +1908,12 @@ def get_chat_messages(chat_type, chat_id):
             if completed_voting:
                 message_data['voting_session_id'] = completed_voting.id
         
+        # 투표 정보 수정 메시지인지 확인
+        elif (msg.sender_employee_id == 'SYSTEM' and 
+              '📝' in msg.message and 
+              '투표 정보가 수정되었습니다' in msg.message):
+            message_data['message_type'] = 'voting_updated'
+        
         result.append(message_data)
     return jsonify(result)
 
@@ -3613,6 +3619,102 @@ def cancel_voting_session(session_id):
         print(f"Error cancelling voting session: {e}")
         return jsonify({'error': '투표 취소에 실패했습니다.'}), 500
 
+@app.route('/voting-sessions/<int:session_id>/update', methods=['PUT'])
+def update_voting_session(session_id):
+    """투표 세션 정보 수정 (생성자만 가능)"""
+    try:
+        data = request.get_json()
+        
+        # 투표 세션 조회
+        session = VotingSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
+        
+        # 활성 상태인지 확인
+        if session.status != 'active':
+            return jsonify({'error': '완료되거나 취소된 투표는 수정할 수 없습니다.'}), 400
+        
+        # 수정 가능한 필드들 업데이트
+        if 'title' in data:
+            session.title = data['title']
+        
+        if 'restaurant_name' in data:
+            session.restaurant_name = data['restaurant_name']
+        
+        if 'meeting_time' in data:
+            session.meeting_time = data['meeting_time']
+        
+        if 'meeting_location' in data:
+            session.meeting_location = data['meeting_location']
+        
+        if 'expires_at' in data:
+            # 새로운 마감시간 파싱
+            try:
+                expires_at_str = data['expires_at']
+                if expires_at_str.endswith('Z'):
+                    expires_at_str = expires_at_str[:-1] + '+00:00'
+                
+                new_expires_at = datetime.fromisoformat(expires_at_str)
+                
+                # 타임존이 있으면 UTC로 변환 후 naive datetime으로 저장
+                if new_expires_at.tzinfo:
+                    new_expires_at = new_expires_at.utctimetuple()
+                    new_expires_at = datetime(*new_expires_at[:6])
+                
+                # 현재 시간보다 미래인지 확인
+                if new_expires_at <= datetime.utcnow():
+                    return jsonify({'error': '마감시간은 현재 시간보다 미래여야 합니다.'}), 400
+                
+                session.expires_at = new_expires_at
+            except Exception as e:
+                return jsonify({'error': '올바르지 않은 마감시간 형식입니다.'}), 400
+        
+        db.session.commit()
+        
+        # 채팅방에 수정 알림 메시지 전송
+        update_message = f"📝 '{session.title}' 투표 정보가 수정되었습니다."
+        chat_message = ChatMessage(
+            chat_type='party',
+            chat_id=session.chat_room_id,
+            sender_employee_id='SYSTEM',
+            sender_nickname='시스템',
+            message=update_message
+        )
+        chat_message.created_at = datetime.now()
+        db.session.add(chat_message)
+        db.session.commit()
+        
+        # WebSocket으로 실시간 알림
+        room = f"party_{session.chat_room_id}"
+        socketio.emit('new_message', {
+            'id': chat_message.id,
+            'sender_employee_id': 'SYSTEM',
+            'sender_nickname': '시스템',
+            'message': update_message,
+            'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'message_type': 'voting_updated',
+            'voting_session_id': session.id,
+            'chat_type': 'party',
+            'chat_id': session.chat_room_id
+        }, room=room)
+        
+        return jsonify({
+            'message': '투표 정보가 수정되었습니다.',
+            'session': {
+                'id': session.id,
+                'title': session.title,
+                'restaurant_name': session.restaurant_name,
+                'meeting_time': session.meeting_time,
+                'meeting_location': session.meeting_location,
+                'expires_at': format_korean_time(session.expires_at)
+            }
+        })
+        
+    except Exception as e:
+        print(f"투표 정보 수정 오류: {e}")
+        db.session.rollback()
+        return jsonify({'error': '투표 정보 수정에 실패했습니다.'}), 500
+
 def save_personal_schedules_from_voting(session):
     """투표 결과로 참가자들의 개인 일정 자동 저장"""
     try:
@@ -3721,3 +3823,4 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
