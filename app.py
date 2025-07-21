@@ -1889,6 +1889,12 @@ def get_chat_messages(chat_type, chat_id):
             if latest_voting:
                 message_data['voting_session_id'] = latest_voting.id
         
+        # 투표 삭제 메시지인지 확인
+        elif (msg.sender_employee_id == 'SYSTEM' and 
+              '🚫' in msg.message and 
+              '투표가 삭제되었습니다' in msg.message):
+            message_data['message_type'] = 'voting_cancelled'
+        
         result.append(message_data)
     return jsonify(result)
 
@@ -3468,11 +3474,44 @@ def cancel_voting_session(session_id):
         if session.status != 'active':
             return jsonify({'error': '이미 완료되거나 취소된 투표입니다.'}), 400
         
+        # 투표 생성자 정보 조회
+        creator = User.query.filter_by(employee_id=session.created_by).first()
+        creator_name = creator.nickname if creator else session.created_by
+        
         session.status = 'cancelled'
+        
+        # 채팅방에 투표 취소 시스템 메시지 추가
+        cancel_message = f"🚫 '{session.title}' 투표가 삭제되었습니다.\n삭제자: {creator_name}"
+        
+        chat_message = ChatMessage(
+            chat_type='party',
+            chat_id=session.chat_room_id,
+            sender_employee_id='SYSTEM',
+            sender_nickname='시스템',
+            message=cancel_message
+        )
+        chat_message.created_at = datetime.now()  # 한국 시간으로 설정
+        db.session.add(chat_message)
+        
         db.session.commit()
         
-        # WebSocket으로 알림
+        # WebSocket으로 실시간 알림
         room = f"party_{session.chat_room_id}"
+        
+        # 채팅 메시지 알림
+        socketio.emit('new_message', {
+            'id': chat_message.id,
+            'sender_employee_id': 'SYSTEM',
+            'sender_nickname': '시스템',
+            'message': cancel_message,
+            'created_at': chat_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'message_type': 'voting_cancelled',
+            'voting_session_id': session_id,
+            'chat_type': 'party',
+            'chat_id': session.chat_room_id
+        }, room=room)
+        
+        # 투표 취소 알림
         socketio.emit('voting_cancelled', {
             'session_id': session_id,
             'message': '투표가 취소되었습니다.'
@@ -3528,3 +3567,4 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
