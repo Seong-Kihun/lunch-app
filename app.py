@@ -3221,7 +3221,9 @@ def create_voting_session():
         db.session.commit()
         
         # 채팅방에 투표 시작 시스템 메시지 추가
-        system_message = f"📊 새로운 투표가 시작되었습니다!\n'{voting_session.title}'\n마감: {voting_session.expires_at.strftime('%m월 %d일 %H:%M')}\n\n이 메시지를 터치하여 투표에 참여하세요 👆"
+        # 한국 시간으로 변환해서 표시
+        korean_expires_at = voting_session.expires_at + timedelta(hours=9)
+        system_message = f"📊 새로운 투표가 시작되었습니다!\n'{voting_session.title}'\n마감: {korean_expires_at.strftime('%m월 %d일 %H:%M')}\n\n이 메시지를 터치하여 투표에 참여하세요 👆"
         
         chat_message = ChatMessage(
             chat_type='party',
@@ -3918,5 +3920,6 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
