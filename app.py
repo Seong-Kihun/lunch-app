@@ -2482,7 +2482,9 @@ def get_friends():
                 'nickname': friend.nickname,
                 'lunch_preference': friend.lunch_preference,
                 'main_dish_genre': friend.main_dish_genre,
-                'last_lunch': last_lunch
+                'last_lunch': last_lunch,
+                'allergies': friend.allergies,
+                'preferred_time': friend.preferred_time
             })
     
     return jsonify(friends_data)
