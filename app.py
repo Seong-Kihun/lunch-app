@@ -691,15 +691,10 @@ def get_user_analytics(employee_id):
         # 리뷰 작성 통계
         reviews_written = Review.query.filter_by(user_id=employee_id).count()
         
-        # 친구 수
-        friendships = Friendship.query.filter(
-            and_(
-                Friendship.status == 'accepted',  # type: ignore
-                or_(
-                    Friendship.requester_id == employee_id,  # type: ignore
-                    Friendship.receiver_id == employee_id  # type: ignore
-                )
-            )
+        # 친구 수 (일방적 관계)
+        friendships = Friendship.query.filter_by(
+            requester_id=employee_id,
+            status='accepted'
         ).count()
         
         # 선호 카테고리 분석
@@ -2343,106 +2338,73 @@ def handle_read_message(data):
 @app.route('/users/search', methods=['GET'])
 def search_users():
     nickname = request.args.get('nickname')
+    employee_id = request.args.get('employee_id')  # 검색하는 사용자 ID
+    
     if not nickname:
         return jsonify({'message': '닉네임 파라미터가 필요합니다.'}), 400
     
     users = User.query.filter(User.nickname.contains(nickname)).all()  # type: ignore
-    return jsonify([{
-        'employee_id': user.employee_id,
-        'nickname': user.nickname,
-        'lunch_preference': user.lunch_preference,
-        'main_dish_genre': user.main_dish_genre
-    } for user in users])
+    
+    # 각 사용자에 대해 이미 친구인지 확인
+    result = []
+    for user in users:
+        # 자기 자신은 제외
+        if employee_id and user.employee_id == employee_id:
+            continue
+            
+        is_friend = False
+        if employee_id:
+            # 일방적 친구 관계 확인
+            friendship = Friendship.query.filter_by(
+                requester_id=employee_id,
+                receiver_id=user.employee_id,
+                status='accepted'
+            ).first()
+            is_friend = friendship is not None
+        
+        result.append({
+            'employee_id': user.employee_id,
+            'nickname': user.nickname,
+            'lunch_preference': user.lunch_preference,
+            'main_dish_genre': user.main_dish_genre,
+            'is_friend': is_friend
+        })
+    
+    return jsonify(result)
 
-@app.route('/friends/request', methods=['POST'])
-def send_friend_request():
+@app.route('/friends/add', methods=['POST'])
+def add_friend():
     data = request.get_json()
-    requester_id = data.get('requester_id')
-    receiver_id = data.get('receiver_id')
+    user_id = data.get('user_id')
+    friend_id = data.get('friend_id')
     
-    if not requester_id or not receiver_id:
-        return jsonify({'message': '요청자와 수신자 ID가 필요합니다.'}), 400
+    if not user_id or not friend_id:
+        return jsonify({'message': '사용자 ID와 친구 ID가 필요합니다.'}), 400
     
-    if requester_id == receiver_id:
-        return jsonify({'message': '자기 자신에게 친구 요청을 보낼 수 없습니다.'}), 400
+    if user_id == friend_id:
+        return jsonify({'message': '자기 자신을 친구로 추가할 수 없습니다.'}), 400
     
-    # 이미 친구 요청이 있는지 확인
-    existing_request = Friendship.query.filter(
-        or_(
-            and_(Friendship.requester_id == requester_id, Friendship.receiver_id == receiver_id),  # type: ignore
-            and_(Friendship.requester_id == receiver_id, Friendship.receiver_id == requester_id)  # type: ignore
-        )
+    # 이미 친구인지 확인 (일방적이므로 user_id가 requester인 경우만 확인)
+    existing_friendship = Friendship.query.filter_by(
+        requester_id=user_id,
+        receiver_id=friend_id,
+        status='accepted'
     ).first()
     
-    if existing_request:
-        if existing_request.status == 'accepted':
-            return jsonify({'message': '이미 친구입니다.'}), 400
-        elif existing_request.status == 'pending':
-            return jsonify({'message': '이미 친구 요청이 대기 중입니다.'}), 400
+    if existing_friendship:
+        return jsonify({'message': '이미 친구로 추가되어 있습니다.'}), 400
     
-    new_request = Friendship(requester_id=requester_id, receiver_id=receiver_id)
-    db.session.add(new_request)
+    # 일방적 친구 추가
+    new_friendship = Friendship(requester_id=user_id, receiver_id=friend_id)
+    new_friendship.status = 'accepted'  # 바로 수락된 상태로 설정
+    db.session.add(new_friendship)
     db.session.commit()
     
-    # 알림 생성
-    requester = User.query.filter_by(employee_id=requester_id).first()
-    if requester:
-        create_notification(
-            receiver_id,
-            'friend_request',
-            '새로운 친구 요청',
-            f'{requester.nickname}님이 친구 요청을 보냈습니다.',
-            new_request.id
-        )
-    
-    return jsonify({'message': '친구 요청을 보냈습니다.'}), 201
+    return jsonify({'message': '친구가 추가되었습니다.'}), 201
 
-@app.route('/friends/accept', methods=['POST'])
-def accept_friend_request():
-    data = request.get_json()
-    requester_id = data.get('requester_id')
-    receiver_id = data.get('receiver_id')
-    
-    if not requester_id or not receiver_id:
-        return jsonify({'message': '요청자와 수신자 ID가 필요합니다.'}), 400
-    
-    friendship = Friendship.query.filter_by(
-        requester_id=requester_id,
-        receiver_id=receiver_id,
-        status='pending'
-    ).first()
-    
-    if not friendship:
-        return jsonify({'message': '친구 요청을 찾을 수 없습니다.'}), 404
-    
-    friendship.status = 'accepted'
-    db.session.commit()
-    
-    return jsonify({'message': '친구 요청을 수락했습니다.'})
-
-@app.route('/friends/requests', methods=['GET'])
-def get_friend_requests():
-    employee_id = request.args.get('employee_id')
-    if not employee_id:
-        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
-    
-    requests = Friendship.query.filter_by(
-        receiver_id=employee_id,
-        status='pending'
-    ).all()
-    
-    request_data = []
-    for req in requests:
-        requester = User.query.filter_by(employee_id=req.requester_id).first()
-        if requester:
-            request_data.append({
-                'id': req.id,
-                'requester_id': req.requester_id,
-                'requester_nickname': requester.nickname,
-                'created_at': req.created_at.strftime('%Y-%m-%d %H:%M')
-            })
-    
-    return jsonify(request_data)
+# 친구 요청 시스템 제거 - 일방적 친구 추가로 변경
+# @app.route('/friends/accept', methods=['POST'])
+# @app.route('/friends/requests', methods=['GET'])
 
 @app.route('/friends', methods=['GET'])
 def get_friends():
@@ -2450,21 +2412,15 @@ def get_friends():
     if not employee_id:
         return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
     
-    friendships = Friendship.query.filter(
-        and_(
-            Friendship.status == 'accepted',  # type: ignore
-            or_(
-                Friendship.requester_id == employee_id,  # type: ignore
-                Friendship.receiver_id == employee_id  # type: ignore
-            )
-        )
+    # 내가 추가한 친구들만 조회 (일방적 관계)
+    friendships = Friendship.query.filter_by(
+        requester_id=employee_id,
+        status='accepted'
     ).all()
     
     friends_data = []
     for friendship in friendships:
-        # 친구의 ID 결정
-        friend_id = friendship.receiver_id if friendship.requester_id == employee_id else friendship.requester_id
-        friend = User.query.filter_by(employee_id=friend_id).first()
+        friend = User.query.filter_by(employee_id=friendship.receiver_id).first()
         
         if friend:
             friends_data.append({
@@ -2912,21 +2868,15 @@ def recommend_restaurants():
     })
 
 def get_user_friends(employee_id):
-    """사용자의 친구 목록을 반환하는 헬퍼 함수"""
-    friendships = Friendship.query.filter(
-        and_(
-            Friendship.status == 'accepted',  # type: ignore
-            or_(
-                Friendship.requester_id == employee_id,  # type: ignore
-                Friendship.receiver_id == employee_id  # type: ignore
-            )
-        )
+    """사용자의 친구 목록을 반환하는 헬퍼 함수 (일방적 관계)"""
+    friendships = Friendship.query.filter_by(
+        requester_id=employee_id,
+        status='accepted'
     ).all()
     
     friends = []
     for friendship in friendships:
-        friend_id = friendship.receiver_id if friendship.requester_id == employee_id else friendship.requester_id
-        friend = User.query.filter_by(employee_id=friend_id).first()
+        friend = User.query.filter_by(employee_id=friendship.receiver_id).first()
         if friend:
             friends.append({
                 'employee_id': friend.employee_id,
@@ -4017,9 +3967,3 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-
-
