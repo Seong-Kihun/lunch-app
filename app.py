@@ -2402,6 +2402,31 @@ def add_friend():
     
     return jsonify({'message': '친구가 추가되었습니다.'}), 201
 
+@app.route('/friends/remove', methods=['POST'])
+def remove_friend():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    friend_id = data.get('friend_id')
+    
+    if not user_id or not friend_id:
+        return jsonify({'message': '사용자 ID와 친구 ID가 필요합니다.'}), 400
+    
+    # 친구 관계 찾기 (일방적이므로 user_id가 requester인 경우만)
+    friendship = Friendship.query.filter_by(
+        requester_id=user_id,
+        receiver_id=friend_id,
+        status='accepted'
+    ).first()
+    
+    if not friendship:
+        return jsonify({'message': '친구 관계를 찾을 수 없습니다.'}), 404
+    
+    # 친구 관계 삭제
+    db.session.delete(friendship)
+    db.session.commit()
+    
+    return jsonify({'message': '친구가 삭제되었습니다.'}), 200
+
 # 친구 요청 시스템 제거 - 일방적 친구 추가로 변경
 # @app.route('/friends/accept', methods=['POST'])
 # @app.route('/friends/requests', methods=['GET'])
@@ -2419,18 +2444,142 @@ def get_friends():
     ).all()
     
     friends_data = []
+    today = get_seoul_today()
+    
     for friendship in friendships:
         friend = User.query.filter_by(employee_id=friendship.receiver_id).first()
         
         if friend:
+            # 마지막으로 함께 점심 먹은 날 계산 (dining_history 로직 참조)
+            last_party = Party.query.filter(
+                and_(
+                    or_(
+                        and_(Party.host_employee_id == employee_id, Party.members_employee_ids.contains(friend.employee_id)),
+                        and_(Party.host_employee_id == friend.employee_id, Party.members_employee_ids.contains(employee_id))
+                    ),
+                    Party.party_date < today.strftime('%Y-%m-%d')
+                )
+            ).order_by(desc(Party.party_date)).first()
+            
+            # 마지막 점심 날짜 계산
+            if last_party:
+                last_party_date = datetime.strptime(last_party.party_date, '%Y-%m-%d').date()
+                days_diff = (today - last_party_date).days
+                
+                if days_diff == 1:
+                    last_lunch = "어제"
+                elif days_diff <= 7:
+                    last_lunch = f"{days_diff}일 전"
+                elif days_diff <= 30:
+                    last_lunch = f"{days_diff//7}주 전"
+                else:
+                    last_lunch = "1달 이상 전"
+            else:
+                last_lunch = "처음"
+            
             friends_data.append({
                 'employee_id': friend.employee_id,
                 'nickname': friend.nickname,
                 'lunch_preference': friend.lunch_preference,
-                'main_dish_genre': friend.main_dish_genre
+                'main_dish_genre': friend.main_dish_genre,
+                'last_lunch': last_lunch
             })
     
     return jsonify(friends_data)
+
+@app.route('/friends/recommendations', methods=['GET'])
+def get_friend_recommendations():
+    """친구 추천 API - 랜덤런치 점수, 활동패턴, 상호친구 기반 추천"""
+    employee_id = request.args.get('employee_id')
+    if not employee_id:
+        return jsonify({'message': '사용자 ID가 필요합니다.'}), 400
+    
+    # 현재 사용자 정보
+    current_user = User.query.filter_by(employee_id=employee_id).first()
+    if not current_user:
+        return jsonify({'message': '사용자를 찾을 수 없습니다.'}), 404
+    
+    # 이미 친구인 사용자들 제외
+    existing_friends = Friendship.query.filter_by(
+        requester_id=employee_id,
+        status='accepted'
+    ).all()
+    friend_ids = [f.receiver_id for f in existing_friends]
+    friend_ids.append(employee_id)  # 본인도 제외
+    
+    # 모든 다른 사용자들 조회
+    potential_friends = User.query.filter(~User.employee_id.in_(friend_ids)).all()
+    
+    recommendations = []
+    
+    for user in potential_friends:
+        score = 0.0
+        
+        # 1. 랜덤런치 호환성 점수 (기존 calculate_compatibility_score 활용)
+        compatibility_score = calculate_compatibility_score(current_user, user)
+        score += compatibility_score * 0.4  # 40% 가중치
+        
+        # 2. 활동 패턴 분석
+        # 사용자의 파티 참여 횟수
+        user_parties = Party.query.filter(
+            or_(
+                Party.host_employee_id == user.employee_id,
+                Party.members_employee_ids.contains(user.employee_id)
+            )
+        ).count()
+        
+        # 리뷰 작성 횟수  
+        user_reviews = Review.query.filter_by(user_id=user.employee_id).count()
+        
+        # 활동성 점수 (정규화)
+        activity_score = min((user_parties * 0.1 + user_reviews * 0.05), 1.0)
+        score += activity_score * 0.3  # 30% 가중치
+        
+        # 3. 상호 친구 분석
+        # 현재 사용자의 친구들과 해당 사용자가 공통으로 아는 사람 수
+        current_user_friends = set(friend_ids[:-1])  # 본인 제외
+        
+        # 해당 사용자와 함께 파티에 참여했던 사람들
+        user_party_members = set()
+        user_hosted_parties = Party.query.filter_by(host_employee_id=user.employee_id).all()
+        user_joined_parties = Party.query.filter(Party.members_employee_ids.contains(user.employee_id)).all()
+        
+        for party in user_hosted_parties + user_joined_parties:
+            if party.members_employee_ids:
+                members = party.members_employee_ids.split(',')
+                user_party_members.update([m.strip() for m in members if m.strip() != user.employee_id])
+        
+        # 공통 연결점 계산
+        mutual_connections = len(current_user_friends.intersection(user_party_members))
+        mutual_score = min(mutual_connections * 0.2, 1.0)
+        score += mutual_score * 0.3  # 30% 가중치
+        
+        # 4. 최근 활동도 (보너스)
+        recent_activity = Party.query.filter(
+            and_(
+                or_(
+                    Party.host_employee_id == user.employee_id,
+                    Party.members_employee_ids.contains(user.employee_id)
+                ),
+                Party.party_date >= (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            )
+        ).count()
+        
+        recent_score = min(recent_activity * 0.1, 0.5)
+        score += recent_score
+        
+        recommendations.append({
+            'employee_id': user.employee_id,
+            'nickname': user.nickname,
+            'lunch_preference': user.lunch_preference,
+            'main_dish_genre': user.main_dish_genre,
+            'recommendation_score': round(score, 3),
+            'is_friend': False
+        })
+    
+    # 점수순으로 정렬하고 상위 10명만 반환
+    recommendations.sort(key=lambda x: x['recommendation_score'], reverse=True)
+    return jsonify(recommendations[:10])
 
 # --- 새로운 채팅 API ---
 @app.route('/chats/friends', methods=['POST'])
