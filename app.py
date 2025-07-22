@@ -2367,7 +2367,9 @@ def search_users():
             'nickname': user.nickname,
             'lunch_preference': user.lunch_preference,
             'main_dish_genre': user.main_dish_genre,
-            'is_friend': is_friend
+            'is_friend': is_friend,
+            'allergies': user.allergies,
+            'preferred_time': user.preferred_time
         })
     
     return jsonify(result)
@@ -2576,7 +2578,9 @@ def get_friend_recommendations():
             'lunch_preference': user.lunch_preference,
             'main_dish_genre': user.main_dish_genre,
             'recommendation_score': round(score, 3),
-            'is_friend': False
+            'is_friend': False,
+            'allergies': user.allergies,
+            'preferred_time': user.preferred_time
         })
     
     # 점수순으로 정렬하고 상위 10명만 반환
