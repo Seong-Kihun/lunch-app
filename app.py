@@ -3413,7 +3413,7 @@ def get_voting_session(session_id):
         print(f"Error getting voting session: {e}")
         return jsonify({'error': '투표 세션 조회에 실패했습니다.'}), 500
 
-@app.route('/voting-sessions/<int:session_id>/vote', methods=['POST'])
+@app.route('/voting-sessions/<int:session_id>/vote', methods=['POST', 'DELETE'])
 def vote_for_date(session_id):
     """날짜에 투표하기"""
     try:
@@ -3440,26 +3440,55 @@ def vote_for_date(session_id):
         if voter_id not in participant_ids:
             return jsonify({'error': '투표 권한이 없습니다.'}), 403
         
-        # 이미 해당 날짜에 투표했는지 확인
-        existing_vote = DateVote.query.filter_by(
-            voting_session_id=session_id,
-            voter_id=voter_id,
-            voted_date=voted_date
-        ).first()
-        
-        if existing_vote:
-            # 이미 투표한 날짜면 투표 취소
-            db.session.delete(existing_vote)
-            action = '투표가 취소되었습니다.'
-        else:
-            # 새로운 투표 추가
-            new_vote = DateVote(
+        # DELETE 요청 처리 (명시적 투표 삭제)
+        if request.method == 'DELETE':
+            existing_vote = DateVote.query.filter_by(
                 voting_session_id=session_id,
                 voter_id=voter_id,
                 voted_date=voted_date
-            )
-            db.session.add(new_vote)
-            action = '투표가 완료되었습니다.'
+            ).first()
+            
+            if existing_vote:
+                db.session.delete(existing_vote)
+                action = '투표가 삭제되었습니다.'
+            else:
+                return jsonify({'error': '삭제할 투표가 없습니다.'}), 404
+        
+        # POST 요청 처리 (새로운 투표만 추가)
+        else:
+            is_editing = data.get('is_editing', False)  # 편집 모드 여부 확인
+            
+            existing_vote = DateVote.query.filter_by(
+                voting_session_id=session_id,
+                voter_id=voter_id,
+                voted_date=voted_date
+            ).first()
+            
+            if is_editing:
+                # 편집 모드: 무조건 새로운 투표 추가 (toggle 방식 사용 안함)
+                if not existing_vote:  # 혹시 이미 있다면 패스
+                    new_vote = DateVote(
+                        voting_session_id=session_id,
+                        voter_id=voter_id,
+                        voted_date=voted_date
+                    )
+                    db.session.add(new_vote)
+                action = '투표가 완료되었습니다.'
+            else:
+                # 일반 모드: 기존 toggle 방식 유지
+                if existing_vote:
+                    # 이미 투표한 날짜면 투표 취소
+                    db.session.delete(existing_vote)
+                    action = '투표가 취소되었습니다.'
+                else:
+                    # 새로운 투표 추가
+                    new_vote = DateVote(
+                        voting_session_id=session_id,
+                        voter_id=voter_id,
+                        voted_date=voted_date
+                    )
+                    db.session.add(new_vote)
+                    action = '투표가 완료되었습니다.'
         
         db.session.commit()
         
@@ -3715,6 +3744,72 @@ def update_voting_session(session_id):
         db.session.rollback()
         return jsonify({'error': '투표 정보 수정에 실패했습니다.'}), 500
 
+@app.route('/voting-sessions/<int:session_id>/replace-votes', methods=['PUT'])
+def replace_user_votes(session_id):
+    """사용자의 모든 투표를 새로운 투표로 교체 (편집 모드 전용)"""
+    try:
+        data = request.get_json()
+        voter_id = data.get('voter_id')
+        new_voted_dates = data.get('new_voted_dates', [])
+        
+        if not voter_id:
+            return jsonify({'error': 'voter_id가 필요합니다.'}), 400
+        
+        # 투표 세션 확인
+        session = VotingSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '투표 세션을 찾을 수 없습니다.'}), 404
+        
+        if session.status != 'active':
+            return jsonify({'error': '종료된 투표입니다.'}), 400
+        
+        if datetime.utcnow() > session.expires_at:
+            return jsonify({'error': '투표 기간이 만료되었습니다.'}), 400
+        
+        # 참가자 확인
+        participant_ids = json.loads(session.participants)
+        if voter_id not in participant_ids:
+            return jsonify({'error': '투표 권한이 없습니다.'}), 403
+        
+        # 트랜잭션으로 안전하게 처리
+        try:
+            # 1. 기존 투표 모두 삭제
+            existing_votes = DateVote.query.filter_by(
+                voting_session_id=session_id,
+                voter_id=voter_id
+            ).all()
+            
+            for vote in existing_votes:
+                db.session.delete(vote)
+            
+            # 2. 새로운 투표 추가
+            for date in new_voted_dates:
+                # 투표 가능한 날짜인지 확인
+                available_dates = json.loads(session.available_dates)
+                if date in available_dates:
+                    new_vote = DateVote(
+                        voting_session_id=session_id,
+                        voter_id=voter_id,
+                        voted_date=date
+                    )
+                    db.session.add(new_vote)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': '투표가 성공적으로 변경되었습니다.',
+                'voted_dates': new_voted_dates
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"투표 교체 중 오류: {e}")
+            return jsonify({'error': '투표 교체 중 오류가 발생했습니다.'}), 500
+        
+    except Exception as e:
+        print(f"투표 교체 오류: {e}")
+        return jsonify({'error': '투표 교체에 실패했습니다.'}), 500
+
 def save_personal_schedules_from_voting(session):
     """투표 결과로 참가자들의 개인 일정 자동 저장"""
     try:
@@ -3823,4 +3918,5 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
