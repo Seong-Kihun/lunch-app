@@ -2125,6 +2125,90 @@ def get_chat_room_members(chat_type, chat_id):
     except Exception as e:
         return jsonify({'message': '멤버 목록 조회에 실패했습니다.'}), 500
 
+@app.route('/chat/leave', methods=['POST'])
+def leave_chat_room():
+    """채팅방 나가기"""
+    try:
+        data = request.get_json()
+        chat_type = data.get('chat_type')
+        chat_id = data.get('chat_id')
+        employee_id = data.get('employee_id')
+        
+        if not all([chat_type, chat_id, employee_id]):
+            return jsonify({'error': '모든 필드가 필요합니다.'}), 400
+        
+        if chat_type == 'party':
+            party = Party.query.get(chat_id)
+            if not party:
+                return jsonify({'error': '파티를 찾을 수 없습니다.'}), 404
+            
+            # 호스트는 나갈 수 없음
+            if party.host_employee_id == employee_id:
+                return jsonify({'error': '파티 호스트는 파티를 나갈 수 없습니다. 파티를 삭제해주세요.'}), 403
+            
+            # 멤버 목록에서 해당 사용자 제거
+            if party.members_employee_ids:
+                member_ids = [mid.strip() for mid in party.members_employee_ids.split(',') if mid.strip()]
+                if employee_id in member_ids:
+                    member_ids.remove(employee_id)
+                    party.members_employee_ids = ','.join(member_ids)
+                    db.session.commit()
+                    return jsonify({'message': '파티에서 나갔습니다.'}), 200
+                else:
+                    return jsonify({'error': '해당 파티의 멤버가 아닙니다.'}), 404
+            else:
+                return jsonify({'error': '해당 파티의 멤버가 아닙니다.'}), 404
+                
+        elif chat_type == 'dangolpot':
+            pot = DangolPot.query.get(chat_id)
+            if not pot:
+                return jsonify({'error': '단골파티를 찾을 수 없습니다.'}), 404
+            
+            # 호스트는 나갈 수 없음
+            if pot.host_id == employee_id:
+                return jsonify({'error': '단골파티 호스트는 단골파티를 나갈 수 없습니다. 단골파티를 삭제해주세요.'}), 403
+            
+            # 멤버 목록에서 해당 사용자 제거
+            if pot.members:
+                member_ids = [mid.strip() for mid in pot.members.split(',') if mid.strip()]
+                if employee_id in member_ids:
+                    member_ids.remove(employee_id)
+                    pot.members = ','.join(member_ids)
+                    db.session.commit()
+                    return jsonify({'message': '단골파티에서 나갔습니다.'}), 200
+                else:
+                    return jsonify({'error': '해당 단골파티의 멤버가 아닙니다.'}), 404
+            else:
+                return jsonify({'error': '해당 단골파티의 멤버가 아닙니다.'}), 404
+                
+        elif chat_type == 'custom':
+            # 1:1 채팅의 경우 ChatParticipant에서 제거
+            room = ChatRoom.query.filter_by(type='friend', id=chat_id).first()
+            if not room:
+                return jsonify({'error': '채팅방을 찾을 수 없습니다.'}), 404
+            
+            participant = ChatParticipant.query.filter_by(room_id=room.id, user_id=employee_id).first()
+            if not participant:
+                return jsonify({'error': '해당 채팅방의 참여자가 아닙니다.'}), 404
+            
+            db.session.delete(participant)
+            
+            # 남은 참여자가 없으면 채팅방도 삭제
+            remaining_participants = ChatParticipant.query.filter_by(room_id=room.id).count()
+            if remaining_participants <= 1:  # 현재 사용자 제외하고 0명이면 채팅방 삭제
+                db.session.delete(room)
+            
+            db.session.commit()
+            return jsonify({'message': '채팅방에서 나갔습니다.'}), 200
+            
+        else:
+            return jsonify({'error': '지원하지 않는 채팅 타입입니다.'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"채팅방 나가기 오류: {e}")
+        return jsonify({'error': '채팅방 나가기에 실패했습니다.'}), 500
+
 # --- WebSocket 이벤트 ---
 @socketio.on('connect')
 def handle_connect():
@@ -3920,6 +4004,7 @@ def auto_create_party_from_voting(session):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
 
 
 
