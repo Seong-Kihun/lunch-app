@@ -3265,7 +3265,7 @@ def get_smart_recommendations():
         total_groups = 100
         date_group_counts = []
         if len(empty_dates) >= 3:
-            date_group_counts = [int(total_groups*0.55), int(total_groups*0.2), int(total_groups*0.15)]
+            date_group_counts = [int(total_groups*0.7), int(total_groups*0.2), int(total_groups*0.05)]
             rest = total_groups - sum(date_group_counts)
             date_group_counts += [rest]  # 나머지 날짜용
         else:
@@ -3317,10 +3317,34 @@ def get_smart_recommendations():
                 selected_group = scored_users[start_idx:end_idx]
                 group_members = []
                 for user, score in selected_group:
+                    # 마지막 Party 기록 조회 (last_lunch)
+                    last_party = db.session.query(Party).filter(
+                        and_(
+                            or_(
+                                and_(getattr(Party, 'host_employee_id') == employee_id, getattr(Party, 'members_employee_ids').contains(user.employee_id)),
+                                and_(getattr(Party, 'host_employee_id') == user.employee_id, getattr(Party, 'members_employee_ids').contains(employee_id))
+                            ),
+                            getattr(Party, 'party_date') < selected_date
+                        )
+                    ).order_by(desc(getattr(Party, 'party_date'))).first()
+                    if last_party:
+                        last_party_date = datetime.strptime(last_party.party_date, '%Y-%m-%d').date()
+                        days_diff = (today - last_party_date).days
+                        if days_diff == 1:
+                            last_lunch = "어제"
+                        elif days_diff <= 7:
+                            last_lunch = f"{days_diff}일 전"
+                        elif days_diff <= 30:
+                            last_lunch = f"{days_diff//7}주 전"
+                        else:
+                            last_lunch = "1달 이상 전"
+                    else:
+                        last_lunch = "처음"
                     group_members.append({
                         "nickname": user.nickname,
                         "lunch_preference": user.lunch_preference,
-                        "employee_id": user.employee_id
+                        "employee_id": user.employee_id,
+                        "last_lunch": last_lunch
                     })
                 if group_members:
                     all_recommendations.append({
@@ -3367,21 +3391,43 @@ def get_smart_recommendations():
                     selected_group = scored_users[start_idx:end_idx]
                     group_members = []
                     for user, score in selected_group:
+                        # 마지막 Party 기록 조회 (last_lunch)
+                        last_party = db.session.query(Party).filter(
+                            and_(
+                                or_(
+                                    and_(getattr(Party, 'host_employee_id') == employee_id, getattr(Party, 'members_employee_ids').contains(user.employee_id)),
+                                    and_(getattr(Party, 'host_employee_id') == user.employee_id, getattr(Party, 'members_employee_ids').contains(employee_id))
+                                ),
+                                getattr(Party, 'party_date') < selected_date
+                            )
+                        ).order_by(desc(getattr(Party, 'party_date'))).first()
+                        if last_party:
+                            last_party_date = datetime.strptime(last_party.party_date, '%Y-%m-%d').date()
+                            days_diff = (today - last_party_date).days
+                            if days_diff == 1:
+                                last_lunch = "어제"
+                            elif days_diff <= 7:
+                                last_lunch = f"{days_diff}일 전"
+                            elif days_diff <= 30:
+                                last_lunch = f"{days_diff//7}주 전"
+                            else:
+                                last_lunch = "1달 이상 전"
+                        else:
+                            last_lunch = "처음"
                         group_members.append({
                             "nickname": user.nickname,
                             "lunch_preference": user.lunch_preference,
-                            "employee_id": user.employee_id
+                            "employee_id": user.employee_id,
+                            "last_lunch": last_lunch
                         })
                     if group_members:
                         rest_groups.append({
                             "proposed_date": selected_date,
                             "recommended_group": group_members
                         })
-            # rest_count만큼만 랜덤 샘플
             if len(rest_groups) > rest_count:
                 rest_groups = random.sample(rest_groups, rest_count)
             all_recommendations.extend(rest_groups)
-        # 100개로 자르고 랜덤 셔플
         all_recommendations = all_recommendations[:100]
         random.shuffle(all_recommendations)
         SMART_LUNCH_CACHE[employee_id] = all_recommendations
