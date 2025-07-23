@@ -2931,6 +2931,46 @@ def get_nearby_restaurants():
         'user_location': {'latitude': latitude, 'longitude': longitude}
     })
 
+@app.route('/restaurants/map', methods=['GET'])
+def get_restaurants_for_map():
+    """지도용 맛집 데이터 조회"""
+    try:
+        query = request.args.get('query', '')
+        category = request.args.get('category')
+        sort_by = request.args.get('sort_by', 'name')
+        
+        q = Restaurant.query
+        if category and category != '전체':
+            q = q.filter(Restaurant.category == category)
+        
+        if query:
+            q = q.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%')))
+        
+        restaurants = q.all()
+        
+        # 정렬
+        if sort_by == 'rating_desc':
+            restaurants.sort(key=lambda r: r.avg_rating, reverse=True)
+        elif sort_by == 'reviews_desc':
+            restaurants.sort(key=lambda r: r.review_count, reverse=True)
+        else:
+            restaurants.sort(key=lambda r: r.name)
+        
+        restaurants_list = [{
+            'id': r.id, 
+            'name': r.name, 
+            'category': r.category, 
+            'address': r.address, 
+            'latitude': r.latitude, 
+            'longitude': r.longitude, 
+            'rating': round(r.avg_rating, 1), 
+            'review_count': r.review_count
+        } for r in restaurants]
+        
+        return jsonify(restaurants_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/users/nearby', methods=['GET'])
 def get_nearby_users():
     """근처 사용자 찾기 (같은 건물/지역)"""
