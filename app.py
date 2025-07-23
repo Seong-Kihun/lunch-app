@@ -1,7 +1,7 @@
 import random
 import json
-from datetime import datetime, date, timedelta, time
-from flask import Flask, request, jsonify
+from datetime import datetime, date, timedelta, time as dt_time
+from flask import Flask, request, jsonify, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -3192,66 +3192,105 @@ def calculate_compatibility_score(user1, user2):
     return min(score, 1.0)
 
 # --- 스마트 랜덤 런치 API ---
+SMART_LUNCH_CACHE = {}
+SMART_LUNCH_CACHE_DATE = None
+
+# 패턴 점수 계산 예시 함수
+# (실제 서비스에서는 더 정교하게 구현 가능)
+def calculate_pattern_score(requester, user):
+    score = 0.0
+    # 점심 시간대 선호 일치
+    if requester.preferred_time and user.preferred_time:
+        if requester.preferred_time == user.preferred_time:
+            score += 0.5
+    # 음식 취향 일치
+    if requester.main_dish_genre and user.main_dish_genre:
+        if requester.main_dish_genre == user.main_dish_genre:
+            score += 0.3
+    # 그룹 크기 선호(예시: 없음)
+    # 기타 패턴 요소 추가 가능
+    return min(score, 1.0)
+
 @app.route('/proposals/smart-recommendations', methods=['GET'])
 def get_smart_recommendations():
-    """스마트 랜덤 런치 추천 API - 최대 10개 그룹 추천"""
+    """스마트 랜덤 런치 추천 API - 최대 100개 그룹 추천, 매일 00:00에 캐시 갱신"""
+    global SMART_LUNCH_CACHE, SMART_LUNCH_CACHE_DATE
     employee_id = request.args.get('employee_id')
     if not employee_id:
         return jsonify({'error': 'employee_id is required'}), 400
-    
+
+    # 오늘 날짜(한국시간) 기준
+    now = datetime.utcnow() + timedelta(hours=9)
+    today_str = now.strftime('%Y-%m-%d')
+
+    # 캐시가 없거나 날짜가 다르면 새로 생성
+    if SMART_LUNCH_CACHE_DATE != today_str:
+        SMART_LUNCH_CACHE = {}
+        SMART_LUNCH_CACHE_DATE = today_str
+
+    # 캐시에 있으면 바로 반환
+    if employee_id in SMART_LUNCH_CACHE:
+        groups = SMART_LUNCH_CACHE[employee_id]
+        # 반환 직전에 랜덤 셔플
+        random.shuffle(groups)
+        return jsonify(groups)
+
     try:
-        # 1단계: 빈 날짜 탐색 (오늘부터 14일 후까지)
         today = get_seoul_today()
         empty_dates = []
-        
+        # 14일간의 평일만 탐색
         for i in range(14):
             check_date = today + timedelta(days=i)
+            if check_date.weekday() >= 5:  # 5=토, 6=일
+                continue
             date_string = check_date.strftime('%Y-%m-%d')
-            
             # 해당 날짜에 약속이 있는지 확인
             has_party = db.session.query(Party).filter(
                 and_(
                     getattr(Party, 'party_date') == date_string,
-                    or_(
-                        getattr(Party, 'host_employee_id') == employee_id,
-                        getattr(Party, 'members_employee_ids').contains(employee_id)
-                    )
+                    or_(getattr(Party, 'host_employee_id') == employee_id,
+                        getattr(Party, 'members_employee_ids').contains(employee_id))
                 )
             ).first()
-            
             has_personal = db.session.query(PersonalSchedule).filter(
                 and_(
                     getattr(PersonalSchedule, 'schedule_date') == date_string,
                     getattr(PersonalSchedule, 'employee_id') == employee_id
                 )
             ).first()
-            
-            # 약속이 없는 날짜만 추가
             if not has_party and not has_personal:
                 empty_dates.append(date_string)
-        
-        # 2단계: 날짜별 추천 그룹 개수 설정
-        # 가장 가까운 날 5개, 그 다음 날 2개, 그 다음 날 2개, 그 다음 날 1개
-        date_group_counts = [5, 2, 2, 1]
+
+        # 날짜별 그룹 개수 비율
+        total_groups = 100
+        date_group_counts = []
+        if len(empty_dates) >= 3:
+            date_group_counts = [int(total_groups*0.55), int(total_groups*0.2), int(total_groups*0.15)]
+            rest = total_groups - sum(date_group_counts)
+            date_group_counts += [rest]  # 나머지 날짜용
+        else:
+            # 날짜가 3개 미만이면 균등 분배
+            per_date = total_groups // max(1, len(empty_dates))
+            date_group_counts = [per_date]*len(empty_dates)
+
         all_recommendations = []
-        
-        for i, group_count in enumerate(date_group_counts):
+        requester = db.session.query(User).filter(getattr(User, 'employee_id') == employee_id).first()
+        if not requester:
+            return jsonify([])
+
+        # 1~3일차 그룹 생성
+        for i, group_count in enumerate(date_group_counts[:3]):
             if i >= len(empty_dates):
                 break
-                
             selected_date = empty_dates[i]
-            
-            # 해당 날짜에 약속이 없는 다른 유저들 찾기
             available_users = db.session.query(User).filter(
                 and_(
                     getattr(User, 'employee_id') != employee_id,
                     ~db.session.query(Party).filter(
                         and_(
                             getattr(Party, 'party_date') == selected_date,
-                            or_(
-                                getattr(Party, 'host_employee_id') == getattr(User, 'employee_id'),
-                                getattr(Party, 'members_employee_ids').contains(getattr(User, 'employee_id'))
-                            )
+                            or_(getattr(Party, 'host_employee_id') == getattr(User, 'employee_id'),
+                                getattr(Party, 'members_employee_ids').contains(getattr(User, 'employee_id')))
                         )
                     ).exists(),
                     ~db.session.query(PersonalSchedule).filter(
@@ -3262,77 +3301,91 @@ def get_smart_recommendations():
                     ).exists()
                 )
             ).all()
-            
-            # 요청자 정보 가져오기
-            requester = db.session.query(User).filter(getattr(User, 'employee_id') == employee_id).first()
-            if not requester:
-                continue
-            
-            # 성향 매칭 점수 계산 및 정렬
             scored_users = []
             for user in available_users:
-                score = calculate_compatibility_score(requester, user)
-                scored_users.append((user, score))
-            
-            # 점수순으로 정렬하고 상위 3명씩 여러 그룹 생성
+                preference_score = calculate_compatibility_score(requester, user)
+                pattern_score = calculate_pattern_score(requester, user)
+                random_score = random.random()
+                total_score = preference_score*0.6 + pattern_score*0.3 + random_score*0.1
+                scored_users.append((user, total_score))
             scored_users.sort(key=lambda x: x[1], reverse=True)
-            
-            # 해당 날짜에 대해 여러 그룹 생성 (최대 group_count개)
-            for group_idx in range(min(group_count, len(scored_users) // 3)):
-                start_idx = group_idx * 3
-                end_idx = start_idx + 3
-                
+            for group_idx in range(min(group_count, len(scored_users)//3)):
+                start_idx = group_idx*3
+                end_idx = start_idx+3
                 if end_idx > len(scored_users):
                     break
-                    
                 selected_group = scored_users[start_idx:end_idx]
-                
-                # 각 멤버의 식사 기록 조회
                 group_members = []
                 for user, score in selected_group:
-                    # 마지막 Party 기록 조회
-                    last_party = db.session.query(Party).filter(
-                        and_(
-                            or_(
-                                and_(getattr(Party, 'host_employee_id') == employee_id, getattr(Party, 'members_employee_ids').contains(user.employee_id)),
-                                and_(getattr(Party, 'host_employee_id') == user.employee_id, getattr(Party, 'members_employee_ids').contains(employee_id))
-                            ),
-                            getattr(Party, 'party_date') < selected_date
-                        )
-                    ).order_by(desc(getattr(Party, 'party_date'))).first()
-                    
-                    # dining_history 계산
-                    if last_party:
-                        last_party_date = datetime.strptime(last_party.party_date, '%Y-%m-%d').date()
-                        days_diff = (today - last_party_date).days
-                        
-                        if days_diff == 1:
-                            dining_history = "어제 함께 식사"
-                        elif days_diff <= 7:
-                            dining_history = f"{days_diff}일 전 함께 식사"
-                        elif days_diff <= 30:
-                            dining_history = f"{days_diff//7}주 전 함께 식사"
-                        else:
-                            dining_history = "1달 이상 전"
-                    else:
-                        dining_history = "처음 만나는 동료"
-                    
                     group_members.append({
                         "nickname": user.nickname,
                         "lunch_preference": user.lunch_preference,
-                        "dining_history": dining_history,
                         "employee_id": user.employee_id
                     })
-                
                 if group_members:
                     all_recommendations.append({
                         "proposed_date": selected_date,
                         "recommended_group": group_members
                     })
-        
-        # 최대 10개까지만 반환
-        return jsonify(all_recommendations[:10])
-        
+        # 나머지 날짜 그룹 (랜덤 샘플)
+        if len(date_group_counts) > 3 and len(empty_dates) > 3:
+            rest_count = date_group_counts[3]
+            rest_dates = empty_dates[3:]
+            rest_groups = []
+            for selected_date in rest_dates:
+                available_users = db.session.query(User).filter(
+                    and_(
+                        getattr(User, 'employee_id') != employee_id,
+                        ~db.session.query(Party).filter(
+                            and_(
+                                getattr(Party, 'party_date') == selected_date,
+                                or_(getattr(Party, 'host_employee_id') == getattr(User, 'employee_id'),
+                                    getattr(Party, 'members_employee_ids').contains(getattr(User, 'employee_id')))
+                            )
+                        ).exists(),
+                        ~db.session.query(PersonalSchedule).filter(
+                            and_(
+                                getattr(PersonalSchedule, 'schedule_date') == selected_date,
+                                getattr(PersonalSchedule, 'employee_id') == getattr(User, 'employee_id')
+                            )
+                        ).exists()
+                    )
+                ).all()
+                scored_users = []
+                for user in available_users:
+                    preference_score = calculate_compatibility_score(requester, user)
+                    pattern_score = calculate_pattern_score(requester, user)
+                    random_score = random.random()
+                    total_score = preference_score*0.6 + pattern_score*0.3 + random_score*0.1
+                    scored_users.append((user, total_score))
+                random.shuffle(scored_users)
+                for group_idx in range(len(scored_users)//3):
+                    start_idx = group_idx*3
+                    end_idx = start_idx+3
+                    if end_idx > len(scored_users):
+                        break
+                    selected_group = scored_users[start_idx:end_idx]
+                    group_members = []
+                    for user, score in selected_group:
+                        group_members.append({
+                            "nickname": user.nickname,
+                            "lunch_preference": user.lunch_preference,
+                            "employee_id": user.employee_id
+                        })
+                    if group_members:
+                        rest_groups.append({
+                            "proposed_date": selected_date,
+                            "recommended_group": group_members
+                        })
+            # rest_count만큼만 랜덤 샘플
+            if len(rest_groups) > rest_count:
+                rest_groups = random.sample(rest_groups, rest_count)
+            all_recommendations.extend(rest_groups)
+        # 100개로 자르고 랜덤 셔플
+        all_recommendations = all_recommendations[:100]
+        random.shuffle(all_recommendations)
+        SMART_LUNCH_CACHE[employee_id] = all_recommendations
+        return jsonify(all_recommendations)
     except Exception as e:
         print(f"Error in smart recommendations: {e}")
         return jsonify({'error': 'Internal server error'}), 500
