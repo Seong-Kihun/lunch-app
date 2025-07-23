@@ -3257,7 +3257,7 @@ def get_smart_recommendations():
         total_groups = 100
         date_group_counts = []
         if len(empty_dates) >= 3:
-            date_group_counts = [int(total_groups*0.85), int(total_groups*0.1), int(total_groups*0.3)]
+            date_group_counts = [int(total_groups*0.85), int(total_groups*0.1), int(total_groups*0.03)]
             rest = total_groups - sum(date_group_counts)
             date_group_counts += [rest]
         else:
