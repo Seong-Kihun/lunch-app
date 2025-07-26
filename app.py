@@ -6,6 +6,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
+import pandas as pd
+import os
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -436,23 +438,47 @@ def create_tables_and_init_data():
             
             # Restaurant 초기 데이터 추가
             if Restaurant.query.count() == 0:
-                restaurants_data = [
-                    {'name': '판교역 맛집', 'category': '한식', 'address': '경기도 성남시 분당구 판교역로 146'},
-                    {'name': '분당 맛집', 'category': '중식', 'address': '경기도 성남시 분당구 정자로 123'},
-                    {'name': '일식당', 'category': '일식', 'address': '경기도 성남시 분당구 판교로 456'},
-                    {'name': '양식점', 'category': '양식', 'address': '경기도 성남시 분당구 정자동 789'},
-                    {'name': '분식점', 'category': '분식', 'address': '경기도 성남시 분당구 판교동 321'},
-                ]
-                # Restaurant 생성 (초기 데이터)
-                for restaurant_data in restaurants_data:
-                    lat, lon = geocode_address(restaurant_data['address'])
-                    db.session.add(Restaurant(
-                        name=restaurant_data['name'],
-                        category=restaurant_data['category'],
-                        address=restaurant_data['address'],
-                        latitude=lat,
-                        longitude=lon
-                    ))
+                import pandas as pd
+                import os
+                excel_path = os.path.join(os.path.dirname(__file__), '../lunch_app_frontend/data/restaurants.xlsx')
+                if os.path.exists(excel_path):
+                    df = pd.read_excel(excel_path, engine='openpyxl', header=0)
+                    # 엑셀 파일이 '사업장명', '소재지(지번)' 컬럼을 갖고 있다고 가정
+                    for idx, row in df.iterrows():
+                        name = str(row.get('사업장명', '')).strip()
+                        address = str(row.get('소재지(지번)', '')).strip()
+                        if not name or not address:
+                            continue
+                        # 중복 체크 (이름+주소)
+                        exists = Restaurant.query.filter_by(name=name, address=address).first()
+                        if exists:
+                            continue
+                        db.session.add(Restaurant(
+                            name=name,
+                            category='',
+                            address=address,
+                            latitude=None,
+                            longitude=None
+                        ))
+                    db.session.commit()
+                else:
+                    # 기존 하드코딩 데이터 (엑셀 없을 때만)
+                    restaurants_data = [
+                        {'name': '판교역 맛집', 'category': '한식', 'address': '경기도 성남시 분당구 판교역로 146'},
+                        {'name': '분당 맛집', 'category': '중식', 'address': '경기도 성남시 분당구 정자로 123'},
+                        {'name': '일식당', 'category': '일식', 'address': '경기도 성남시 분당구 판교로 456'},
+                        {'name': '양식점', 'category': '양식', 'address': '경기도 성남시 분당구 정자동 789'},
+                        {'name': '분식점', 'category': '분식', 'address': '경기도 성남시 분당구 판교동 321'},
+                    ]
+                    for restaurant_data in restaurants_data:
+                        lat, lon = geocode_address(restaurant_data['address'])
+                        db.session.add(Restaurant(
+                            name=restaurant_data['name'],
+                            category=restaurant_data['category'],
+                            address=restaurant_data['address'],
+                            latitude=lat,
+                            longitude=lon
+                        ))
             
             # 성사된 랜덤런치 그룹 테스트 데이터 추가
             if Party.query.filter_by(is_from_match=True).count() == 0:
