@@ -1119,6 +1119,9 @@ const RestaurantMap = (props) => {
               if (searchQuery.trim()) {
                 console.log('검색 시작:', searchQuery);
                 saveSearchHistory(searchQuery);
+                // 지도 영역 검색 모드 해제
+                setIsMapAreaSearch(false);
+                setMapAreaResults([]);
                 setLoading(true);
                 const searchResults = await searchRestaurantsByQuery(searchQuery);
                 console.log('검색 결과:', searchResults);
@@ -1152,7 +1155,7 @@ const RestaurantMap = (props) => {
               // 지도 영역 검색 모드 해제하고 현재 위치로 다시 검색
               setIsMapAreaSearch(false);
               setMapAreaResults([]);
-              getCurrentLocation(); // 현재 위치로 다시 검색
+              // getCurrentLocation() 호출하지 않음 - 지도 위치 유지
             }}
               style={{ padding: 8 }}
             >
@@ -1174,6 +1177,9 @@ const RestaurantMap = (props) => {
                 onPress={async () => {
                   setSearchQuery(historyItem);
                   setShowSearchHistory(false);
+                  // 지도 영역 검색 모드 해제
+                  setIsMapAreaSearch(false);
+                  setMapAreaResults([]);
                   setLoading(true);
                   const searchResults = await searchRestaurantsByQuery(historyItem);
                   const restaurantsWithDistance = searchResults.map(restaurant => ({
