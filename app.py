@@ -638,19 +638,70 @@ def get_restaurants():
     query = request.args.get('query', '')
     sort_by = request.args.get('sort_by', 'name')
     category_filter = request.args.get('category', None)
+    lat = request.args.get('lat', None)
+    lon = request.args.get('lon', None)
+    radius = request.args.get('radius', 10)  # 기본 10km
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)  # 한 번에 50개씩
 
     q = Restaurant.query
+    
+    # 카테고리 필터
     if category_filter:
         q = q.filter(Restaurant.category == category_filter)  # type: ignore
     
-    restaurants_q = q.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%'))).all()  # type: ignore
-
-    if sort_by == 'rating_desc': restaurants_q.sort(key=lambda r: r.avg_rating, reverse=True)
-    elif sort_by == 'reviews_desc': restaurants_q.sort(key=lambda r: r.review_count, reverse=True)
-    else: restaurants_q.sort(key=lambda r: r.name)
+    # 검색어 필터
+    if query:
+        q = q.filter(or_(Restaurant.name.ilike(f'%{query}%'), Restaurant.category.ilike(f'%{query}%')))  # type: ignore
     
-    restaurants_list = [{'id': r.id, 'name': r.name, 'category': r.category, 'address': r.address, 'latitude': r.latitude, 'longitude': r.longitude, 'rating': round(r.avg_rating, 1), 'review_count': r.review_count} for r in restaurants_q]
-    return jsonify(restaurants_list)
+    # 지역 필터 (위도/경도가 제공된 경우)
+    if lat and lon:
+        # 간단한 거리 계산 (대략적)
+        lat = float(lat)
+        lon = float(lon)
+        radius = float(radius)
+        
+        # 위도 1도 ≈ 111km, 경도 1도 ≈ 88.9km (한반도 기준)
+        lat_range = radius / 111.0
+        lon_range = radius / 88.9
+        
+        q = q.filter(
+            Restaurant.latitude >= lat - lat_range,
+            Restaurant.latitude <= lat + lat_range,
+            Restaurant.longitude >= lon - lon_range,
+            Restaurant.longitude <= lon + lon_range
+        )
+    
+    # 정렬
+    if sort_by == 'rating_desc':
+        q = q.order_by(Restaurant.avg_rating.desc())
+    elif sort_by == 'reviews_desc':
+        q = q.order_by(Restaurant.review_count.desc())
+    else:
+        q = q.order_by(Restaurant.name)
+    
+    # 페이지네이션
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    restaurants_q = pagination.items
+    
+    restaurants_list = [{
+        'id': r.id, 
+        'name': r.name, 
+        'category': r.category, 
+        'address': r.address, 
+        'latitude': r.latitude, 
+        'longitude': r.longitude, 
+        'rating': round(r.avg_rating, 1), 
+        'review_count': r.review_count
+    } for r in restaurants_q]
+    
+    return jsonify({
+        'restaurants': restaurants_list,
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page,
+        'per_page': per_page
+    })
 
 @app.route('/restaurants/<int:restaurant_id>', methods=['GET'])
 def get_restaurant_detail(restaurant_id):

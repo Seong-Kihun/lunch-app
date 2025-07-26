@@ -218,9 +218,9 @@ const RestaurantMap = (props) => {
         const response = await fetch(`https://lunch-app-backend-ra12.onrender.com/restaurants?query=${encodeURIComponent(query)}`);
         const data = await response.json();
         
-        if (data && data.length > 0) {
-          console.log('서버 데이터에서 검색 결과:', data);
-          return data.map(restaurant => ({
+        if (data && data.restaurants && data.restaurants.length > 0) {
+          console.log('서버 데이터에서 검색 결과:', data.restaurants);
+          return data.restaurants.map(restaurant => ({
             id: restaurant.id,
             name: restaurant.name,
             address: restaurant.address,
@@ -586,15 +586,22 @@ const RestaurantMap = (props) => {
     try {
       console.log('서버에서 식당 데이터 로드 시작...');
       
-      // 서버 API에서 식당 데이터 가져오기
-      const response = await fetch('https://lunch-app-backend-ra12.onrender.com/restaurants');
+      // 서버 API에서 식당 데이터 가져오기 (현재 위치 기반)
+      let apiUrl = 'https://lunch-app-backend-ra12.onrender.com/restaurants';
+      
+      // 현재 위치가 있으면 지역 필터 적용
+      if (location) {
+        apiUrl += `?lat=${location.latitude}&lon=${location.longitude}&radius=10`;
+      }
+      
+      const response = await fetch(apiUrl);
       const data = await response.json();
       
       console.log('서버에서 받은 식당 데이터:', data);
       
-      if (data && data.length > 0) {
+      if (data && data.restaurants && data.restaurants.length > 0) {
         // 서버 데이터를 앱 형식으로 변환 (주소를 좌표로 변환)
-        const processedData = await Promise.all(data.map(async (restaurant, index) => {
+        const processedData = await Promise.all(data.restaurants.map(async (restaurant, index) => {
           let latitude = restaurant.latitude;
           let longitude = restaurant.longitude;
           
@@ -665,6 +672,7 @@ const RestaurantMap = (props) => {
         setRestaurantsWithData(restaurantsWithRecommendData);
       } else {
         console.log('서버 데이터가 없습니다.');
+        console.log('총 식당 수:', data.total || 0);
         setRestaurants([]);
         setRestaurantsWithData([]);
       }
