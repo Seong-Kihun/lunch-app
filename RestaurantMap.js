@@ -598,6 +598,12 @@ const RestaurantMap = (props) => {
 
   // 모든 식당의 데이터를 로드하는 함수
   const loadRestaurantsData = async () => {
+    // 지도 영역 검색 모드일 때는 실행하지 않음
+    if (isMapAreaSearch) {
+      console.log('지도 영역 검색 모드 - 데이터 로드 건너뜀');
+      return;
+    }
+    
     try {
       console.log('서버에서 식당 데이터 로드 시작...');
       
@@ -735,8 +741,10 @@ const RestaurantMap = (props) => {
 
   // 초기 데이터 로드 (한 번만 실행)
   useEffect(() => {
-    loadRestaurantsData();
-  }, []); // 빈 배열로 한 번만 실행
+    if (!isMapAreaSearch) {
+      loadRestaurantsData();
+    }
+  }, [isMapAreaSearch]); // isMapAreaSearch가 변경될 때마다 체크
 
   // 지도 영역 검색 모드일 때는 해당 결과를 우선 표시
   const displayRestaurants = isMapAreaSearch ? mapAreaResults : restaurantsWithData;
