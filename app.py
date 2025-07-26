@@ -440,9 +440,25 @@ def create_tables_and_init_data():
             if Restaurant.query.count() == 0:
                 import pandas as pd
                 import os
-                csv_path = os.path.join(os.path.dirname(__file__), '../lunch_app_frontend/data/restaurants.csv')
-                if os.path.exists(csv_path):
+                # 여러 가능한 CSV 파일 경로 시도
+                possible_paths = [
+                    os.path.join(os.path.dirname(__file__), 'data/restaurants.csv'),
+                    os.path.join(os.path.dirname(__file__), 'restaurants.csv'),
+                    'data/restaurants.csv',
+                    'restaurants.csv'
+                ]
+                
+                csv_path = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        csv_path = path
+                        break
+                
+                if csv_path:
+                    print(f"CSV 파일을 찾았습니다: {csv_path}")
                     df = pd.read_csv(csv_path, encoding='utf-8')
+                    print(f"CSV 파일에서 {len(df)}개의 행을 읽었습니다.")
+                    
                     # CSV 파일이 '사업장명', '소재지(지번)' 컬럼을 갖고 있다고 가정
                     for idx, row in df.iterrows():
                         name = str(row.get('사업장명', '')).strip()
