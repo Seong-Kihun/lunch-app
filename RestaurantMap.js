@@ -69,6 +69,8 @@ const RestaurantMap = (props) => {
   const [mapBounds, setMapBounds] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [mapAreaResults, setMapAreaResults] = useState([]); // 지도 영역 검색 결과
+  const [isMapAreaSearch, setIsMapAreaSearch] = useState(false); // 지도 영역 검색 모드
 
   // Google Places API 검색 함수들
   const searchNearbyRestaurants = async (latitude, longitude, radius = SEARCH_RADIUS) => {
@@ -736,7 +738,10 @@ const RestaurantMap = (props) => {
     loadRestaurantsData();
   }, []); // 빈 배열로 한 번만 실행
 
-  const filteredAndSortedRestaurants = restaurantsWithData
+  // 지도 영역 검색 모드일 때는 해당 결과를 우선 표시
+  const displayRestaurants = isMapAreaSearch ? mapAreaResults : restaurantsWithData;
+  
+  const filteredAndSortedRestaurants = displayRestaurants
     .filter(restaurant => {
       const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            restaurant.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1098,6 +1103,11 @@ const RestaurantMap = (props) => {
             onChangeText={(text) => {
               setSearchQuery(text);
               setShowSearchHistory(text.length === 0 && searchHistory.length > 0);
+              // 검색어가 변경되면 지도 영역 검색 모드 해제
+              if (text.length > 0) {
+                setIsMapAreaSearch(false);
+                setMapAreaResults([]);
+              }
             }}
             onFocus={() => {
               if (searchHistory.length > 0) {
@@ -1136,11 +1146,14 @@ const RestaurantMap = (props) => {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                setShowSearchHistory(false);
-                getCurrentLocation(); // 현재 위치로 다시 검색
-              }}
+                          onPress={() => {
+              setSearchQuery('');
+              setShowSearchHistory(false);
+              // 지도 영역 검색 모드 해제하고 현재 위치로 다시 검색
+              setIsMapAreaSearch(false);
+              setMapAreaResults([]);
+              getCurrentLocation(); // 현재 위치로 다시 검색
+            }}
               style={{ padding: 8 }}
             >
               <Ionicons name="close-circle" size={20} color={currentColors.gray} />
@@ -1304,8 +1317,9 @@ const RestaurantMap = (props) => {
                     )
                   }));
                   
-                  setRestaurants(restaurantsWithDistance);
-                  // 지도 이동 상태는 유지 (버튼이 계속 표시되도록)
+                  // 지도 영역 검색 결과를 별도 상태로 저장
+                  setMapAreaResults(restaurantsWithDistance);
+                  setIsMapAreaSearch(true);
                   setLoading(false);
                   
                   console.log('지도 영역 검색 완료:', boundsResults.length, '개 식당');
