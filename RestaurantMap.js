@@ -490,10 +490,13 @@ const RestaurantMap = (props) => {
   ];
 
   useEffect(() => {
-    getCurrentLocation();
+    // 지도 영역 검색 모드가 아닐 때만 현재 위치 가져오기
+    if (!isMapAreaSearch) {
+      getCurrentLocation();
+    }
     loadSearchHistory();
     setLoading(false);
-  }, []);
+  }, [isMapAreaSearch]);
 
   const getCurrentLocation = async () => {
     try {
@@ -540,8 +543,8 @@ const RestaurantMap = (props) => {
       
       setRestaurants(restaurantsWithDistance);
       
-      // 지도 이동
-      if (mapRef.current) {
+      // 지도 영역 검색 모드가 아닐 때만 지도 이동
+      if (mapRef.current && !isMapAreaSearch) {
         mapRef.current.animateToRegion({
           latitude: newLocation.latitude,
           longitude: newLocation.longitude,
