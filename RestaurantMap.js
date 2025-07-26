@@ -1284,20 +1284,27 @@ const RestaurantMap = (props) => {
                   setLoading(true);
                   const boundsResults = await searchRestaurantsInBounds(mapBounds);
                   
-                  // 거리 계산 추가
+                  // 거리 계산 추가 (현재 지도 중심점 기준)
+                  const mapCenter = {
+                    latitude: (mapBounds.northeast.lat + mapBounds.southwest.lat) / 2,
+                    longitude: (mapBounds.northeast.lng + mapBounds.southwest.lng) / 2
+                  };
+                  
                   const restaurantsWithDistance = boundsResults.map(restaurant => ({
                     ...restaurant,
-                    distance: location ? calculateDistance(
-                      location.latitude,
-                      location.longitude,
+                    distance: calculateDistance(
+                      mapCenter.latitude,
+                      mapCenter.longitude,
                       restaurant.latitude,
                       restaurant.longitude
-                    ) : 0
+                    )
                   }));
                   
                   setRestaurants(restaurantsWithDistance);
-                  setIsMapMoved(false);
+                  // 지도 이동 상태는 유지 (버튼이 계속 표시되도록)
                   setLoading(false);
+                  
+                  console.log('지도 영역 검색 완료:', boundsResults.length, '개 식당');
                 }
               }}
               activeOpacity={0.8}
