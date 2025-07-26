@@ -115,6 +115,9 @@ const RestaurantMap = (props) => {
 
   const searchRestaurantsInBounds = async (bounds) => {
     try {
+      console.log('현재 지도 영역에서 식당 검색 시작');
+      console.log('지도 영역:', bounds);
+      
       // 지도 범위의 중심점 계산
       const centerLat = (bounds.northeast.lat + bounds.southwest.lat) / 2;
       const centerLng = (bounds.northeast.lng + bounds.southwest.lng) / 2;
@@ -124,30 +127,36 @@ const RestaurantMap = (props) => {
       const lngDelta = Math.abs(bounds.northeast.lng - bounds.southwest.lng);
       const radius = Math.max(latDelta, lngDelta) * 111000; // 1도 ≈ 111km
       
+      console.log('검색 중심점:', centerLat, centerLng);
+      console.log('검색 반지름:', radius, 'km');
+      
+      // 서버 API로 현재 지도 영역 내 식당 검색
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${centerLat},${centerLng}&radius=${Math.min(radius, 50000)}&type=restaurant&key=${GOOGLE_PLACES_API_KEY}`
+        `https://lunch-app-backend-ra12.onrender.com/restaurants?lat=${centerLat}&lon=${centerLng}&radius=${Math.min(radius, 50)}`
       );
       const data = await response.json();
       
-      if (data.status === 'OK') {
-        return data.results.map(place => ({
-          id: place.place_id,
-          name: place.name,
-          address: place.vicinity,
-          latitude: place.geometry.location.lat,
-          longitude: place.geometry.location.lng,
-          // 앱 내부 데이터는 기본값으로 설정
-          rating: 0,
-          user_ratings_total: 0,
-          category: '한식', // 기본값
+      if (data && data.restaurants && data.restaurants.length > 0) {
+        console.log('지도 영역 내 식당 검색 결과:', data.restaurants.length, '개');
+        return data.restaurants.map(restaurant => ({
+          id: restaurant.id,
+          name: restaurant.name,
+          address: restaurant.address,
+          latitude: restaurant.latitude,
+          longitude: restaurant.longitude,
+          category: restaurant.category || '기타',
+          rating: restaurant.rating || 0,
+          user_ratings_total: restaurant.review_count || 0,
           distance: 0,
           recommendCount: 0,
-          reviewCount: 0
+          reviewCount: restaurant.review_count || 0
         }));
       }
+      
+      console.log('지도 영역 내 식당 없음');
       return [];
     } catch (error) {
-      console.error('범위 검색 오류:', error);
+      console.error('지도 영역 검색 오류:', error);
       return [];
     }
   };
@@ -1294,7 +1303,7 @@ const RestaurantMap = (props) => {
               activeOpacity={0.8}
             >
               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-                현재 지도에서 검색
+                지도 영역 검색
               </Text>
             </TouchableOpacity>
           )}
