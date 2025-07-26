@@ -440,10 +440,10 @@ def create_tables_and_init_data():
             if Restaurant.query.count() == 0:
                 import pandas as pd
                 import os
-                excel_path = os.path.join(os.path.dirname(__file__), '../lunch_app_frontend/data/restaurants.xlsx')
-                if os.path.exists(excel_path):
-                    df = pd.read_excel(excel_path, engine='openpyxl', header=0)
-                    # 엑셀 파일이 '사업장명', '소재지(지번)' 컬럼을 갖고 있다고 가정
+                csv_path = os.path.join(os.path.dirname(__file__), '../lunch_app_frontend/data/restaurants.csv')
+                if os.path.exists(csv_path):
+                    df = pd.read_csv(csv_path, encoding='utf-8')
+                    # CSV 파일이 '사업장명', '소재지(지번)' 컬럼을 갖고 있다고 가정
                     for idx, row in df.iterrows():
                         name = str(row.get('사업장명', '')).strip()
                         address = str(row.get('소재지(지번)', '')).strip()
@@ -461,6 +461,7 @@ def create_tables_and_init_data():
                             longitude=None
                         ))
                     db.session.commit()
+                    print(f"CSV 파일에서 {Restaurant.query.count()}개의 식당을 등록했습니다.")
                 else:
                     # 기존 하드코딩 데이터 (엑셀 없을 때만)
                     restaurants_data = [
