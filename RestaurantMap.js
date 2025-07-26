@@ -122,10 +122,14 @@ const RestaurantMap = (props) => {
       const centerLat = (bounds.northeast.lat + bounds.southwest.lat) / 2;
       const centerLng = (bounds.northeast.lng + bounds.southwest.lng) / 2;
       
-      // 범위의 반지름 계산 (대략적인 거리)
+      // 범위의 반지름 계산 (정확한 거리)
       const latDelta = Math.abs(bounds.northeast.lat - bounds.southwest.lat);
       const lngDelta = Math.abs(bounds.northeast.lng - bounds.southwest.lng);
-      const radius = Math.max(latDelta, lngDelta) * 111000; // 1도 ≈ 111km
+      
+      // 위도 1도 ≈ 111km, 경도 1도 ≈ 88.9km (한반도 기준)
+      const latRadius = latDelta * 111.0 / 2; // 반지름이므로 2로 나눔
+      const lngRadius = lngDelta * 88.9 / 2;
+      const radius = Math.max(latRadius, lngRadius);
       
       console.log('검색 중심점:', centerLat, centerLng);
       console.log('검색 반지름:', radius, 'km');
