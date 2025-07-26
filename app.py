@@ -661,16 +661,28 @@ def get_restaurants():
         lon = float(lon)
         radius = float(radius)
         
+        print(f"지역 필터링: 중심점({lat}, {lon}), 반지름 {radius}km")
+        
         # 위도 1도 ≈ 111km, 경도 1도 ≈ 88.9km (한반도 기준)
         lat_range = radius / 111.0
         lon_range = radius / 88.9
         
+        print(f"위도 범위: {lat - lat_range} ~ {lat + lat_range}")
+        print(f"경도 범위: {lon - lon_range} ~ {lon + lon_range}")
+        
+        # 좌표가 있는 식당만 필터링
         q = q.filter(
+            Restaurant.latitude.isnot(None),
+            Restaurant.longitude.isnot(None),
             Restaurant.latitude >= lat - lat_range,
             Restaurant.latitude <= lat + lat_range,
             Restaurant.longitude >= lon - lon_range,
             Restaurant.longitude <= lon + lon_range
         )
+        
+        # 필터링된 결과 수 확인
+        filtered_count = q.count()
+        print(f"지역 필터링 후 식당 수: {filtered_count}")
     
     # 정렬
     if sort_by == 'rating_desc':
