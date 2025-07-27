@@ -3631,6 +3631,12 @@ def get_smart_recommendations():
             else:
                 return "처음 만나는 동료"
 
+        def create_group_key(recommendation):
+            """그룹의 고유 키를 생성하는 함수"""
+            date = recommendation['proposed_date']
+            member_ids = sorted([member['employee_id'] for member in recommendation['recommended_group']])
+            return f"{date}_{','.join(member_ids)}"
+
         # 1~3일차 그룹 생성
         for i, group_count in enumerate(date_group_counts[:3]):
             if i >= len(empty_dates):
@@ -3735,7 +3741,20 @@ def get_smart_recommendations():
             if len(rest_groups) > rest_count:
                 rest_groups = random.sample(rest_groups, rest_count)
             all_recommendations.extend(rest_groups)
-        # 그룹이 100개 미만이면 랜덤하게 복제해서 100개로 맞춤
+        
+        # 중복 제거 로직 추가
+        seen_groups = set()
+        unique_recommendations = []
+        
+        for recommendation in all_recommendations:
+            group_key = create_group_key(recommendation)
+            if group_key not in seen_groups:
+                seen_groups.add(group_key)
+                unique_recommendations.append(recommendation)
+        
+        all_recommendations = unique_recommendations
+        
+        # 그룹이 100개 미만이면 랜덤하게 복제해서 100개로 맞춤 (중복 제거 후)
         if len(all_recommendations) < 100 and all_recommendations:
             while len(all_recommendations) < 100:
                 all_recommendations.append(random.choice(all_recommendations))
