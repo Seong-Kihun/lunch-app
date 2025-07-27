@@ -406,6 +406,32 @@ class DateVote(db.Model):
         self.voter_id = voter_id
         self.voted_date = voted_date
 
+class RestaurantRequest(db.Model):
+    """식당 신청/수정/삭제 요청 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    request_type = db.Column(db.String(20), nullable=False)  # 'add', 'update', 'delete'
+    restaurant_name = db.Column(db.String(100), nullable=True)
+    restaurant_address = db.Column(db.String(200), nullable=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=True)  # 수정/삭제 시
+    reason = db.Column(db.Text, nullable=True)  # 수정/삭제 사유
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'approved', 'rejected'
+    requester_id = db.Column(db.String(50), nullable=False)
+    requester_nickname = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approved_by = db.Column(db.String(50), nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)  # 거절 사유
+    
+    def __init__(self, request_type, requester_id, requester_nickname, restaurant_name=None, 
+                 restaurant_address=None, restaurant_id=None, reason=None):
+        self.request_type = request_type
+        self.requester_id = requester_id
+        self.requester_nickname = requester_nickname
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.restaurant_id = restaurant_id
+        self.reason = reason
+
 # --- 앱 실행 시 초기화 ---
 @app.before_request
 def create_tables_and_init_data():
@@ -442,10 +468,10 @@ def create_tables_and_init_data():
                 import os
                 # 여러 가능한 CSV 파일 경로 시도
                 possible_paths = [
-                    os.path.join(os.path.dirname(__file__), 'data/restaurants.csv'),
                     os.path.join(os.path.dirname(__file__), 'restaurants.csv'),
-                    'data/restaurants.csv',
-                    'restaurants.csv'
+                    'restaurants.csv',
+                    'lunch_app_frontend/data/restaurants.csv',
+                    'lunch_app/data/restaurants.csv'
                 ]
                 
                 csv_path = None
@@ -777,6 +803,208 @@ def get_review_tags():
         '달콤해요', '고소해요', '담백해요', '진한맛'
     ]
     return jsonify({'tags': tags})
+
+# --- 식당 신청 관련 API ---
+@app.route('/restaurants/requests', methods=['POST'])
+def create_restaurant_request():
+    """식당 신청/수정/삭제 요청 생성"""
+    data = request.get_json()
+    
+    # 일일 신청 제한 확인 (사용자당 5개)
+    today = get_seoul_today()
+    daily_requests = RestaurantRequest.query.filter(
+        RestaurantRequest.requester_id == data['requester_id'],
+        RestaurantRequest.created_at >= today
+    ).count()
+    
+    if daily_requests >= 5:
+        return jsonify({'error': '일일 신청 한도를 초과했습니다. (최대 5개)'}), 400
+    
+    # 중복 신청 확인
+    existing_request = RestaurantRequest.query.filter(
+        RestaurantRequest.requester_id == data['requester_id'],
+        RestaurantRequest.request_type == data['request_type'],
+        RestaurantRequest.restaurant_name == data.get('restaurant_name'),
+        RestaurantRequest.status == 'pending'
+    ).first()
+    
+    if existing_request:
+        return jsonify({'error': '이미 동일한 신청이 대기 중입니다.'}), 400
+    
+    # 자동 승인 조건 확인
+    auto_approve = False
+    if data['request_type'] == 'add':
+        # 특정 키워드가 포함된 경우 자동 승인
+        keywords = ['씨유', 'CU', 'GS25', '세븐일레븐', '7-11', '이마트24', '미니스톱']
+        restaurant_name = data.get('restaurant_name', '').lower()
+        if any(keyword.lower() in restaurant_name for keyword in keywords):
+            auto_approve = True
+    
+    request_obj = RestaurantRequest(
+        request_type=data['request_type'],
+        requester_id=data['requester_id'],
+        requester_nickname=data['requester_nickname'],
+        restaurant_name=data.get('restaurant_name'),
+        restaurant_address=data.get('restaurant_address'),
+        restaurant_id=data.get('restaurant_id'),
+        reason=data.get('reason')
+    )
+    
+    if auto_approve:
+        request_obj.status = 'approved'
+        request_obj.approved_at = datetime.utcnow()
+        request_obj.approved_by = 'system'
+        
+        # 자동으로 식당 추가
+        if data['request_type'] == 'add':
+            lat, lon = geocode_address(data.get('restaurant_address', ''))
+            restaurant = Restaurant(
+                name=data['restaurant_name'],
+                category='',
+                address=data.get('restaurant_address'),
+                latitude=lat,
+                longitude=lon
+            )
+            db.session.add(restaurant)
+    
+    db.session.add(request_obj)
+    db.session.commit()
+    
+    # 알림 생성
+    if not auto_approve:
+        create_notification(
+            user_id='admin',  # 관리자에게 알림
+            type='restaurant_request',
+            title='새로운 식당 신청',
+            message=f"{data['requester_nickname']}님이 식당을 신청했습니다.",
+            related_id=request_obj.id
+        )
+    
+    return jsonify({
+        'message': '신청이 접수되었습니다.' + (' (자동 승인됨)' if auto_approve else ''),
+        'auto_approved': auto_approve
+    }), 201
+
+@app.route('/restaurants/requests/my/<employee_id>', methods=['GET'])
+def get_my_restaurant_requests(employee_id):
+    """내 식당 신청 내역 조회"""
+    requests = RestaurantRequest.query.filter_by(requester_id=employee_id)\
+        .order_by(RestaurantRequest.created_at.desc()).all()
+    
+    return jsonify({
+        'requests': [{
+            'id': req.id,
+            'request_type': req.request_type,
+            'restaurant_name': req.restaurant_name,
+            'restaurant_address': req.restaurant_address,
+            'reason': req.reason,
+            'status': req.status,
+            'created_at': format_korean_time(req.created_at),
+            'approved_at': format_korean_time(req.approved_at) if req.approved_at else None,
+            'rejection_reason': req.rejection_reason
+        } for req in requests]
+    })
+
+@app.route('/restaurants/requests/pending', methods=['GET'])
+def get_pending_restaurant_requests():
+    """관리자용 대기 중인 신청 목록"""
+    requests = RestaurantRequest.query.filter_by(status='pending')\
+        .order_by(RestaurantRequest.created_at.desc()).all()
+    
+    return jsonify({
+        'requests': [{
+            'id': req.id,
+            'request_type': req.request_type,
+            'restaurant_name': req.restaurant_name,
+            'restaurant_address': req.restaurant_address,
+            'reason': req.reason,
+            'requester_id': req.requester_id,
+            'requester_nickname': req.requester_nickname,
+            'created_at': format_korean_time(req.created_at)
+        } for req in requests]
+    })
+
+@app.route('/restaurants/requests/<int:request_id>/approve', methods=['PUT'])
+def approve_restaurant_request(request_id):
+    """식당 신청 승인"""
+    data = request.get_json()
+    request_obj = RestaurantRequest.query.get_or_404(request_id)
+    
+    if request_obj.status != 'pending':
+        return jsonify({'error': '이미 처리된 신청입니다.'}), 400
+    
+    request_obj.status = 'approved'
+    request_obj.approved_at = datetime.utcnow()
+    request_obj.approved_by = data.get('admin_id', 'admin')
+    
+    # 신청 유형에 따른 처리
+    if request_obj.request_type == 'add':
+        # 새 식당 추가
+        lat, lon = geocode_address(request_obj.restaurant_address or '')
+        restaurant = Restaurant(
+            name=request_obj.restaurant_name,
+            category='',
+            address=request_obj.restaurant_address,
+            latitude=lat,
+            longitude=lon
+        )
+        db.session.add(restaurant)
+        
+    elif request_obj.request_type == 'update':
+        # 식당 정보 수정
+        restaurant = Restaurant.query.get(request_obj.restaurant_id)
+        if restaurant:
+            if request_obj.restaurant_name:
+                restaurant.name = request_obj.restaurant_name
+            if request_obj.restaurant_address:
+                restaurant.address = request_obj.restaurant_address
+                lat, lon = geocode_address(request_obj.restaurant_address)
+                restaurant.latitude = lat
+                restaurant.longitude = lon
+                
+    elif request_obj.request_type == 'delete':
+        # 식당 삭제
+        restaurant = Restaurant.query.get(request_obj.restaurant_id)
+        if restaurant:
+            db.session.delete(restaurant)
+    
+    db.session.commit()
+    
+    # 신청자에게 승인 알림
+    create_notification(
+        user_id=request_obj.requester_id,
+        type='restaurant_request_approved',
+        title='식당 신청 승인',
+        message=f'"{request_obj.restaurant_name}" 신청이 승인되었습니다.',
+        related_id=request_obj.id
+    )
+    
+    return jsonify({'message': '신청이 승인되었습니다.'})
+
+@app.route('/restaurants/requests/<int:request_id>/reject', methods=['PUT'])
+def reject_restaurant_request(request_id):
+    """식당 신청 거절"""
+    data = request.get_json()
+    request_obj = RestaurantRequest.query.get_or_404(request_id)
+    
+    if request_obj.status != 'pending':
+        return jsonify({'error': '이미 처리된 신청입니다.'}), 400
+    
+    request_obj.status = 'rejected'
+    request_obj.rejection_reason = data.get('rejection_reason', '')
+    
+    db.session.commit()
+    
+    # 신청자에게 거절 알림
+    create_notification(
+        user_id=request_obj.requester_id,
+        type='restaurant_request_rejected',
+        title='식당 신청 거절',
+        message=f'"{request_obj.restaurant_name}" 신청이 거절되었습니다.',
+        related_id=request_obj.id
+    )
+    
+    return jsonify({'message': '신청이 거절되었습니다.'})
 
 # --- 데이터 분석 API ---
 @app.route('/analytics/user/<employee_id>', methods=['GET'])
