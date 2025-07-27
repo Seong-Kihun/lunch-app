@@ -469,12 +469,16 @@ def create_tables_and_init_data():
                         exists = Restaurant.query.filter_by(name=name, address=address).first()
                         if exists:
                             continue
+                        
+                        # 주소를 좌표로 변환
+                        lat, lon = geocode_address(address)
+                        
                         db.session.add(Restaurant(
                             name=name,
                             category='',
                             address=address,
-                            latitude=None,
-                            longitude=None
+                            latitude=lat,
+                            longitude=lon
                         ))
                     db.session.commit()
                     print(f"CSV 파일에서 {Restaurant.query.count()}개의 식당을 등록했습니다.")
