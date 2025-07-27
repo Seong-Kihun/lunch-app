@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # 회사 위치 (성남시 수정구 대왕판교로 825)
     COMPANY_LAT = 37.4452
     COMPANY_LON = 127.1023
-    MAX_DISTANCE = 10  # km
+    MAX_DISTANCE = 3  # km
     
     # 파일 경로
     input_file = "lunch_app_frontend/data/restaurants.csv"
@@ -111,4 +111,4 @@ if __name__ == "__main__":
     
     print(f"\n✅ 필터링 완료!")
     print(f"📁 결과 파일: {output_file}")
-    print(f"📊 총 {len(filtered_data)}개의 식당이 10km 이내에 있습니다.") 
+    print(f"📊 총 {len(filtered_data)}개의 식당이 3km 이내에 있습니다.") 
