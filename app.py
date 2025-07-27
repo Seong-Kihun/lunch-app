@@ -468,10 +468,10 @@ def create_tables_and_init_data():
                 import os
                 # 여러 가능한 CSV 파일 경로 시도
                 possible_paths = [
+                    os.path.join(os.path.dirname(__file__), 'data/restaurants.csv'),
                     os.path.join(os.path.dirname(__file__), 'restaurants.csv'),
-                    'restaurants.csv',
-                    'lunch_app_frontend/data/restaurants.csv',
-                    'lunch_app/data/restaurants.csv'
+                    'data/restaurants.csv',
+                    'restaurants.csv'
                 ]
                 
                 csv_path = None
