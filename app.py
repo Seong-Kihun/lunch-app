@@ -85,8 +85,13 @@ else:
 # migrate = Migrate(app, db)
 
 # 에러 핸들러 등록
-from utils.error_handler import register_error_handlers
-register_error_handlers(app)
+try:
+    from utils.error_handler import register_error_handlers
+    register_error_handlers(app)
+    print("✅ 에러 핸들러가 성공적으로 등록되었습니다.")
+except ImportError as e:
+    print(f"⚠️ 에러 핸들러 등록 실패: {e}")
+    print("   에러 핸들링 기능은 비활성화됩니다.")
 
 # Celery 백그라운드 작업 설정
 try:
@@ -8130,17 +8135,28 @@ def generate_daily_recommendations():
         db.session.rollback()
 
 # 새로운 포인트 시스템 API 등록
-from utils.points_system import PointsSystem
-from utils.challenge_system import ChallengeSystem
-from utils.badge_system import BadgeSystem
-from utils.friend_invite_system import FriendInviteSystem
+try:
+    from utils.points_system import PointsSystem
+    from utils.challenge_system import ChallengeSystem
+    from utils.badge_system import BadgeSystem
+    from utils.friend_invite_system import FriendInviteSystem
 
-# FriendInviteSystem에 데이터베이스 객체 설정
-FriendInviteSystem.set_db(db)
-
-# 포인트 시스템 API 블루프린트 등록
-from api.points_api import points_api
-app.register_blueprint(points_api, url_prefix='/api')
+    # FriendInviteSystem에 데이터베이스 객체 설정
+    FriendInviteSystem.set_db(db)
+    print("✅ 포인트 시스템이 성공적으로 설정되었습니다.")
+    
+    # 포인트 시스템 API 블루프린트 등록
+    try:
+        from api.points_api import points_api
+        app.register_blueprint(points_api, url_prefix='/api')
+        print("✅ 포인트 API가 성공적으로 등록되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ 포인트 API 등록 실패: {e}")
+        print("   포인트 API는 비활성화됩니다.")
+        
+except ImportError as e:
+    print(f"⚠️ 포인트 시스템 설정 실패: {e}")
+    print("   포인트 시스템은 비활성화됩니다.")
 
 # 스케줄러 초기화
 scheduler = BackgroundScheduler()
