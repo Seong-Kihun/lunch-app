@@ -540,12 +540,20 @@ if AUTH_AVAILABLE:
         app.register_blueprint(auth_bp)
         
         # 새로운 일정 관리 Blueprint 등록
-        from api.schedules import schedules_bp
-        app.register_blueprint(schedules_bp)
+        try:
+            from api.schedules import schedules_bp
+            app.register_blueprint(schedules_bp)
+            print("✅ 일정 관리 Blueprint 등록 성공")
+        except Exception as e:
+            print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
         
         # 제안 관리 Blueprint 등록
-        from api.proposals import proposals_bp
-        app.register_blueprint(proposals_bp)
+        try:
+            from api.proposals import proposals_bp
+            app.register_blueprint(proposals_bp)
+            print("✅ 제안 관리 Blueprint 등록 성공")
+        except Exception as e:
+            print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
         
         print("✅ 인증 시스템이 성공적으로 초기화되었습니다.")
     except Exception as e:
@@ -553,6 +561,14 @@ if AUTH_AVAILABLE:
         AUTH_AVAILABLE = False
 else:
     print("ℹ️ 인증 시스템 초기화를 건너뜁니다.")
+
+# 🚨 중요: 데이터베이스 초기화를 Blueprint 등록 전에 수행
+try:
+    db.init_app(app)
+    print("✅ 데이터베이스가 Flask 앱과 연결되었습니다.")
+except Exception as e:
+    print(f"❌ 데이터베이스 초기화 실패: {e}")
+    print("   Blueprint 등록이 실패할 수 있습니다.")
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
@@ -8592,10 +8608,6 @@ def get_dev_user_data(employee_id):
     return temp_users.get(employee_id)
 
 # 공통 로직은 group_matching.py 모듈로 이동
-
-# 데이터베이스 초기화 (모든 설정 완료 후)
-db.init_app(app)
-print("✅ 데이터베이스가 Flask 앱과 연결되었습니다.")
 
 if __name__ == '__main__':
     if socketio:
