@@ -1110,7 +1110,7 @@ if AUTH_AVAILABLE:
 
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    host_employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    host_employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
     title = db.Column(db.String(100), nullable=False)
     restaurant_name = db.Column(db.String(100), nullable=False)
     restaurant_address = db.Column(db.String(200), nullable=True)
@@ -1179,7 +1179,7 @@ class Party(db.Model):
 class PartyMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
-    employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_host = db.Column(db.Boolean, default=False)
     
@@ -1301,7 +1301,7 @@ class DangolPot(db.Model):
     description = db.Column(db.Text, nullable=True)
     tags = db.Column(db.String(200), nullable=True)
     category = db.Column(db.String(50), nullable=True)
-    host_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    host_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
@@ -1346,7 +1346,7 @@ class DangolPot(db.Model):
 class DangolPotMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=False)
-    employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
