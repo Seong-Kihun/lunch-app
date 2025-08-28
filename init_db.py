@@ -4,15 +4,24 @@
 필요한 테이블들을 생성합니다.
 """
 
-from app import app, db
-
-# 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
+# 🚨 중요: 모델 import 순서가 매우 중요합니다!
+# 1단계: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
 from auth.models import User
 
-# 그 다음에 다른 모델들을 import
+# 2단계: 데이터베이스 객체 import
+from extensions import db
+
+# 3단계: Flask 앱 import (모델 정의 후)
+from app import app
+
+# 4단계: 스케줄 모델 import
 from models.schedule_models import PersonalSchedule, ScheduleException
-# 🚨 중요: app.py에 이미 정의된 모델들을 사용하므로 별도 import 불필요
-# 모델 중복 정의 문제를 방지하기 위해 models/app_models.py import 제거
+
+print("🔧 모델 import 순서:")
+print("   1. User 모델 ✅")
+print("   2. 데이터베이스 객체 ✅")
+print("   3. Flask 앱 ✅")
+print("   4. 스케줄 모델 ✅")
 
 def init_database():
     """데이터베이스 테이블을 초기화합니다."""
