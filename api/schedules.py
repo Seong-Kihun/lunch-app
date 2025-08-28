@@ -6,8 +6,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, date
 from typing import Dict, Any
-from services.schedule_service import ScheduleService
-from models.schedule_models import PersonalSchedule, ScheduleException
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,7 +42,9 @@ def get_schedules():
             }), 400
         
         # 일정 조회
-        schedules = ScheduleService.get_schedules_for_period(
+        from services.schedule_service import ScheduleService
+        schedule_service = ScheduleService(current_app.extensions['sqlalchemy'].db)
+        schedules = schedule_service.get_schedules_for_period(
             employee_id=employee_id,
             start_date=start_date,
             end_date=end_date
@@ -124,6 +124,7 @@ def create_schedule():
         }
         
         # 마스터 일정 생성
+        from services.schedule_service import ScheduleService
         schedule = ScheduleService.create_master_schedule(schedule_data)
         
         logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
@@ -173,6 +174,7 @@ def update_schedule(schedule_id):
                 }), 400
         
         # 마스터 일정 수정
+        from services.schedule_service import ScheduleService
         success = ScheduleService.update_master_schedule(schedule_id, data)
         
         if not success:
@@ -199,6 +201,7 @@ def delete_schedule(schedule_id):
     """
     try:
         # 마스터 일정 삭제
+        from services.schedule_service import ScheduleService
         success = ScheduleService.delete_master_schedule(schedule_id)
         
         if not success:
@@ -258,6 +261,7 @@ def create_schedule_exception(schedule_id):
             })
         
         # 예외 생성
+        from services.schedule_service import ScheduleService
         exception = ScheduleService.create_exception(
             master_schedule_id=schedule_id,
             exception_date=exception_date,
@@ -285,6 +289,8 @@ def delete_schedule_exception(schedule_id, exception_id):
     일정 예외 삭제
     """
     try:
+        from models.schedule_models import ScheduleException
+        
         exception = ScheduleException.query.get(exception_id)
         if not exception:
             return jsonify({'error': '예외를 찾을 수 없습니다'}), 404
