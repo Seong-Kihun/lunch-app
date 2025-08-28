@@ -37,11 +37,11 @@ def load_environment_variables():
 
     # 필수 환경변수 확인 및 기본값 설정
     if is_render:
-        # Render 환경에서는 Redis 없이 실행
+        # Render 환경에서는 PostgreSQL 사용
         required_vars = {
             "JWT_SECRET_KEY": "dev-jwt-secret-key-change-in-production",
             "SECRET_KEY": "dev-flask-secret-key-change-in-production",
-            "DATABASE_URL": "sqlite:///site.db",
+            "DATABASE_URL": None,  # Render에서 자동으로 설정됨
             "REDIS_URL": None,  # Render에서는 Redis 사용 안함
             "CELERY_BROKER_URL": None,  # Render에서는 Celery 사용 안함
             "CELERY_RESULT_BACKEND": None,
@@ -76,7 +76,7 @@ def load_environment_variables():
     elif is_render:
         print("🚀 Render 프로덕션 환경으로 실행됩니다.")
         print("   - Redis 및 Celery 기능은 비활성화됩니다")
-        print("   - SQLite 데이터베이스를 사용합니다")
+        print("   - PostgreSQL 데이터베이스를 사용합니다")
     else:
         print("🚀 프로덕션 환경으로 실행됩니다.")
         
