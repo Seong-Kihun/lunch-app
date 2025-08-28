@@ -71,19 +71,6 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-flask-secret-key-change-
 from extensions import db
 print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
 
-# 🚨 중요: 모델 정의를 별도 섹션으로 분리
-# User 모델을 가장 먼저 정의하여 외래키 참조 문제를 방지
-print("🔧 모델 정의 시작...")
-
-# 1단계: User 모델 정의 (가장 먼저)
-if AUTH_AVAILABLE:
-    print("✅ User 모델이 정의되었습니다.")
-else:
-    print("⚠️ User 모델이 정의되지 않았습니다.")
-
-# 2단계: 다른 모델들은 나중에 정의 (app.py 하단에서)
-print("✅ 모델 정의 준비 완료")
-
 # Flask-Migrate 초기화 (일시적으로 비활성화 - 스키마 불일치 문제 해결 후 활성화)
 # from flask_migrate import Migrate
 # migrate = Migrate(app, db)
@@ -1100,17 +1087,20 @@ class Review(db.Model):
         self.photo_url = photo_url
         self.tags = tags
 
-# 🚨 중요: User 모델을 명시적으로 메타데이터에 등록 (Party 모델 정의 이전에 수행)
+# 🚨 중요: User 모델을 명시적으로 메타데이터에 등록
 if AUTH_AVAILABLE:
     try:
-        User.__table__.create(db.engine, checkfirst=True)
-        print("✅ User 모델 테이블이 메타데이터에 등록되었습니다.")
+        # User 모델의 테이블이 메타데이터에 등록되었는지 확인
+        if 'users' not in db.metadata.tables:
+            print("⚠️ users 테이블이 메타데이터에 등록되지 않았습니다.")
+        else:
+            print("✅ users 테이블이 메타데이터에 등록되었습니다.")
     except Exception as e:
-        print(f"⚠️ User 모델 테이블 등록 실패: {e}")
+        print(f"⚠️ User 모델 메타데이터 확인 실패: {e}")
 
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    host_employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
+    host_employee_id = db.Column(db.String(50), nullable=False)  # 🚨 외래키 제거 - init_db.py에서 처리
     title = db.Column(db.String(100), nullable=False)
     restaurant_name = db.Column(db.String(100), nullable=False)
     restaurant_address = db.Column(db.String(200), nullable=True)
@@ -1179,7 +1169,7 @@ class Party(db.Model):
 class PartyMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
-    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
+    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 외래키 제거 - init_db.py에서 처리
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_host = db.Column(db.Boolean, default=False)
     
@@ -1301,7 +1291,7 @@ class DangolPot(db.Model):
     description = db.Column(db.Text, nullable=True)
     tags = db.Column(db.String(200), nullable=True)
     category = db.Column(db.String(50), nullable=True)
-    host_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
+    host_id = db.Column(db.String(50), nullable=False)  # 🚨 외래키 제거 - init_db.py에서 처리
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
@@ -1346,7 +1336,7 @@ class DangolPot(db.Model):
 class DangolPotMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=False)
-    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 임시로 외래키 제거 (init_db.py에서 처리)
+    employee_id = db.Column(db.String(50), nullable=False)  # 🚨 외래키 제거 - init_db.py에서 처리
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
