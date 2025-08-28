@@ -1,311 +1,313 @@
-from datetime import datetime, date, timedelta
-from typing import List, Dict, Any, Optional
+"""
+일정 API Blueprint
+일정 관련 모든 API 엔드포인트를 포함합니다.
+"""
+
+from flask import Blueprint, request, jsonify, current_app
+from datetime import datetime, date
+from typing import Dict, Any
+from services.schedule_service import ScheduleService
 import logging
 
 logger = logging.getLogger(__name__)
 
-class ScheduleService:
-    """반복 일정 계산과 관리를 담당하는 서비스 클래스"""
-    
-    def __init__(self, db_session):
-        self.db = db_session
-    
-    @staticmethod
-    def calculate_recurring_instances(
-        master_schedule,
-        start_date: date,
-        end_date: date
-    ) -> List[Dict[str, Any]]:
-        """
-        마스터 일정을 기반으로 특정 기간의 반복 일정 인스턴스들을 계산
+# Blueprint 생성
+schedules_bp = Blueprint('schedules', __name__, url_prefix='/api/schedules')
+
+@schedules_bp.route('/', methods=['GET'])
+def get_schedules():
+    """
+    특정 기간의 모든 일정을 가져오는 API
+    반복 일정을 확장하고 예외를 적용하여 최종 결과 반환
+    """
+    try:
+        # 필수 파라미터 검증
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        employee_id = request.args.get('employee_id')
         
-        Args:
-            master_schedule: 마스터 일정 객체
-            start_date: 계산 시작 날짜
-            end_date: 계산 종료 날짜
-            
-        Returns:
-            계산된 일정 인스턴스들의 리스트
-        """
-        if not master_schedule.is_recurring:
-            # 반복 일정이 아닌 경우 단일 일정으로 처리
-            if start_date <= master_schedule.start_date.date() <= end_date:
-                return [ScheduleService._create_instance_dict(master_schedule, master_schedule.start_date.date())]
-            return []
+        if not all([start_date_str, end_date_str, employee_id]):
+            return jsonify({
+                'error': '필수 파라미터가 누락되었습니다',
+                'required': ['start_date', 'end_date', 'employee_id']
+            }), 400
         
-        instances = []
-        current_date = master_schedule.start_date.date()
-        
-        # 반복 종료 날짜 확인
-        max_date = end_date
-        if master_schedule.recurrence_end_date:
-            max_date = min(end_date, master_schedule.recurrence_end_date.date())
-        
-        while current_date <= max_date:
-            if start_date <= current_date <= end_date:
-                # 해당 기간에 포함되는 경우에만 인스턴스 생성
-                instance = ScheduleService._create_instance_dict(master_schedule, current_date)
-                instances.append(instance)
-            
-            # 다음 반복 날짜 계산
-            current_date = ScheduleService._calculate_next_date(
-                current_date,
-                master_schedule.recurrence_type,
-                master_schedule.recurrence_interval
-            )
-        
-        return instances
-    
-    @staticmethod
-    def _calculate_next_date(current_date: date, recurrence_type: str, interval: int) -> date:
-        """다음 반복 날짜를 계산"""
-        if recurrence_type == 'daily':
-            return current_date + timedelta(days=interval)
-        elif recurrence_type == 'weekly':
-            return current_date + timedelta(weeks=interval)
-        elif recurrence_type == 'monthly':
-            # 월 단위 계산 (간단한 방식)
-            year = current_date.year
-            month = current_date.month + interval
-            while month > 12:
-                year += 1
-                month -= 12
-            return date(year, month, current_date.day)
-        else:
-            return current_date + timedelta(days=1)  # 기본값
-    
-    @staticmethod
-    def _create_instance_dict(master_schedule, instance_date: date) -> Dict[str, Any]:
-        """일정 인스턴스 딕셔너리 생성"""
-        return {
-            'id': f"instance_{master_schedule.id}_{instance_date.isoformat()}",
-            'master_schedule_id': master_schedule.id,
-            'date': instance_date.isoformat(),
-            'title': master_schedule.title,
-            'time': master_schedule.time,
-            'restaurant': master_schedule.restaurant,
-            'location': master_schedule.location,
-            'description': master_schedule.description,
-            'employee_id': master_schedule.employee_id,
-            'is_recurring': master_schedule.is_recurring,
-            'recurrence_type': master_schedule.recurrence_type,
-            'recurrence_interval': master_schedule.recurrence_interval,
-            'created_by': master_schedule.created_by,
-            'created_at': master_schedule.created_at.isoformat() if master_schedule.created_at else None
-        }
-    
-    @staticmethod
-    def apply_exceptions(
-        instances: List[Dict[str, Any]],
-        exceptions
-    ) -> List[Dict[str, Any]]:
-        """
-        일정 인스턴스들에 예외를 적용
-        
-        Args:
-            instances: 원본 일정 인스턴스들
-            exceptions: 적용할 예외들
-            
-        Returns:
-            예외가 적용된 일정 인스턴스들
-        """
-        if not exceptions:
-            return instances
-        
-        # 예외를 날짜별로 그룹화
-        exception_map = {}
-        for exception in exceptions:
-            exception_date = exception.exception_date.date().isoformat()
-            exception_map[exception_date] = exception
-        
-        # 각 인스턴스에 예외 적용
-        result = []
-        for instance in instances:
-            instance_date = instance['date']
-            
-            if instance_date in exception_map:
-                exception = exception_map[instance_date]
-                
-                if exception.is_deleted:
-                    # 해당 날짜 삭제
-                    continue
-                elif exception.is_modified:
-                    # 해당 날짜 수정
-                    modified_instance = instance.copy()
-                    if exception.new_title:
-                        modified_instance['title'] = exception.new_title
-                    if exception.new_time:
-                        modified_instance['time'] = exception.new_time
-                    if exception.new_restaurant:
-                        modified_instance['restaurant'] = exception.new_restaurant
-                    if exception.new_location:
-                        modified_instance['location'] = exception.new_location
-                    if exception.new_description:
-                        modified_instance['description'] = exception.new_description
-                    
-                    # 예외 정보 추가
-                    modified_instance['has_exception'] = True
-                    modified_instance['exception_id'] = exception.id
-                    
-                    result.append(modified_instance)
-                else:
-                    # 예외가 있지만 수정/삭제가 아닌 경우 원본 유지
-                    result.append(instance)
-            else:
-                # 예외가 없는 경우 원본 유지
-                result.append(instance)
-        
-        return result
-    
-    @staticmethod
-    def get_schedules_for_period(
-        employee_id: str,
-        start_date: date,
-        end_date: date
-    ) -> List[Dict[str, Any]]:
-        """
-        특정 기간의 모든 일정을 가져오는 메인 메서드
-        
-        Args:
-            employee_id: 사용자 ID
-            start_date: 시작 날짜
-            end_date: 종료 날짜
-            
-        Returns:
-            해당 기간의 모든 일정 (반복 일정 확장 + 예외 적용)
-        """
+        # 날짜 파싱
         try:
-            # 1. 해당 기간의 마스터 일정들 조회
-            from models.schedule_models import PersonalSchedule, ScheduleException
-            
-            master_schedules = PersonalSchedule.query.filter(
-                PersonalSchedule.employee_id == employee_id,
-                PersonalSchedule.start_date <= datetime.combine(end_date, datetime.min.time())
-            ).all()
-            
-            # 2. 해당 기간의 예외들 조회
-            exceptions = ScheduleException.query.join(PersonalSchedule).filter(
-                PersonalSchedule.employee_id == employee_id,
-                ScheduleException.exception_date >= datetime.combine(start_date, datetime.min.time()),
-                ScheduleException.exception_date <= datetime.combine(end_date, datetime.max.time())
-            ).all()
-            
-            all_instances = []
-            
-            # 3. 각 마스터 일정에 대해 반복 인스턴스 계산
-            for master_schedule in master_schedules:
-                instances = ScheduleService.calculate_recurring_instances(
-                    master_schedule, start_date, end_date
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'error': '날짜 형식이 올바르지 않습니다',
+                'format': 'YYYY-MM-DD'
+            }), 400
+        
+        # 일정 조회
+        schedule_service = ScheduleService(current_app.extensions['sqlalchemy'].db)
+        schedules = schedule_service.get_schedules_for_period(
+            employee_id=employee_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        logger.info(f"일정 조회 성공: {employee_id}, {start_date} ~ {end_date}")
+        
+        return jsonify({
+            'success': True,
+            'data': schedules,
+            'period': {
+                'start_date': start_date_str,
+                'end_date': end_date_str
+            },
+            'total_dates': len(schedules)
+        })
+        
+    except Exception as e:
+        logger.error(f"일정 조회 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@schedules_bp.route('/', methods=['POST'])
+def create_schedule():
+    """
+    새로운 일정 생성 (반복 일정 포함)
+    반복 규칙만 저장하고, 인스턴스는 필요할 때 계산
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 필수 필드 검증
+        required_fields = ['employee_id', 'title', 'start_date', 'time']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
+        
+        # 날짜 파싱
+        try:
+            start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
+        except ValueError:
+            return jsonify({
+                'error': 'start_date 형식이 올바르지 않습니다',
+                'format': 'YYYY-MM-DD'
+            }), 400
+        
+        # 반복 종료 날짜 파싱 (있는 경우)
+        if data.get('recurrence_end_date'):
+            try:
+                data['recurrence_end_date'] = datetime.strptime(
+                    data['recurrence_end_date'], '%Y-%m-%d'
                 )
-                all_instances.extend(instances)
-            
-            # 4. 예외 적용
-            final_instances = ScheduleService.apply_exceptions(all_instances, exceptions)
-            
-            # 5. 날짜별로 그룹화
-            grouped_schedules = ScheduleService._group_by_date(final_instances)
-            
-            logger.info(f"일정 조회 완료: {employee_id}, {start_date} ~ {end_date}, 총 {len(final_instances)}개 인스턴스")
-            
-            return grouped_schedules
-            
-        except Exception as e:
-            logger.error(f"일정 조회 중 오류 발생: {e}")
-            return []
-    
-    @staticmethod
-    def _group_by_date(instances: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """일정 인스턴스들을 날짜별로 그룹화"""
-        grouped = {}
+            except ValueError:
+                return jsonify({
+                    'error': 'recurrence_end_date 형식이 올바르지 않습니다',
+                    'format': 'YYYY-MM-DD'
+                }), 400
         
-        for instance in instances:
-            date_key = instance['date']
-            if date_key not in grouped:
-                grouped[date_key] = {
-                    'date': date_key,
-                    'events': []
-                }
-            grouped[date_key]['events'].append(instance)
+        # 일정 데이터 준비
+        schedule_data = {
+            'employee_id': data['employee_id'],
+            'title': data['title'],
+            'start_date': start_date,
+            'time': data['time'],
+            'restaurant': data.get('restaurant'),
+            'location': data.get('location'),
+            'description': data.get('description'),
+            'is_recurring': data.get('is_recurring', False),
+            'recurrence_type': data.get('recurrence_type'),
+            'recurrence_interval': data.get('recurrence_interval', 1),
+            'recurrence_end_date': data.get('recurrence_end_date'),
+            'created_by': data.get('created_by', data['employee_id'])
+        }
         
-        # 날짜순으로 정렬
-        return sorted(grouped.values(), key=lambda x: x['date'])
-    
-    def create_master_schedule(self, schedule_data: Dict[str, Any]) -> PersonalSchedule:
-        """마스터 일정 생성"""
+        # 마스터 일정 생성
+        schedule = ScheduleService.create_master_schedule(schedule_data)
+        
+        logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 생성되었습니다',
+            'data': schedule.to_dict()
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"일정 생성 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@schedules_bp.route('/<int:schedule_id>', methods=['PUT'])
+def update_schedule(schedule_id):
+    """
+    마스터 일정 수정 (모든 반복 일정 수정)
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 날짜 필드 파싱
+        if 'start_date' in data:
+            try:
+                data['start_date'] = datetime.strptime(data['start_date'], '%Y-%m-%d')
+            except ValueError:
+                return jsonify({
+                    'error': 'start_date 형식이 올바르지 않습니다',
+                    'format': 'YYYY-MM-DD'
+                }), 400
+        
+        if 'recurrence_end_date' in data:
+            try:
+                data['recurrence_end_date'] = datetime.strptime(
+                    data['recurrence_end_date'], '%Y-%m-%d'
+                )
+            except ValueError:
+                return jsonify({
+                    'error': 'recurrence_end_date 형식이 올바르지 않습니다',
+                    'format': 'YYYY-MM-DD'
+                }), 400
+        
+        # 마스터 일정 수정
+        success = ScheduleService.update_master_schedule(schedule_id, data)
+        
+        if not success:
+            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
+        
+        logger.info(f"일정 수정 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 수정되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"일정 수정 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@schedules_bp.route('/<int:schedule_id>', methods=['DELETE'])
+def delete_schedule(schedule_id):
+    """
+    마스터 일정 삭제 (모든 반복 일정 삭제)
+    """
+    try:
+        # 마스터 일정 삭제
+        success = ScheduleService.delete_master_schedule(schedule_id)
+        
+        if not success:
+            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
+        
+        logger.info(f"일정 삭제 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 삭제되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"일정 삭제 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@schedules_bp.route('/<int:schedule_id>/exceptions', methods=['POST'])
+def create_schedule_exception(schedule_id):
+    """
+    일정 예외 생성 (이 날짜만 수정/삭제)
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 필수 필드 검증
+        if 'exception_date' not in data:
+            return jsonify({'error': 'exception_date가 필요합니다'}), 400
+        
+        # 날짜 파싱
         try:
-            schedule = PersonalSchedule(**schedule_data)
-            self.db.session.add(schedule)
-            self.db.session.commit()
-            
-            logger.info(f"마스터 일정 생성 완료: ID {schedule.id}")
-            return schedule
-            
-        except Exception as e:
-            self.db.session.rollback()
-            logger.error(f"마스터 일정 생성 실패: {e}")
-            raise
-    
-    def update_master_schedule(self, schedule_id: int, update_data: Dict[str, Any]) -> bool:
-        """마스터 일정 수정 (모든 반복 일정 수정)"""
-        try:
-            schedule = PersonalSchedule.query.get(schedule_id)
-            if not schedule:
-                return False
-            
-            for key, value in update_data.items():
-                if hasattr(schedule, key):
-                    setattr(schedule, key, value)
-            
-            schedule.updated_at = datetime.utcnow()
-            self.db.session.commit()
-            
-            logger.info(f"마스터 일정 수정 완료: ID {schedule_id}")
-            return True
-            
-        except Exception as e:
-            self.db.session.rollback()
-            logger.error(f"마스터 일정 수정 실패: {e}")
-            return False
-    
-    def delete_master_schedule(self, schedule_id: int) -> bool:
-        """마스터 일정 삭제 (모든 반복 일정 삭제)"""
-        try:
-            schedule = PersonalSchedule.query.get(schedule_id)
-            if not schedule:
-                return False
-            
-            self.db.session.delete(schedule)
-            self.db.session.commit()
-            
-            logger.info(f"마스터 일정 삭제 완료: ID {schedule_id}")
-            return True
-            
-        except Exception as e:
-            self.db.session.rollback()
-            logger.error(f"마스터 일정 삭제 실패: {e}")
-            return False
-    
-    def create_exception(
-        self,
-        master_schedule_id: int,
-        exception_date: date,
-        exception_data: Dict[str, Any]
-    ) -> ScheduleException:
-        """일정 예외 생성 (이 날짜만 수정/삭제)"""
-        try:
-            exception = ScheduleException(
-                original_schedule_id=master_schedule_id,
-                exception_date=datetime.combine(exception_date, datetime.min.time()),
-                **exception_data
-            )
-            
-            self.db.session.add(exception)
-            self.db.session.commit()
-            
-            logger.info(f"일정 예외 생성 완료: 마스터 ID {master_schedule_id}, 날짜 {exception_date}")
-            return exception
-            
-        except Exception as e:
-            self.db.session.rollback()
-            logger.error(f"일정 예외 생성 실패: {e}")
-            raise
+            exception_date = datetime.strptime(data['exception_date'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'error': 'exception_date 형식이 올바르지 않습니다',
+                'format': 'YYYY-MM-DD'
+            }), 400
+        
+        # 예외 데이터 준비
+        exception_data = {
+            'is_deleted': data.get('is_deleted', False),
+            'is_modified': data.get('is_modified', False)
+        }
+        
+        # 수정된 정보가 있는 경우
+        if exception_data['is_modified']:
+            exception_data.update({
+                'new_title': data.get('new_title'),
+                'new_time': data.get('new_time'),
+                'new_restaurant': data.get('new_restaurant'),
+                'new_location': data.get('new_location'),
+                'new_description': data.get('new_description')
+            })
+        
+        # 예외 생성
+        exception = ScheduleService.create_exception(
+            master_schedule_id=schedule_id,
+            exception_date=exception_date,
+            exception_data=exception_data
+        )
+        
+        logger.info(f"일정 예외 생성 성공: 마스터 ID {schedule_id}, 날짜 {exception_date}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정 예외가 생성되었습니다',
+            'data': exception.to_dict()
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"일정 예외 생성 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@schedules_bp.route('/<int:schedule_id>/exceptions/<int:exception_id>', methods=['DELETE'])
+def delete_schedule_exception(schedule_id, exception_id):
+    """
+    일정 예외 삭제
+    """
+    try:
+        from models.schedule_models import ScheduleException
+        
+        exception = ScheduleException.query.get(exception_id)
+        if not exception:
+            return jsonify({'error': '예외를 찾을 수 없습니다'}), 404
+        
+        if exception.original_schedule_id != schedule_id:
+            return jsonify({'error': '잘못된 요청입니다'}), 400
+        
+        current_app.extensions['sqlalchemy'].db.session.delete(exception)
+        current_app.extensions['sqlalchemy'].db.session.commit()
+        
+        logger.info(f"일정 예외 삭제 성공: 예외 ID {exception_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정 예외가 삭제되었습니다'
+        })
+        
+    except Exception as e:
+        current_app.extensions['sqlalchemy'].db.session.rollback()
+        logger.error(f"일정 예외 삭제 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
