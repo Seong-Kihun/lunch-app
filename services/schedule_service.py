@@ -229,24 +229,22 @@ class ScheduleService:
         # 날짜순으로 정렬
         return sorted(grouped.values(), key=lambda x: x['date'])
     
-    @staticmethod
-    def create_master_schedule(schedule_data: Dict[str, Any]) -> PersonalSchedule:
+    def create_master_schedule(self, schedule_data: Dict[str, Any]) -> PersonalSchedule:
         """마스터 일정 생성"""
         try:
             schedule = PersonalSchedule(**schedule_data)
-            db.session.add(schedule)
-            db.session.commit()
+            self.db.session.add(schedule)
+            self.db.session.commit()
             
             logger.info(f"마스터 일정 생성 완료: ID {schedule.id}")
             return schedule
             
         except Exception as e:
-            db.session.rollback()
+            self.db.session.rollback()
             logger.error(f"마스터 일정 생성 실패: {e}")
             raise
     
-    @staticmethod
-    def update_master_schedule(schedule_id: int, update_data: Dict[str, Any]) -> bool:
+    def update_master_schedule(self, schedule_id: int, update_data: Dict[str, Any]) -> bool:
         """마스터 일정 수정 (모든 반복 일정 수정)"""
         try:
             schedule = PersonalSchedule.query.get(schedule_id)
@@ -258,37 +256,36 @@ class ScheduleService:
                     setattr(schedule, key, value)
             
             schedule.updated_at = datetime.utcnow()
-            db.session.commit()
+            self.db.session.commit()
             
             logger.info(f"마스터 일정 수정 완료: ID {schedule_id}")
             return True
             
         except Exception as e:
-            db.session.rollback()
+            self.db.session.rollback()
             logger.error(f"마스터 일정 수정 실패: {e}")
             return False
     
-    @staticmethod
-    def delete_master_schedule(schedule_id: int) -> bool:
+    def delete_master_schedule(self, schedule_id: int) -> bool:
         """마스터 일정 삭제 (모든 반복 일정 삭제)"""
         try:
             schedule = PersonalSchedule.query.get(schedule_id)
             if not schedule:
                 return False
             
-            db.session.delete(schedule)
-            db.session.commit()
+            self.db.session.delete(schedule)
+            self.db.session.commit()
             
             logger.info(f"마스터 일정 삭제 완료: ID {schedule_id}")
             return True
             
         except Exception as e:
-            db.session.rollback()
+            self.db.session.rollback()
             logger.error(f"마스터 일정 삭제 실패: {e}")
             return False
     
-    @staticmethod
     def create_exception(
+        self,
         master_schedule_id: int,
         exception_date: date,
         exception_data: Dict[str, Any]
@@ -301,13 +298,13 @@ class ScheduleService:
                 **exception_data
             )
             
-            db.session.add(exception)
-            db.session.commit()
+            self.db.session.add(exception)
+            self.db.session.commit()
             
             logger.info(f"일정 예외 생성 완료: 마스터 ID {master_schedule_id}, 날짜 {exception_date}")
             return exception
             
         except Exception as e:
-            db.session.rollback()
+            self.db.session.rollback()
             logger.error(f"일정 예외 생성 실패: {e}")
             raise
