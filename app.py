@@ -8661,9 +8661,10 @@ def create_default_users():
 def init_database_on_startup():
     """애플리케이션 첫 요청 시 데이터베이스 자동 초기화"""
     try:
-        # 테이블이 존재하지 않으면 생성
-        if not db.engine.dialect.has_table(db.engine, 'users'):
-            print("🔧 데이터베이스 테이블 자동 생성 시작...")
+        # SQLAlchemy 2.x 호환 방식으로 테이블 존재 여부 확인
+        from sqlalchemy import inspect
+        if not inspect(db.engine).has_table('users'):
+            print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
             db.create_all()
             print("✅ 데이터베이스 테이블 생성 완료")
             
