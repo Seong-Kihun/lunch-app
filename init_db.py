@@ -11,7 +11,8 @@ from auth.models import User
 
 # 그 다음에 다른 모델들을 import
 from models.schedule_models import PersonalSchedule, ScheduleException
-from models.app_models import Party, PartyMember, DangolPot, DangolPotMember, ChatRoom, ChatParticipant, LunchProposal, ProposalAcceptance, ChatMessage, Notification, UserAnalytics, RestaurantAnalytics, Restaurant, Review, Friendship, UserActivity, RestaurantVisit
+# 🚨 중요: app.py에 이미 정의된 모델들을 사용하므로 별도 import 불필요
+# 모델 중복 정의 문제를 방지하기 위해 models/app_models.py import 제거
 
 def init_database():
     """데이터베이스 테이블을 초기화합니다."""
