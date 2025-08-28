@@ -97,8 +97,11 @@ except ImportError as e:
 try:
     from celery_config import create_celery, setup_periodic_tasks
     celery_app = create_celery(app)
-    setup_periodic_tasks(celery_app)
-    print("✅ Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
+    if celery_app:
+        setup_periodic_tasks(celery_app)
+        print("✅ Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
+    else:
+        print("ℹ️ Celery가 비활성화되어 백그라운드 작업을 건너뜁니다.")
 except ImportError as e:
     print(f"⚠️ Celery 설정 실패: {e}")
     print("   백그라운드 작업은 비활성화됩니다.")
@@ -1188,29 +1191,8 @@ class PartyMember(db.Model):
         self.employee_id = employee_id
         self.is_host = is_host
 
-class PersonalSchedule(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.String(50), nullable=False)
-    schedule_date = db.Column(db.String(10), nullable=False)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    # 반복 일정 관련 필드들
-    is_recurring = db.Column(db.Boolean, default=False)
-    recurrence_type = db.Column(db.String(20), nullable=True)  # 'weekly', 'monthly', 'yearly'
-    recurrence_interval = db.Column(db.Integer, default=1)
-    recurrence_end_date = db.Column(db.String(10), nullable=True)  # YYYY-MM-DD 형식
-    original_schedule_id = db.Column(db.Integer, nullable=True)  # 개별 일정이 원본 반복 일정을 참조할 때
-    
-    def __init__(self, employee_id, schedule_date, title, description=None, is_recurring=False, recurrence_type=None, recurrence_interval=1, recurrence_end_date=None, original_schedule_id=None):
-        self.employee_id = employee_id
-        self.schedule_date = schedule_date
-        self.title = title
-        self.description = description
-        self.is_recurring = is_recurring
-        self.recurrence_type = recurrence_type
-        self.recurrence_interval = recurrence_interval
-        self.recurrence_end_date = recurrence_end_date
-        self.original_schedule_id = original_schedule_id
+# PersonalSchedule 모델은 models/schedule_models.py에서 import하여 사용
+from models.schedule_models import PersonalSchedule, ScheduleException
 
 class LunchProposal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1634,10 +1616,14 @@ def initialize_database():
             else:
                 print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
             
-            # 앱 시작 시 추천 그룹 캐시 생성
-            print("INFO: 추천 캐시 초기화 중...")
-            generate_recommendation_cache()
-            print("INFO: 추천 캐시 초기화 완료")
+            # 앱 시작 시 추천 그룹 캐시 생성 (PersonalSchedule 모델 충돌 방지)
+            try:
+                print("INFO: 추천 캐시 초기화 중...")
+                generate_recommendation_cache()
+                print("INFO: 추천 캐시 초기화 완료")
+            except Exception as e:
+                print(f"WARNING: 추천 캐시 초기화 실패 (PersonalSchedule 모델 충돌 가능성): {e}")
+                print("   이는 정상적인 상황일 수 있으며, 애플리케이션은 계속 실행됩니다.")
             
         except Exception as e:
             print(f"ERROR: Database initialization failed: {e}")
