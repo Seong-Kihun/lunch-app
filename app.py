@@ -528,7 +528,14 @@ except ImportError as e:
 # 인증 시스템 초기화 (데이터베이스 초기화 후)
 if AUTH_AVAILABLE:
     try:
-        # 블루프린트 직접 등록 (순환 참조 방지)
+        # require_auth 데코레이터를 전역에서 사용할 수 있도록 설정
+        from auth.utils import require_auth
+        app.require_auth = require_auth
+        
+        # 인증 시스템 초기화 (Blueprint 등록 전에 먼저 실행)
+        app = init_auth(app)
+        
+        # 인증 시스템 초기화 후 Blueprint 등록 (순환 참조 방지)
         from auth.routes import auth_bp
         app.register_blueprint(auth_bp)
         
@@ -536,12 +543,9 @@ if AUTH_AVAILABLE:
         from api.schedules import schedules_bp
         app.register_blueprint(schedules_bp)
         
-        # require_auth 데코레이터를 전역에서 사용할 수 있도록 설정
-        from auth.utils import require_auth
-        app.require_auth = require_auth
-        
-        # 인증 시스템 초기화
-        app = init_auth(app)
+        # 제안 관리 Blueprint 등록
+        from api.proposals import proposals_bp
+        app.register_blueprint(proposals_bp)
         
         print("✅ 인증 시스템이 성공적으로 초기화되었습니다.")
     except Exception as e:
