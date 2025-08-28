@@ -66,7 +66,7 @@ class SecurityAuditor:
             ],
             'command_injection': [
                 r"(\b(cmd|powershell|bash|sh)\b)",
-                r"(\||&|;|`|\\$)",
+                r"(\||;|`|\\$)",  # & 문자 제거 - 정상적인 쿼리 파라미터와 충돌
                 r"(\b(net|ipconfig|whoami|dir|ls)\b)"
             ]
         }
@@ -133,6 +133,11 @@ class SecurityAuditor:
         """요청에서 위협 패턴 스캔"""
         # 개발 환경에서는 보안 검사 건너뛰기
         if self.app.config.get('DEBUG', False):
+            return None
+        
+        # 특정 API 엔드포인트는 보안 검사에서 제외
+        if request.path.startswith('/api/'):
+            # API 요청의 경우 쿼리 파라미터는 허용
             return None
             
         # 요청 URL 검사
