@@ -1087,6 +1087,10 @@ class Review(db.Model):
         self.photo_url = photo_url
         self.tags = tags
 
+# 🚨 중요: User 모델을 명시적으로 메타데이터에 등록
+if AUTH_AVAILABLE:
+    User.__table__.create(db.engine, checkfirst=True)
+
 class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     host_employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
