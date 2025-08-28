@@ -8644,8 +8644,8 @@ def create_default_users():
         ]
         
         for user_data in default_users:
-            # 이미 존재하는지 확인
-            existing_user = User.query.filter_by(employee_id=user_data['employee_id']).first()
+            # 이미 존재하는지 확인 (db.session.query() 사용으로 Flask app context 문제 해결)
+            existing_user = db.session.query(User).filter_by(employee_id=user_data['employee_id']).first()
             if not existing_user:
                 user = User(**user_data)
                 db.session.add(user)
