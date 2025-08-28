@@ -791,12 +791,24 @@ def create_recommendation(group, target_date_str, requester_id):
     }
 
 def get_user_preference(user_id, preference_type):
-    """사용자 선호도 조회 (정규화된 테이블에서)"""
-    preference = UserPreference.query.filter_by(
-        user_id=user_id, 
-        preference_type=preference_type
-    ).first()
-    return preference.preference_value if preference else ''
+    """사용자 선호도 조회 (User 모델에서 직접)"""
+    user = User.query.filter_by(employee_id=user_id).first()
+    if not user:
+        return ''
+    
+    # User 모델의 선호도 필드에서 직접 조회
+    if preference_type == 'lunch_preference':
+        return user.lunch_preference or ''
+    elif preference_type == 'food_preferences':
+        return user.food_preferences or ''
+    elif preference_type == 'allergies':
+        return user.allergies or ''
+    elif preference_type == 'preferred_time':
+        return user.preferred_time or ''
+    elif preference_type == 'frequent_areas':
+        return user.frequent_areas or ''
+    else:
+        return ''
 
 def calculate_compatibility_score_cached(user1, user2):
     """캐시된 호환성 점수 계산"""
@@ -1000,22 +1012,7 @@ def get_notification_icon(notification_type):
 # User 모델은 auth.models에서 가져옴 (중복 정의 제거)
 from auth.models import User
 
-# UserPreference 클래스 정의 (기존 기능 유지)
-class UserPreference(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
-    preference_type = db.Column(db.String(50), nullable=False)  # 'lunch_preference', 'food_preference', 'allergies', 'preferred_time', 'frequent_areas'
-    preference_value = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    __table_args__ = (
-        db.Index('idx_user_preference', 'user_id', 'preference_type'),
-    )
-    
-    def __init__(self, user_id, preference_type, preference_value):
-        self.user_id = user_id
-        self.preference_type = preference_type
-        self.preference_value = preference_value
+# UserPreference는 User 모델에 통합되어 있음
 
 # 사용자 알림 설정 테이블
 class UserNotificationSettings(db.Model):
