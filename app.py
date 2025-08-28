@@ -554,6 +554,10 @@ if AUTH_AVAILABLE:
         from auth.routes import auth_bp
         app.register_blueprint(auth_bp)
         
+        # 새로운 일정 관리 Blueprint 등록
+        from api.schedules import schedules_bp
+        app.register_blueprint(schedules_bp)
+        
         # require_auth 데코레이터를 전역에서 사용할 수 있도록 설정
         from auth.utils import require_auth
         app.require_auth = require_auth
