@@ -129,43 +129,38 @@ class SecurityAuditor:
             
             return response
     
-    def _scan_request_for_threats(self, request) -> Optional[Dict[str, str]]:
+    def _scan_request_for_threats(self, request) -> Optional[Dict[str, Any]]:
         """요청에서 위협 패턴 스캔"""
-        try:
-            # URL 파라미터 검사
-            for param_name, param_value in request.args.items():
-                threat = self._check_threat_patterns(param_value, 'url_parameter')
-                if threat:
-                    threat['source'] = f'URL parameter: {param_name}'
-                    return threat
-            
-            # 폼 데이터 검사
-            if request.form:
-                for field_name, field_value in request.form.items():
-                    threat = self._check_threat_patterns(field_value, 'form_data')
-                    if threat:
-                        threat['source'] = f'Form field: {field_name}'
-                        return threat
-            
-            # JSON 데이터 검사
-            if request.is_json:
-                json_data = request.get_json()
-                threat = self._scan_json_for_threats(json_data)
-                if threat:
-                    return threat
-            
-            # 헤더 검사
-            for header_name, header_value in request.headers.items():
-                threat = self._check_threat_patterns(header_value, 'header')
-                if threat:
-                    threat['source'] = f'Header: {header_name}'
-                    return threat
-            
+        # 개발 환경에서는 보안 검사 건너뛰기
+        if self.app.config.get('DEBUG', False):
             return None
             
-        except Exception as e:
-            logger.error(f"❌ 위협 스캔 실패: {e}")
-            return None
+        # 요청 URL 검사
+        url = request.url.lower()
+        for threat_type, patterns in self.threat_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, url, re.IGNORECASE):
+                    return {
+                        'type': threat_type,
+                        'pattern': pattern,
+                        'url': url
+                    }
+        
+        # 요청 데이터 검사
+        if request.is_json:
+            data = request.get_json()
+            if data:
+                data_str = str(data).lower()
+                for threat_type, patterns in self.threat_patterns.items():
+                    for pattern in patterns:
+                        if re.search(pattern, data_str, re.IGNORECASE):
+                            return {
+                                'type': threat_type,
+                                'pattern': pattern,
+                                'data': str(data)[:100]  # 처음 100자만
+                            }
+        
+        return None
     
     def _check_threat_patterns(self, value: str, context: str) -> Optional[Dict[str, str]]:
         """특정 값에서 위협 패턴 검사"""
