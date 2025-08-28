@@ -715,9 +715,8 @@ def generate_recommendation_cache():
             # 캐시에 저장
             cache_key = f"{employee_id}_{target_date_str}"
             RECOMMENDATION_CACHE[cache_key] = recommendations
-            print(f"DEBUG: Created {len(recommendations)} recommendations for {cache_key}")
     
-    print(f"DEBUG: Cache generation completed. Total cache entries: {len(RECOMMENDATION_CACHE)}")
+    print(f"INFO: 추천 캐시 생성 완료 - 총 {len(RECOMMENDATION_CACHE)}개 항목")
 
 def get_available_users_for_date(date_str):
     """특정 날짜에 사용 가능한 사용자 ID 목록을 효율적으로 조회"""
@@ -1632,9 +1631,9 @@ def initialize_database():
                 print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
             
             # 앱 시작 시 추천 그룹 캐시 생성
-            print("DEBUG: Initializing recommendation cache...")
+            print("INFO: 추천 캐시 초기화 중...")
             generate_recommendation_cache()
-            print("DEBUG: Recommendation cache initialization completed.")
+            print("INFO: 추천 캐시 초기화 완료")
             
         except Exception as e:
             print(f"ERROR: Database initialization failed: {e}")
