@@ -11,6 +11,9 @@ from auth.models import User
 
 class Party(db.Model):
     """파티 모델"""
+    __tablename__ = 'party'
+    __table_args__ = {'extend_existing': True}  # 중복 정의 문제 해결
+    
     id = db.Column(db.Integer, primary_key=True)
     host_employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
     title = db.Column(db.String(100), nullable=False)
@@ -57,6 +60,9 @@ class Party(db.Model):
 
 class PartyMember(db.Model):
     """파티 멤버 연결 테이블"""
+    __tablename__ = 'party_member'
+    __table_args__ = {'extend_existing': True}  # 중복 정의 문제 해결
+    
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
     employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
