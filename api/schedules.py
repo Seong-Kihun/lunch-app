@@ -3,12 +3,11 @@
 일정 관련 모든 API 엔드포인트를 포함합니다.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, date
 from typing import Dict, Any
 from services.schedule_service import ScheduleService
 from models.schedule_models import PersonalSchedule, ScheduleException
-from app import db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -293,8 +292,8 @@ def delete_schedule_exception(schedule_id, exception_id):
         if exception.original_schedule_id != schedule_id:
             return jsonify({'error': '잘못된 요청입니다'}), 400
         
-        db.session.delete(exception)
-        db.session.commit()
+        current_app.extensions['sqlalchemy'].db.session.delete(exception)
+        current_app.extensions['sqlalchemy'].db.session.commit()
         
         logger.info(f"일정 예외 삭제 성공: 예외 ID {exception_id}")
         
@@ -304,7 +303,7 @@ def delete_schedule_exception(schedule_id, exception_id):
         })
         
     except Exception as e:
-        db.session.rollback()
+        current_app.extensions['sqlalchemy'].db.session.rollback()
         logger.error(f"일정 예외 삭제 중 오류 발생: {e}")
         return jsonify({
             'error': '서버 내부 오류가 발생했습니다',
