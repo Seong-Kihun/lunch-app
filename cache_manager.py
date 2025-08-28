@@ -41,10 +41,11 @@ class CacheManager:
                 logger.error(f"❌ Redis 연결 실패: {e}")
                 logger.error(f"   Redis URL: {redis_url}")
                 logger.error("   환경변수 REDIS_URL을 확인하거나 Redis 서비스를 시작하세요")
+                logger.info("   Redis 없이 애플리케이션이 계속 실행됩니다 (캐싱 기능만 비활성화)")
                 self.redis_client = None
         else:
-            logger.error("❌ Redis 패키지가 설치되지 않았습니다")
-            logger.error("   pip install redis를 실행하세요")
+            logger.warning("⚠️ Redis 패키지가 설치되지 않았습니다")
+            logger.info("   Redis 없이 애플리케이션이 계속 실행됩니다 (캐싱 기능만 비활성화)")
             self.redis_client = None
     
     def _generate_cache_key(self, prefix: str, *args, **kwargs) -> str:
