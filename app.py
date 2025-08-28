@@ -117,8 +117,15 @@ except ImportError as e:
 try:
     from database.optimization import DatabaseOptimizer
     
-    # 데이터베이스 최적화 도구 초기화
-    db_optimizer = DatabaseOptimizer(db)
+    # 데이터베이스 최적화 도구 초기화 (애플리케이션 컨텍스트 내에서)
+    def init_db_optimizer():
+        try:
+            return DatabaseOptimizer(db)
+        except Exception as e:
+            print(f"⚠️ 데이터베이스 최적화 도구 초기화 실패: {e}")
+            return None
+    
+    db_optimizer = None  # 나중에 초기화
     
     print("✅ 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
     print("   - 인덱스 최적화")
