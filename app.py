@@ -9353,10 +9353,19 @@ def init_database_on_startup():
             db.create_all()
             print("✅ 데이터베이스 테이블 생성 완료")
 
-            # 테이블 생성 완료 후 잠시 대기하여 안정성 확보
-            import time
-
-            time.sleep(1)
+            # 테이블 생성 완료 확인 (안전한 방식)
+            max_retries = 5
+            for attempt in range(max_retries):
+                if inspect(db.engine).has_table("users"):
+                    print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
+                    break
+                else:
+                    print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
+                    import time
+                    time.sleep(1)
+            else:
+                print("⚠️ 테이블 생성 확인 실패, 사용자 생성을 건너뜁니다")
+                return
 
             # 기본 사용자 생성
             create_default_users()
