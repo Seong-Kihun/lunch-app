@@ -1,13 +1,15 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 from models.schedule_models import PersonalSchedule, ScheduleException
-from app import db
 import logging
 
 logger = logging.getLogger(__name__)
 
 class ScheduleService:
     """반복 일정 계산과 관리를 담당하는 서비스 클래스"""
+    
+    def __init__(self, db_session):
+        self.db = db_session
     
     @staticmethod
     def calculate_recurring_instances(
