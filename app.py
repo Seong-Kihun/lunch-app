@@ -67,18 +67,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///sit
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-flask-secret-key-change-in-production')
 
-# 데이터베이스 초기화 (인증 시스템보다 먼저)
-if AUTH_AVAILABLE:
-    # 인증 시스템이 있으면 해당 db 객체 사용
-    from auth import db as auth_db
-    db = auth_db
-    # db 객체를 Flask 앱과 연결
-    db.init_app(app)
-    print("✅ 인증 시스템의 데이터베이스 객체를 사용합니다.")
-else:
-    # 인증 시스템이 없으면 새로 생성
-    db = SQLAlchemy(app)
-    print("✅ 새로운 데이터베이스 객체를 생성했습니다.")
+# 데이터베이스 객체 import (extensions.py에서)
+from extensions import db
+print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
 
 # Flask-Migrate 초기화 (일시적으로 비활성화 - 스키마 불일치 문제 해결 후 활성화)
 # from flask_migrate import Migrate
@@ -8596,6 +8587,10 @@ def get_dev_user_data(employee_id):
     return temp_users.get(employee_id)
 
 # 공통 로직은 group_matching.py 모듈로 이동
+
+# 데이터베이스 초기화 (모든 설정 완료 후)
+db.init_app(app)
+print("✅ 데이터베이스가 Flask 앱과 연결되었습니다.")
 
 if __name__ == '__main__':
     if socketio:
