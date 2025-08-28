@@ -9,6 +9,10 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Redis import
 try:
     import redis
@@ -16,10 +20,6 @@ try:
 except ImportError:
     REDIS_AVAILABLE = False
     redis = None
-
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class CacheManager:
     """Redis 캐싱 관리자"""
