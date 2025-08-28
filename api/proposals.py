@@ -102,7 +102,7 @@ def create_proposal():
         }), 500
 
 @proposals_bp.route('/<int:proposal_id>/cancel', methods=['POST'])
-def cancel_proposal():
+def cancel_proposal(proposal_id):
     """
     제안을 취소하는 API
     """
