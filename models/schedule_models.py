@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from app import db
+from extensions import db
 
 class PersonalSchedule(db.Model):
     """반복 일정의 마스터 규칙을 저장하는 모델"""
