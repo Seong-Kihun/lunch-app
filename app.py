@@ -532,21 +532,7 @@ except ImportError as e:
     print(f"⚠️ API Blueprint 등록 실패: {e}")
     print("   기본 API 엔드포인트를 사용합니다.")
 
-# FriendInvite 테이블 모델 추가
-class FriendInvite(db.Model):
-    __tablename__ = 'friend_invites'
-    
-    invite_id = db.Column(db.String(32), primary_key=True)
-    inviter_id = db.Column(db.String(20), nullable=False)
-    invite_code = db.Column(db.String(8), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    expires_at = db.Column(db.DateTime, nullable=False)
-    is_used = db.Column(db.Boolean, default=False)
-    used_by = db.Column(db.String(20), nullable=True)
-    used_at = db.Column(db.DateTime, nullable=True)
-    
-    def __repr__(self):
-        return f'<FriendInvite {self.invite_code}>'
+# FriendInvite 모델은 다른 곳에서 정의됩니다
 
 # 인증 시스템 초기화 (데이터베이스 초기화 후)
 if AUTH_AVAILABLE:
