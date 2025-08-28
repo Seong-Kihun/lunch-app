@@ -1014,21 +1014,7 @@ from auth.models import User
 
 # UserPreference는 User 모델에 통합되어 있음
 
-# 사용자 알림 설정 테이블
-class UserNotificationSettings(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
-    setting_type = db.Column(db.String(50), nullable=False)  # 'push_notification', 'email_notification', 'party_reminder'
-    setting_value = db.Column(db.Boolean, default=True)
-    
-    __table_args__ = (
-        db.Index('idx_user_notification', 'user_id', 'setting_type'),
-    )
-    
-    def __init__(self, user_id, setting_type, setting_value=True):
-        self.user_id = user_id
-        self.setting_type = setting_type
-        self.setting_value = setting_value
+# 사용자 알림 설정은 User 모델에 통합되어 있음
 
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
