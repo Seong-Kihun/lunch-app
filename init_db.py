@@ -5,6 +5,11 @@
 """
 
 from app import app, db
+
+# 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
+from auth.models import User
+
+# 그 다음에 다른 모델들을 import
 from models.schedule_models import PersonalSchedule, ScheduleException
 
 def init_database():
@@ -35,8 +40,31 @@ def init_database():
 def create_default_users():
     """기본 사용자들을 생성합니다."""
     try:
-        # 가상 사용자 데이터 (User 모델이 없으므로 건너뜀)
-        print("ℹ️ User 모델이 없어 기본 사용자 생성을 건너뜁니다.")
+        # 가상 사용자 데이터
+        default_users = [
+            {
+                'email': 'kim@example.com',
+                'nickname': '김철수',
+                'employee_id': '1'
+            },
+            {
+                'email': 'lee@example.com',
+                'nickname': '이영희',
+                'employee_id': '2'
+            },
+            {
+                'email': 'park@example.com',
+                'nickname': '박민수',
+                'employee_id': '3'
+            }
+        ]
+        
+        for user_data in default_users:
+            user = User(**user_data)
+            db.session.add(user)
+        
+        db.session.commit()
+        print(f"✅ {len(default_users)}명의 기본 사용자 생성 완료")
         
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
