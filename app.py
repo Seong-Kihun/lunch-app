@@ -8657,7 +8657,7 @@ def create_default_users():
         print(f"❌ 기본 사용자 생성 실패: {e}")
         db.session.rollback()
 
-@app.before_first_request
+# Flask 3.x 호환 데이터베이스 초기화
 def init_database_on_startup():
     """애플리케이션 첫 요청 시 데이터베이스 자동 초기화"""
     try:
@@ -8674,6 +8674,10 @@ def init_database_on_startup():
             print("✅ 데이터베이스 테이블이 이미 존재합니다")
     except Exception as e:
         print(f"❌ 데이터베이스 초기화 실패: {e}")
+
+# Flask 3.x 호환 방식으로 데이터베이스 초기화
+with app.app_context():
+    init_database_on_startup()
 
 # 공통 로직은 group_matching.py 모듈로 이동
 
