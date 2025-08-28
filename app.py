@@ -8668,6 +8668,10 @@ def init_database_on_startup():
             db.create_all()
             print("✅ 데이터베이스 테이블 생성 완료")
             
+            # 테이블 생성 완료 후 잠시 대기하여 안정성 확보
+            import time
+            time.sleep(1)
+            
             # 기본 사용자 생성
             create_default_users()
             print("✅ 기본 사용자 생성 완료")
