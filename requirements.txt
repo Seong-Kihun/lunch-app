@@ -1,42 +1,42 @@
 # Flask 및 핵심 웹 프레임워크
-Flask==3.0.0
-Flask-SQLAlchemy==3.1.1
-Flask-Migrate==4.0.5
-Flask-SocketIO==5.3.6
-python-socketio==5.10.0
-Werkzeug==3.0.1
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.1
+Flask-Migrate>=4.0.5
+Flask-SocketIO>=5.3.6
+python-socketio>=5.10.0
+Werkzeug>=3.0.1
 
 # 데이터베이스
-SQLAlchemy==2.0.23
-alembic==1.13.1
+SQLAlchemy>=2.0.23
+alembic>=1.13.1
 
 # 인증 및 보안
 PyJWT==2.8.0
 bcrypt==4.1.2
-cryptography==41.0.8
+cryptography>=42.0.0
 
 # 데이터 검증
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
 
 # 백그라운드 작업
-celery==5.3.4
-redis==5.0.1
+celery>=5.3.4
+redis>=5.0.1
 
 # 성능 모니터링
-psutil==5.9.6
+psutil>=5.9.6
 
 # HTTP 클라이언트
-requests==2.31.0
+requests>=2.31.0
 
 # 유틸리티
-python-dotenv==1.0.0
-click==8.1.7
+python-dotenv>=1.0.0
+click>=8.1.7
 
 # 프로덕션 서버
-gunicorn==21.2.0
+gunicorn>=21.2.0
 
 # 개발 도구 (선택사항)
-black==23.12.1
-isort==5.13.2
-flake8==7.0.0
+black>=23.12.1
+isort>=5.13.2
+flake8>=7.0.0
