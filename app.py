@@ -8618,6 +8618,63 @@ def get_dev_user_data(employee_id):
     
     return temp_users.get(employee_id)
 
+# 데이터베이스 자동 초기화 함수
+def create_default_users():
+    """기본 사용자들을 생성합니다."""
+    try:
+        from auth.models import User
+        
+        # 가상 사용자 데이터
+        default_users = [
+            {
+                'email': 'kim@example.com',
+                'nickname': '김철수',
+                'employee_id': '1'
+            },
+            {
+                'email': 'lee@example.com',
+                'nickname': '이영희',
+                'employee_id': '2'
+            },
+            {
+                'email': 'park@example.com',
+                'nickname': '박민수',
+                'employee_id': '3'
+            }
+        ]
+        
+        for user_data in default_users:
+            # 이미 존재하는지 확인
+            existing_user = User.query.filter_by(employee_id=user_data['employee_id']).first()
+            if not existing_user:
+                user = User(**user_data)
+                db.session.add(user)
+        
+        db.session.commit()
+        print(f"✅ 기본 사용자 생성 완료")
+        
+    except Exception as e:
+        print(f"❌ 기본 사용자 생성 실패: {e}")
+        db.session.rollback()
+
+@app.before_first_request
+def init_database_on_startup():
+    """애플리케이션 첫 요청 시 데이터베이스 자동 초기화"""
+    try:
+        # 테이블이 존재하지 않으면 생성
+        if not db.engine.dialect.has_table(db.engine, 'users'):
+            print("🔧 데이터베이스 테이블 자동 생성 시작...")
+            db.create_all()
+            print("✅ 데이터베이스 테이블 생성 완료")
+            
+            # 기본 사용자 생성
+            create_default_users()
+            print("✅ 기본 사용자 생성 완료")
+        else:
+            print("✅ 데이터베이스 테이블이 이미 존재합니다")
+    except Exception as e:
+        print(f"❌ 데이터베이스 초기화 실패: {e}")
+
 # 공통 로직은 group_matching.py 모듈로 이동
 
 if __name__ == '__main__':
