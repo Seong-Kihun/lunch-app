@@ -122,7 +122,7 @@ try:
     def init_db_optimizer():
         try:
             return DatabaseOptimizer(db)
-        except Exception as e:
+        except (ImportError, AttributeError, RuntimeError) as e:
             print(f"⚠️ 데이터베이스 최적화 도구 초기화 실패: {e}")
             return None
 
@@ -771,35 +771,31 @@ def get_seoul_today():
     return korean_time.date()
 
 
-def generate_recommendation_cache():
-    """최적화된 추천 그룹 캐시 생성 - O(N log N) 성능"""
+def _should_use_existing_cache():
+    """기존 캐시를 사용해야 하는지 확인"""
     global RECOMMENDATION_CACHE, CACHE_GENERATION_DATE
-
     today = get_seoul_today()
     current_date_str = today.strftime("%Y-%m-%d")
+    return CACHE_GENERATION_DATE == current_date_str and RECOMMENDATION_CACHE
 
-    # 이미 오늘 생성된 캐시가 있으면 재사용
-    if CACHE_GENERATION_DATE == current_date_str and RECOMMENDATION_CACHE:
-        print(f"DEBUG: Using existing cache for {current_date_str}")
-        return
-
-    print(
-        f"DEBUG: Generating optimized recommendation cache for 1 month starting from {current_date_str}"
-    )
+def _initialize_cache():
+    """캐시 초기화"""
+    global RECOMMENDATION_CACHE, CACHE_GENERATION_DATE
+    today = get_seoul_today()
+    current_date_str = today.strftime("%Y-%m-%d")
+    
+    print(f"DEBUG: Generating optimized recommendation cache for 1 month starting from {current_date_str}")
     RECOMMENDATION_CACHE = {}
     CACHE_GENERATION_DATE = current_date_str
 
-    # 모든 사용자 조회 (한 번만) - 배치 처리로 최적화
-    all_users = db.session.query(User).all()
-    user_count = len(all_users)
-
-    if user_count == 0:
-        print("DEBUG: No users found")
-        return
-
-    # 사용자별 호환성 점수를 미리 계산하여 캐시
+def _build_compatibility_cache(all_users):
+    """사용자별 호환성 점수 캐시 구축"""
     compatibility_cache = {}
-
+    user_count = len(all_users)
+    
+    if user_count == 0:
+        return compatibility_cache
+    
     # 효율적인 호환성 점수 계산 (O(N log N))
     # 병렬 처리를 위한 배치 크기 설정
     batch_size = 100
@@ -811,76 +807,102 @@ def generate_recommendation_cache():
                 if user.employee_id != other_user.employee_id:
                     # 호환성 점수 계산 (캐시된 결과 사용)
                     score = calculate_compatibility_score_cached(user, other_user)
-                    compatibility_cache[user.employee_id][
-                        other_user.employee_id
-                    ] = score
+                    compatibility_cache[user.employee_id][other_user.employee_id] = score
+    
+    return compatibility_cache
 
+def _generate_recommendations_for_date(target_date_str, all_users, compatibility_cache):
+    """특정 날짜에 대한 추천 그룹 생성"""
+    # 해당 날짜에 사용 가능한 사용자들을 한 번에 조회 (최적화)
+    available_user_ids = get_available_users_for_date(target_date_str)
+    
+    if not available_user_ids:
+        print(f"DEBUG: No available users for {target_date_str}")
+        return
+    
+    # 각 사용자에 대해 추천 그룹 생성
+    for user in all_users:
+        employee_id = user.employee_id
+        
+        # 해당 사용자가 해당 날짜에 사용 가능한지 확인
+        if employee_id not in available_user_ids:
+            continue
+        
+        # 사용 가능한 다른 사용자들만 필터링
+        available_users = [
+            u
+            for u in all_users
+            if u.employee_id in available_user_ids and u.employee_id != employee_id
+        ]
+        
+        if len(available_users) < 1:
+            continue
+        
+        # 미리 계산된 호환성 점수 사용
+        scored_users = []
+        for available_user in available_users:
+            compatibility_score = compatibility_cache[employee_id].get(
+                available_user.employee_id, 0
+            )
+            pattern_score = calculate_pattern_score_cached(user, available_user)
+            # 랜덤 점수 추가 (0~50 범위로 줄임)
+            random_score = random.uniform(0, 50)
+            total_score = compatibility_score + pattern_score + random_score
+            scored_users.append((available_user, total_score))
+        
+        # 점수로 정렬 (높은 점수 순)
+        scored_users.sort(key=lambda x: x[1], reverse=True)
+        
+        # 효율적인 그룹 생성 (최대 10개)
+        recommendations = generate_efficient_groups(
+            scored_users, target_date_str, employee_id
+        )
+        
+        # 캐시에 저장
+        if recommendations:
+            RECOMMENDATION_CACHE[target_date_str] = recommendations
+
+def generate_recommendation_cache():
+    """최적화된 추천 그룹 캐시 생성 - O(N log N) 성능"""
+    # 이미 오늘 생성된 캐시가 있으면 재사용
+    if _should_use_existing_cache():
+        today = get_seoul_today()
+        current_date_str = today.strftime("%Y-%m-%d")
+        print(f"DEBUG: Using existing cache for {current_date_str}")
+        return
+    
+    # 캐시 초기화
+    _initialize_cache()
+    
+    # 모든 사용자 조회 (한 번만) - 배치 처리로 최적화
+    all_users = db.session.query(User).all()
+    user_count = len(all_users)
+    
+    if user_count == 0:
+        print("DEBUG: No users found")
+        return
+    
+    # 사용자별 호환성 점수를 미리 계산하여 캐시
+    compatibility_cache = _build_compatibility_cache(all_users)
+    
     # 1달간 (30일) 각 날짜에 대해 추천 그룹 생성
+    today = get_seoul_today()
     for day_offset in range(30):
         target_date = today + timedelta(days=day_offset)
         target_date_str = target_date.strftime("%Y-%m-%d")
-
+        
         # 주말 제외
         if target_date.weekday() >= 5:
             continue
-
+        
         print(f"DEBUG: Generating recommendations for {target_date_str}")
-
-        # 해당 날짜에 사용 가능한 사용자들을 한 번에 조회 (최적화)
-        available_user_ids = get_available_users_for_date(target_date_str)
-
-        if not available_user_ids:
-            print(f"DEBUG: No available users for {target_date_str}")
-            continue
-
-        # 각 사용자에 대해 추천 그룹 생성
-        for user in all_users:
-            employee_id = user.employee_id
-
-            # 해당 사용자가 해당 날짜에 사용 가능한지 확인
-            if employee_id not in available_user_ids:
-                continue
-
-            # 사용 가능한 다른 사용자들만 필터링
-            available_users = [
-                u
-                for u in all_users
-                if u.employee_id in available_user_ids and u.employee_id != employee_id
-            ]
-
-            if len(available_users) < 1:
-                continue
-
-            # 미리 계산된 호환성 점수 사용
-            scored_users = []
-            for available_user in available_users:
-                compatibility_score = compatibility_cache[employee_id].get(
-                    available_user.employee_id, 0
-                )
-                pattern_score = calculate_pattern_score_cached(user, available_user)
-                # 랜덤 점수 추가 (0~50 범위로 줄임)
-                random_score = random.uniform(0, 50)
-                total_score = compatibility_score + pattern_score + random_score
-                scored_users.append((available_user, total_score))
-
-            # 점수로 정렬 (높은 점수 순)
-            scored_users.sort(key=lambda x: x[1], reverse=True)
-
-            # 효율적인 그룹 생성 (최대 10개)
-            recommendations = generate_efficient_groups(
-                scored_users, target_date_str, employee_id
-            )
-
-            # 캐시에 저장
-            cache_key = f"{employee_id}_{target_date_str}"
-            RECOMMENDATION_CACHE[cache_key] = recommendations
+        _generate_recommendations_for_date(target_date_str, all_users, compatibility_cache)
 
     print(f"INFO: 추천 캐시 생성 완료 - 총 {len(RECOMMENDATION_CACHE)}개 항목")
 
 
-def get_available_users_for_date(date_str):
-    """특정 날짜에 사용 가능한 사용자 ID 목록을 효율적으로 조회"""
-    # 파티에 참여 중인 사용자들
+def _get_party_participants(date_str):
+    """특정 날짜에 파티에 참여 중인 사용자 ID 목록 조회"""
     party_user_ids = set()
     parties = db.session.query(Party).filter_by(party_date=date_str).all()
     for party in parties:
@@ -888,64 +910,102 @@ def get_available_users_for_date(date_str):
         party_members = PartyMember.query.filter_by(party_id=party.id).all()
         for member in party_members:
             party_user_ids.add(member.employee_id)
+    return party_user_ids
 
-    # 개인 일정이 있는 사용자들
+def _get_scheduled_users(date_str):
+    """특정 날짜에 개인 일정이 있는 사용자 ID 목록 조회"""
     schedule_user_ids = set()
     schedules = (
         db.session.query(PersonalSchedule).filter_by(schedule_date=date_str).all()
     )
     for schedule in schedules:
         schedule_user_ids.add(schedule.employee_id)
+    return schedule_user_ids
 
+def _get_all_user_ids():
+    """전체 사용자 ID 목록 조회"""
+    return {user.employee_id for user in db.session.query(User).all()}
+
+def get_available_users_for_date(date_str):
+    """특정 날짜에 사용 가능한 사용자 ID 목록을 효율적으로 조회"""
+    # 파티에 참여 중인 사용자들
+    party_user_ids = _get_party_participants(date_str)
+    
+    # 개인 일정이 있는 사용자들
+    schedule_user_ids = _get_scheduled_users(date_str)
+    
     # 모든 사용자 ID
-    all_user_ids = {user.employee_id for user in db.session.query(User).all()}
-
+    all_user_ids = _get_all_user_ids()
+    
     # 사용 가능한 사용자 ID = 전체 - (파티 참여자 + 개인 일정자)
     available_user_ids = all_user_ids - party_user_ids - schedule_user_ids
-
+    
     return available_user_ids
 
 
-def generate_efficient_groups(scored_users, target_date_str, requester_id):
-    """효율적인 그룹 생성 (최대 10개)"""
+def _create_three_person_groups(scored_users, target_date_str, requester_id, max_groups=6):
+    """3명 그룹 생성 (최대 6개)"""
     recommendations = []
-
-    # 3명 그룹 우선 생성 (최대 6개)
-    for i in range(0, min(len(scored_users) - 2, 6)):
+    for i in range(0, min(len(scored_users) - 2, max_groups)):
         for j in range(i + 1, min(len(scored_users) - 1, i + 3)):
             for k in range(j + 1, min(len(scored_users), j + 3)):
-                if len(recommendations) >= 6:
+                if len(recommendations) >= max_groups:
                     break
                 group = [scored_users[i][0], scored_users[j][0], scored_users[k][0]]
                 recommendation = create_recommendation(
                     group, target_date_str, requester_id
                 )
                 recommendations.append(recommendation)
-            if len(recommendations) >= 6:
+            if len(recommendations) >= max_groups:
                 break
-        if len(recommendations) >= 6:
+        if len(recommendations) >= max_groups:
             break
+    return recommendations
 
-    # 2명 그룹 생성 (최대 3개)
-    if len(recommendations) < 9 and len(scored_users) >= 2:
-        for i in range(0, min(len(scored_users) - 1, 3)):
+def _create_two_person_groups(scored_users, target_date_str, requester_id, max_groups=3):
+    """2명 그룹 생성 (최대 3개)"""
+    recommendations = []
+    if len(scored_users) >= 2:
+        for i in range(0, min(len(scored_users) - 1, max_groups)):
             for j in range(i + 1, min(len(scored_users), i + 2)):
-                if len(recommendations) >= 9:
+                if len(recommendations) >= max_groups:
                     break
                 group = [scored_users[i][0], scored_users[j][0]]
                 recommendation = create_recommendation(
                     group, target_date_str, requester_id
                 )
                 recommendations.append(recommendation)
-            if len(recommendations) >= 9:
+            if len(recommendations) >= max_groups:
                 break
+    return recommendations
 
-    # 1명 그룹 생성 (최대 1개)
-    if len(recommendations) < 10 and len(scored_users) >= 1:
+def _create_one_person_groups(scored_users, target_date_str, requester_id, max_groups=1):
+    """1명 그룹 생성 (최대 1개)"""
+    recommendations = []
+    if len(scored_users) >= 1:
         group = [scored_users[0][0]]
         recommendation = create_recommendation(group, target_date_str, requester_id)
         recommendations.append(recommendation)
+    return recommendations
 
+def generate_efficient_groups(scored_users, target_date_str, requester_id):
+    """효율적인 그룹 생성 (최대 10개)"""
+    recommendations = []
+    
+    # 3명 그룹 우선 생성 (최대 6개)
+    three_person_groups = _create_three_person_groups(scored_users, target_date_str, requester_id)
+    recommendations.extend(three_person_groups)
+    
+    # 2명 그룹 생성 (최대 3개)
+    if len(recommendations) < 9:
+        two_person_groups = _create_two_person_groups(scored_users, target_date_str, requester_id)
+        recommendations.extend(two_person_groups)
+    
+    # 1명 그룹 생성 (최대 1개)
+    if len(recommendations) < 10:
+        one_person_groups = _create_one_person_groups(scored_users, target_date_str, requester_id)
+        recommendations.extend(one_person_groups)
+    
     return recommendations[:10]
 
 
@@ -1091,7 +1151,7 @@ def get_restaurant_recommend_count(restaurant_id):
 
         return min(recommend_score, 99)  # 최대 99개로 제한
 
-    except Exception as e:
+    except (AttributeError, KeyError, TypeError) as e:
         print(f"Error getting restaurant recommend count: {e}")
         return random.randint(5, 25)  # 에러 시 테스트용 랜덤 값
         return korean_time.strftime("%Y-%m-%d %H:%M")
@@ -1180,7 +1240,7 @@ def create_notification(
             f"[DEBUG] 알림 생성 완료 - 사용자: {user_id}, 타입: {notification_type}, 제목: {title}"
         )
         return notification
-    except Exception as e:
+    except (AttributeError, KeyError, TypeError, ValueError) as e:
         print(f"[ERROR] 알림 생성 실패: {e}")
         db.session.rollback()
         return None
@@ -1299,7 +1359,7 @@ if AUTH_AVAILABLE:
             print("⚠️ users 테이블이 메타데이터에 등록되지 않았습니다.")
         else:
             print("✅ users 테이블이 메타데이터에 등록되었습니다.")
-    except Exception as e:
+    except (AttributeError, KeyError) as e:
         print(f"⚠️ User 모델 메타데이터 확인 실패: {e}")
 
 
@@ -1922,7 +1982,7 @@ def initialize_database():
                 try:
                     create_initial_data()
                     print("DEBUG: 초기 데이터 생성 완료!")
-                except Exception as e:
+                except (AttributeError, KeyError, ValueError) as e:
                     print(f"DEBUG: 초기 데이터 생성 실패 (이미 존재할 수 있음): {e}")
             else:
                 print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
@@ -1932,7 +1992,7 @@ def initialize_database():
                 print("INFO: 추천 캐시 초기화 중...")
                 generate_recommendation_cache()
                 print("INFO: 추천 캐시 초기화 완료")
-            except Exception as e:
+            except (AttributeError, KeyError, ImportError) as e:
                 print(
                     f"WARNING: 추천 캐시 초기화 실패 (PersonalSchedule 모델 충돌 가능성): {e}"
                 )
@@ -1940,7 +2000,7 @@ def initialize_database():
                     "   이는 정상적인 상황일 수 있으며, 애플리케이션은 계속 실행됩니다."
                 )
 
-        except Exception as e:
+        except (AttributeError, KeyError, ImportError, RuntimeError) as e:
             print(f"ERROR: Database initialization failed: {e}")
             # 프로덕션에서는 로그 파일에 기록
 
@@ -2234,7 +2294,7 @@ def create_initial_data():
                             )
                             db.session.add(restaurant)
 
-                        except Exception as e:
+                        except (AttributeError, KeyError, ValueError) as e:
                             print(f"DEBUG: Error processing restaurant {index}: {e}")
                             continue
 
@@ -2247,11 +2307,11 @@ def create_initial_data():
                 else:
                     print(f"DEBUG: CSV file not found at {csv_path}")
 
-            except Exception as e:
+            except (FileNotFoundError, ValueError, AttributeError) as e:
                 print(f"DEBUG: Error loading restaurants from CSV: {e}")
                 db.session.rollback()
 
-    except Exception as e:
+    except (AttributeError, KeyError, ValueError, RuntimeError) as e:
         db.session.rollback()
         print(f"ERROR: Failed to create initial data: {e}")
         raise
@@ -2263,6 +2323,72 @@ with app.app_context():
 
 
 # --- API 엔드포인트 ---
+def _validate_party_date(party_date_str, party_id):
+    """파티 날짜 유효성 검증"""
+    try:
+        # NaN 값이나 잘못된 날짜 형식 확인
+        if not party_date_str or "NaN" in str(party_date_str):
+            print(f"Warning: Invalid party_date found: {party_date_str} for party ID {party_id}")
+            return None
+
+        # 과거 파티는 제외
+        party_date = datetime.strptime(party_date_str, "%Y-%m-%d").date()
+        today = get_seoul_today()
+        if party_date < today:
+            return None
+
+        return party_date
+    except (ValueError, TypeError) as e:
+        print(f"Warning: Failed to parse party_date '{party_date_str}' for party ID {party_id}: {e}")
+        return None
+
+def _get_party_member_info(party, employee_id):
+    """파티 멤버 정보 조회"""
+    member_ids = party.member_ids
+    other_member_ids = [mid for mid in member_ids if mid != employee_id]
+
+    # 다른 멤버들의 닉네임 가져오기
+    other_members = User.query.filter(User.employee_id.in_(other_member_ids)).all()
+    member_nicknames = [user.nickname for user in other_members]
+
+    # 모든 멤버들의 닉네임 가져오기
+    all_members = User.query.filter(User.employee_id.in_(member_ids)).all()
+    all_member_nicknames = [user.nickname for user in all_members]
+
+    return member_nicknames, all_member_nicknames
+
+def _process_party_events(parties, employee_id):
+    """파티 이벤트 처리"""
+    events = {}
+    
+    for party in parties:
+        # 날짜 데이터 검증 및 처리
+        party_date = _validate_party_date(party.party_date, party.id)
+        if not party_date:
+            continue
+
+        date_str = party.party_date
+        if date_str not in events:
+            events[date_str] = []
+
+        # 파티 멤버 정보 가져오기
+        member_nicknames, all_member_nicknames = _get_party_member_info(party, employee_id)
+
+        events[date_str].append({
+            "type": "랜덤 런치" if party.is_from_match else "파티",
+            "id": party.id,
+            "title": party.title,
+            "restaurant": party.restaurant_name,
+            "address": party.restaurant_address,
+            "date": party.party_date,
+            "time": party.party_time,
+            "location": party.meeting_location,
+            "members": member_nicknames,
+            "all_members": all_member_nicknames,
+        })
+    
+    return events
+
 @app.route("/events/<employee_id>", methods=["GET"])
 def get_events(employee_id):
     """사용자의 이벤트(파티, 개인 일정) 조회"""
@@ -2282,58 +2408,8 @@ def get_events(employee_id):
             )
         ).all()
 
-        for party in parties:
-            # 날짜 데이터 검증 및 처리
-            try:
-                # NaN 값이나 잘못된 날짜 형식 확인
-                if not party.party_date or "NaN" in str(party.party_date):
-                    print(
-                        f"Warning: Invalid party_date found: {party.party_date} for party ID {party.id}"
-                    )
-                    continue
-
-                # 과거 파티는 제외
-                party_date = datetime.strptime(party.party_date, "%Y-%m-%d").date()
-                if party_date < today:
-                    continue
-
-            except (ValueError, TypeError) as e:
-                print(
-                    f"Warning: Failed to parse party_date '{party.party_date}' for party ID {party.id}: {e}"
-                )
-                continue
-
-            if party.party_date not in events:
-                events[party.party_date] = []
-
-            # 파티 멤버 정보 가져오기
-            member_ids = party.member_ids
-            other_member_ids = [mid for mid in member_ids if mid != employee_id]
-
-            # 다른 멤버들의 닉네임 가져오기
-            other_members = User.query.filter(
-                User.employee_id.in_(other_member_ids)
-            ).all()
-            member_nicknames = [user.nickname for user in other_members]
-
-            # 모든 멤버들의 닉네임 가져오기
-            all_members = User.query.filter(User.employee_id.in_(member_ids)).all()
-            all_member_nicknames = [user.nickname for user in all_members]
-
-            events[party.party_date].append(
-                {
-                    "type": "랜덤 런치" if party.is_from_match else "파티",
-                    "id": party.id,
-                    "title": party.title,
-                    "restaurant": party.restaurant_name,
-                    "address": party.restaurant_address,
-                    "date": party.party_date,
-                    "time": party.party_time,
-                    "location": party.meeting_location,
-                    "members": member_nicknames,
-                    "all_members": all_member_nicknames,
-                }
-            )
+        # 파티 이벤트 처리
+        events.update(_process_party_events(parties, employee_id))
 
         # 개인 일정 조회
         schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
@@ -2489,6 +2565,33 @@ def get_events(employee_id):
 
 
 # --- 알림 API ---
+def _get_sender_info(notification):
+    """알림의 상대방 정보 조회"""
+    sender_info = None
+    if notification.related_type == "user" and notification.related_id:
+        sender = User.query.filter_by(employee_id=notification.related_id).first()
+        if sender:
+            sender_info = {
+                "employee_id": sender.employee_id,
+                "nickname": sender.nickname,
+            }
+    return sender_info
+
+def _format_notification(notification):
+    """알림 객체를 딕셔너리로 포맷팅"""
+    return {
+        "id": notification.id,
+        "type": notification.type,
+        "title": notification.title,
+        "message": notification.message,
+        "icon": get_notification_icon(notification.type),
+        "is_read": notification.is_read,
+        "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "related_id": notification.related_id,
+        "related_type": notification.related_type,
+        "sender_info": _get_sender_info(notification),
+    }
+
 @app.route("/notifications/<employee_id>", methods=["GET"])
 def get_notifications(employee_id):
     """사용자의 알림 목록 조회"""
@@ -2506,40 +2609,14 @@ def get_notifications(employee_id):
             .all()
         )
 
-        notification_list = []
-        for notification in notifications:
-            # 상대방 정보 조회 (친구 요청, 파티 초대 등의 경우)
-            sender_info = None
-            if notification.related_type == "user" and notification.related_id:
-                sender = User.query.filter_by(
-                    employee_id=notification.related_id
-                ).first()
-                if sender:
-                    sender_info = {
-                        "employee_id": sender.employee_id,
-                        "nickname": sender.nickname,
-                    }
-
-            notification_list.append(
-                {
-                    "id": notification.id,
-                    "type": notification.type,
-                    "title": notification.title,
-                    "message": notification.message,
-                    "icon": get_notification_icon(notification.type),
-                    "is_read": notification.is_read,
-                    "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "related_id": notification.related_id,
-                    "related_type": notification.related_type,
-                    "sender_info": sender_info,
-                }
-            )
+        # 알림 목록 포맷팅
+        notification_list = [_format_notification(notification) for notification in notifications]
 
         return jsonify(
             {"unread_count": unread_count, "notifications": notification_list}
         )
 
-    except Exception as e:
+    except (AttributeError, KeyError, ValueError) as e:
         print(f"[ERROR] 알림 조회 실패: {e}")
         return jsonify({"message": "알림을 불러오는데 실패했습니다."}), 500
 
@@ -2557,7 +2634,7 @@ def mark_notification_read(notification_id):
         print(f"[DEBUG] 알림 읽음 처리 - ID: {notification_id}")
         return jsonify({"message": "알림이 읽음 처리되었습니다."})
 
-    except Exception as e:
+    except (AttributeError, KeyError, ValueError) as e:
         print(f"[ERROR] 알림 읽음 처리 실패: {e}")
         return jsonify({"message": "알림 읽음 처리에 실패했습니다."}), 500
 
@@ -2575,7 +2652,7 @@ def mark_all_notifications_read(employee_id):
         )
         return jsonify({"message": f"{updated_count}개의 알림이 읽음 처리되었습니다."})
 
-    except Exception as e:
+    except (AttributeError, KeyError, ValueError) as e:
         print(f"[ERROR] 모든 알림 읽음 처리 실패: {e}")
         return jsonify({"message": "알림 읽음 처리에 실패했습니다."}), 500
 
@@ -2726,6 +2803,52 @@ def get_reviews(restaurant_id):
     )
 
 
+def _award_category_badge(user_id, category):
+    """카테고리별 배지 수여"""
+    category_lower = category.lower()
+    
+    if "양식" in category_lower or "western" in category_lower:
+        badge = check_badge_earned(user_id, "western_master")
+        if badge:
+            award_badge(user_id, badge)
+    elif "카페" in category_lower or "cafe" in category_lower:
+        badge = check_badge_earned(user_id, "cafe_hunter")
+        if badge:
+            award_badge(user_id, badge)
+    elif "한식" in category_lower or "korean" in category_lower:
+        badge = check_badge_earned(user_id, "korean_expert")
+        if badge:
+            award_badge(user_id, badge)
+    elif "중식" in category_lower or "chinese" in category_lower:
+        badge = check_badge_earned(user_id, "chinese_explorer")
+        if badge:
+            award_badge(user_id, badge)
+    elif "일식" in category_lower or "japanese" in category_lower:
+        badge = check_badge_earned(user_id, "japanese_lover")
+        if badge:
+            award_badge(user_id, badge)
+
+def _process_review_rewards(user_id, has_photo, restaurant):
+    """리뷰 작성 보상 처리"""
+    if not user_id:
+        return
+    
+    # 리뷰 작성 포인트
+    earn_points(user_id, "review_written", 20, "리뷰 작성")
+
+    # 사진이 있으면 추가 포인트
+    if has_photo:
+        earn_points(user_id, "review_with_photo", 15, "사진과 함께 리뷰 작성")
+
+    # 첫 리뷰 배지 확인
+    badge = check_badge_earned(user_id, "first_review")
+    if badge:
+        award_badge(user_id, badge)
+
+    # 카테고리별 배지 확인
+    if restaurant:
+        _award_category_badge(user_id, restaurant.category)
+
 @app.route("/restaurants/<int:restaurant_id>/reviews", methods=["POST"])
 def add_review(restaurant_id):
     data = request.get_json() or {}
@@ -2745,48 +2868,10 @@ def add_review(restaurant_id):
     db.session.add(new_review)
     db.session.commit()
 
-    # 포인트 획득
+    # 보상 처리
     user_id = data.get("user_id")
-    if user_id:
-        # 리뷰 작성 포인트
-        earn_points(user_id, "review_written", 20, "리뷰 작성")
-
-        # 사진이 있으면 추가 포인트
-        if data.get("photo_url"):
-            earn_points(user_id, "review_with_photo", 15, "사진과 함께 리뷰 작성")
-
-        # 첫 리뷰 배지 확인
-        badge = check_badge_earned(user_id, "first_review")
-        if badge:
-            award_badge(user_id, badge)
-
-        # 카테고리별 배지 확인
-        if restaurant:
-            category = restaurant.category.lower()
-            if "양식" in category or "western" in category:
-                badge = check_badge_earned(user_id, "western_master")
-                if badge:
-                    award_badge(user_id, badge)
-            elif "카페" in category or "cafe" in category:
-                badge = check_badge_earned(user_id, "cafe_hunter")
-                if badge:
-                    award_badge(user_id, badge)
-            elif "한식" in category or "korean" in category:
-                badge = check_badge_earned(user_id, "korean_expert")
-                if badge:
-                    award_badge(user_id, badge)
-            elif "중식" in category or "chinese" in category:
-                badge = check_badge_earned(user_id, "chinese_explorer")
-                if badge:
-                    award_badge(user_id, badge)
-            elif "일식" in category or "japanese" in category:
-                badge = check_badge_earned(user_id, "japanese_lover")
-                if badge:
-                    award_badge(user_id, badge)
-            elif "카페" in category or "cafe" in category:
-                badge = check_badge_earned(user_id, "cafe_hunter")
-                if badge:
-                    award_badge(user_id, badge)
+    has_photo = bool(data.get("photo_url"))
+    _process_review_rewards(user_id, has_photo, restaurant)
 
     return jsonify({"message": "리뷰가 추가되었습니다.", "id": new_review.id}), 201
 
@@ -4556,152 +4641,19 @@ def get_my_dangolpots():
 
 
 # --- 랜덤런치, 사용자 프로필, 소통 API 등은 이전과 동일하게 유지 ---
-@app.route("/match/status/<employee_id>", methods=["GET"])
-def get_match_status(employee_id):
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-    user = reset_user_match_status_if_needed(user)
-    response = {"status": user.matching_status}
-    if user.matching_status == "waiting":
-        now = datetime.now()
-        match_time = now.replace(hour=10, minute=0, second=0, microsecond=0)
-        if now < match_time:
-            response["countdown_target"] = match_time.isoformat()
-    return jsonify(response)
+# get_match_status 함수는 routes/matching.py로 분리됨
 
 
-@app.route("/match/request", methods=["POST"])
-def request_match():
-    data = request.get_json()
-    employee_id = data["employee_id"]
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    now = datetime.now()
-    today_10am = now.replace(hour=10, minute=0, second=0, microsecond=0)
-
-    # 예약 매칭 (전일 14:00 ~ 당일 10:00)
-    if now < today_10am:
-        user.matching_status = "waiting"
-        user.match_request_time = now
-        db.session.commit()
-        return jsonify(
-            {"message": "오전 10시 매칭 대기열에 등록되었습니다.", "status": "waiting"}
-        )
-
-    # 실시간 매칭 (당일 10:00 ~ 14:00)
-    else:
-        # 대기 중인 다른 사용자 찾기
-        waiting_users = User.query.filter(
-            User.matching_status == "waiting",  # type: ignore
-            User.employee_id != employee_id,  # type: ignore
-        ).all()  # type: ignore
-
-        if waiting_users:
-            # 스마트 매칭: 선호도 기반으로 최적의 파트너 찾기
-            best_match = find_best_match(user, employee_id)
-
-            if best_match:
-                # 파티 생성
-                new_party = Party(
-                    host_employee_id=employee_id,
-                    title="스마트 런치",
-                    restaurant_name="미정",  # 기본값을 '미정'으로 설정
-                    restaurant_address=None,
-                    party_date=now.strftime("%Y-%m-%d"),
-                    party_time="11:30",  # 기본값을 '11:30'으로 설정
-                    meeting_location="본관 1층 로비",  # 기본값을 '본관 1층 로비'로 설정
-                    max_members=2,
-                    # members_employee_ids 필드 제거 (PartyMember 테이블 사용)
-                    is_from_match=True,
-                )
-                db.session.add(new_party)
-
-                # 두 사용자 모두 matched 상태로 변경
-                user.matching_status = "matched"
-                best_match.matching_status = "matched"
-                db.session.commit()
-
-                compatibility_score = calculate_compatibility_score(user, best_match)
-
-                return jsonify(
-                    {
-                        "message": "스마트 매칭이 완료되었습니다!",
-                        "status": "matched",
-                        "party_id": new_party.id,
-                        "compatibility_score": round(compatibility_score, 2),
-                        "partner": {
-                            "employee_id": best_match.employee_id,
-                            "nickname": best_match.nickname,
-                        },
-                    }
-                )
-            else:
-                # 호환성 높은 파트너가 없으면 대기
-                user.matching_status = "waiting"
-                user.match_request_time = now
-                db.session.commit()
-                return jsonify(
-                    {
-                        "message": "최적의 파트너를 기다리는 중입니다...",
-                        "status": "waiting",
-                    }
-                )
-        else:
-            # 대기 상태로 변경
-            user.matching_status = "waiting"
-            user.match_request_time = now
-            db.session.commit()
-            return jsonify({"message": "매칭 대기 중입니다...", "status": "waiting"})
+# request_match 함수는 routes/matching.py로 분리됨
 
 
-@app.route("/match/confirm", methods=["POST"])
-def confirm_match():
-    data = request.get_json()
-    group_id = data["group_id"]
-    employee_id = data["employee_id"]
-
-    # 매칭 그룹 확인 및 파티 생성 로직
-    # (실제 구현에서는 더 복잡한 매칭 로직이 필요)
-
-    return jsonify({"message": "매칭이 확정되었습니다.", "status": "confirmed"})
+# confirm_match 함수는 routes/matching.py로 분리됨
 
 
-@app.route("/match/cancel", methods=["POST"])
-def cancel_match():
-    data = request.get_json()
-    employee_id = data["employee_id"]
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    if user.matching_status == "waiting":
-        user.matching_status = "idle"
-        user.match_request_time = None
-        db.session.commit()
-        return jsonify(
-            {"message": "매칭 대기가 취소되었습니다.", "status": "cancelled"}
-        )
-    else:
-        return jsonify({"message": "매칭 대기 상태가 아닙니다."}), 400
+# cancel_match 함수는 routes/matching.py로 분리됨
 
 
-@app.route("/match/reject", methods=["POST"])
-def reject_match():
-    data = request.get_json()
-    employee_id = data["employee_id"]
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if user:
-        user.matching_status = "idle"
-        user.match_request_time = None
-        db.session.commit()
-
-    return jsonify({"message": "매칭을 거절했습니다.", "status": "rejected"})
+# reject_match 함수는 routes/matching.py로 분리됨
 
 
 # --- 새로운 랜덤 런치 시스템 API ---
@@ -5414,672 +5366,41 @@ def get_my_chats(employee_id):
 
 
 @app.route("/users/<employee_id>", methods=["GET"])
-@require_auth
-def get_user(employee_id):
-    try:
-        # 인증된 사용자 정보 사용
-        authenticated_user = request.current_user
-
-        # 다른 사용자의 프로필을 조회하는 경우 권한 확인
-        if employee_id != authenticated_user.employee_id:
-            return jsonify({"error": "자신의 프로필만 조회할 수 있습니다"}), 403
-
-        print(f"DEBUG: Fetching user profile for employee_id: {employee_id}")
-
-        # 먼저 실제 데이터베이스에서 사용자 조회
-        user = User.query.filter_by(employee_id=employee_id).first()
-
-        # 실제 사용자가 없으면 가상유저 데이터 반환
-        if not user:
-            if GROUP_MATCHING_AVAILABLE:
-                virtual_users = get_virtual_users_data()
-                if employee_id in virtual_users:
-                    virtual_user = virtual_users[employee_id]
-                    user_data = {
-                        "nickname": virtual_user["nickname"],
-                        "lunch_preference": ",".join(virtual_user["foodPreferences"]),
-                        "gender": "기타",
-                        "age_group": "20대",
-                        "main_dish_genre": ",".join(virtual_user["foodPreferences"]),
-                    }
-                    print(f"DEBUG: Virtual user data: {user_data}")
-                    return jsonify(user_data)
-
-            return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-        user_data = {
-            "nickname": user.nickname,
-            "lunch_preference": user.lunch_preference,
-            "gender": user.gender,
-            "age_group": user.age_group,
-            "main_dish_genre": user.main_dish_genre,
-        }
-        print(f"DEBUG: User data: {user_data}")
-        return jsonify(user_data)
-    except Exception as e:
-        print(f"ERROR in get_user: {e}")
-        return (
-            jsonify(
-                {"error": "프로필 조회 중 오류가 발생했습니다.", "details": str(e)}
-            ),
-            500,
-        )
+# get_user 함수는 routes/users.py로 분리됨
 
 
-@app.route("/users/batch", methods=["POST"])
-def get_users_batch():
-    data = request.get_json() or {}
-    user_ids = data.get("user_ids", [])
-
-    if not user_ids:
-        return jsonify({"message": "user_ids가 필요합니다."}), 400
-
-    # 실제 사용자 조회
-    users = User.query.filter(User.employee_id.in_(user_ids)).all()  # type: ignore
-    user_data = []
-
-    for user in users:
-        user_data.append(
-            {
-                "employee_id": user.employee_id,
-                "nickname": user.nickname,
-                "lunch_preference": user.lunch_preference,
-                "main_dish_genre": user.main_dish_genre,
-            }
-        )
-
-    # 가상유저 데이터 추가
-    if GROUP_MATCHING_AVAILABLE:
-        virtual_users = get_virtual_users_data()
-        for user_id in user_ids:
-            if user_id in virtual_users and not any(
-                u["employee_id"] == user_id for u in user_data
-            ):
-                virtual_user = virtual_users[user_id]
-                user_data.append(
-                    {
-                        "employee_id": user_id,
-                        "nickname": virtual_user["nickname"],
-                        "lunch_preference": ",".join(virtual_user["foodPreferences"]),
-                        "main_dish_genre": ",".join(virtual_user["foodPreferences"]),
-                    }
-                )
-
-    return jsonify(user_data)
+# get_users_batch 함수는 routes/users.py로 분리됨
 
 
-@app.route("/users/<employee_id>", methods=["PUT"])
-@require_auth
-def update_user(employee_id):
-    # 인증된 사용자 정보 사용
-    authenticated_user = request.current_user
-
-    # 다른 사용자의 프로필을 수정하는 경우 권한 확인
-    if employee_id != authenticated_user.employee_id:
-        return jsonify({"error": "자신의 프로필만 수정할 수 있습니다"}), 403
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    data = request.get_json()
-    user.nickname = data.get("nickname", user.nickname)
-    user.lunch_preference = data.get("lunch_preference", user.lunch_preference)
-    user.gender = data.get("gender", user.gender)
-    user.age_group = data.get("age_group", user.age_group)
-    user.main_dish_genre = data.get("main_dish_genre", user.main_dish_genre)
-
-    db.session.commit()
-    return jsonify({"message": "프로필이 업데이트되었습니다."})
+# update_user 함수는 routes/users.py로 분리됨
 
 
-@app.route("/users/<employee_id>/preferences", methods=["PUT"])
-@require_auth
-def update_user_preferences(employee_id):
-    # 인증된 사용자 정보 사용
-    authenticated_user = request.current_user
-
-    # 다른 사용자의 선호도를 수정하는 경우 권한 확인
-    if employee_id != authenticated_user.employee_id:
-        return jsonify({"error": "자신의 선호도만 수정할 수 있습니다"}), 403
-
-    data = request.get_json()
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    # 사용자 선호도 정보 업데이트
-    if "foodPreferences" in data:
-        user.food_preferences = ",".join(data["foodPreferences"])
-    if "allergies" in data:
-        user.allergies = ",".join(data["allergies"])
-    if "preferredTime" in data:
-        user.preferred_time = data["preferredTime"]
-    if "frequentAreas" in data:
-        user.frequent_areas = ",".join(data["frequentAreas"])
-    if "notifications" in data:
-        user.notification_settings = ",".join(data["notifications"])
-
-    db.session.commit()
-    return jsonify({"message": "사용자 선호도가 저장되었습니다."})
+# update_user_preferences 함수는 routes/users.py로 분리됨
 
 
-@app.route("/users/<employee_id>/preferences", methods=["GET"])
-@require_auth
-def get_user_preferences(employee_id):
-    # 인증된 사용자 정보 사용
-    authenticated_user = request.current_user
-
-    # 다른 사용자의 선호도를 조회하는 경우 권한 확인
-    if employee_id != authenticated_user.employee_id:
-        return jsonify({"error": "자신의 선호도만 조회할 수 있습니다"}), 403
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    preferences = {
-        "foodPreferences": (
-            user.food_preferences.split(",") if user.food_preferences else []
-        ),
-        "allergies": user.allergies.split(",") if user.allergies else [],
-        "preferredTime": user.preferred_time or "",
-        "frequentAreas": user.frequent_areas.split(",") if user.frequent_areas else [],
-        "notifications": (
-            user.notification_settings.split(",") if user.notification_settings else []
-        ),
-    }
-
-    return jsonify(preferences)
+# get_user_preferences 함수는 routes/users.py로 분리됨
 
 
 # --- 채팅 API ---
-@app.route("/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
-def get_chat_messages(chat_type, chat_id):
-    print(
-        f"=== DEBUG: 채팅 메시지 조회 - chat_type: {chat_type}, chat_id: {chat_id} ==="
-    )
+# get_chat_messages 함수는 routes/chats.py로 분리됨
 
-    # 프론트엔드 호환성을 위해 chat_type='custom'인 경우 실제 저장된 chat_type 확인
-    actual_chat_type = chat_type
-    if chat_type == "custom":
-        # ChatRoom에서 실제 타입 확인
-        chat_room = ChatRoom.query.get(chat_id)
-        if chat_room and chat_room.type == "group":
-            actual_chat_type = "group"
 
-    messages = (
-        ChatMessage.query.filter_by(chat_type=actual_chat_type, chat_id=chat_id)
-        .order_by(ChatMessage.created_at)
-        .all()
-    )
-    print(f"=== DEBUG: 조회된 메시지 수: {len(messages)} ===")
+# send_chat_message 함수는 routes/chats.py로 분리됨
 
-    for msg in messages:
-        print(
-            f"=== DEBUG: 메시지 - ID: {msg.id}, 발신자: {msg.sender_nickname}, 내용: {msg.message[:50]}... ==="
-        )
 
-    # 채팅방 참여자 목록 구하기
-    if chat_type == "party":
-        party = Party.query.get(chat_id)
-        if party:
-            # PartyMember 테이블에서 멤버 ID 가져오기
-            party_members = PartyMember.query.filter_by(party_id=chat_id).all()
-            member_ids = [member.employee_id for member in party_members]
-        else:
-            member_ids = []
-    elif chat_type == "dangolpot":
-        pot = DangolPot.query.get(chat_id)
-        if pot and pot.members:
-            member_ids = [mid.strip() for mid in pot.members.split(",") if mid.strip()]
-        else:
-            member_ids = []
-    elif chat_type == "custom":
-        # custom 채팅은 ChatRoom/ChatParticipant에서 조회 (투표로 생성된 채팅방 포함)
-        room = ChatRoom.query.get(chat_id)
-        if room:
-            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
-            member_ids = [p.user_id for p in participants]
-        else:
-            member_ids = []
-    else:
-        member_ids = []
+# mark_message_read 함수는 routes/chats.py로 분리됨
 
-    result = []
-    for msg in messages:
-        read_count = ChatMessageRead.query.filter_by(message_id=msg.id).count()
-        unread_count = max(0, len(member_ids) - read_count)
 
-        message_data = {
-            "id": msg.id,
-            "sender_employee_id": msg.sender_employee_id,
-            "sender_nickname": msg.sender_nickname,
-            "message": msg.message,
-            "created_at": format_korean_time(msg.created_at),
-            "unread_count": unread_count,
-        }
+# search_messages 함수는 routes/chats.py로 분리됨
 
-        # 투표 알림 메시지인지 확인 (시스템 메시지 + 특정 패턴)
-        if (
-            msg.sender_employee_id == "SYSTEM"
-            and "📊 새로운 투표가 시작되었습니다!" in msg.message
-            and "이 메시지를 터치하여 투표에 참여하세요" in msg.message
-        ):
-            message_data["message_type"] = "voting_notification"
 
-            # 해당 채팅방의 최신 투표 세션 ID 찾기
-            latest_voting = (
-                VotingSession.query.filter_by(chat_room_id=chat_id, status="active")
-                .order_by(VotingSession.created_at.desc())
-                .first()
-            )
+# update_chat_room_title 함수는 routes/chats.py로 분리됨
 
-            if latest_voting:
-                message_data["voting_session_id"] = latest_voting.id
 
-        # 투표 삭제 메시지인지 확인
-        elif (
-            msg.sender_employee_id == "SYSTEM"
-            and "🚫" in msg.message
-            and "투표가 삭제되었습니다" in msg.message
-        ):
-            message_data["message_type"] = "voting_cancelled"
+# get_chat_room_members 함수는 routes/chats.py로 분리됨
 
-        # 투표 완료 메시지인지 확인
-        elif (
-            msg.sender_employee_id == "SYSTEM"
-            and ("⏰" in msg.message and "투표가 마감되었습니다" in msg.message)
-            or ("🎉" in msg.message and "투표가 완료되었습니다" in msg.message)
-        ):
-            message_data["message_type"] = "voting_completed"
-            # 투표 완료 메시지에서 투표 세션 ID 찾기
-            completed_voting = (
-                VotingSession.query.filter_by(chat_room_id=chat_id, status="completed")
-                .order_by(desc(VotingSession.confirmed_at))
-                .first()
-            )
-            if completed_voting:
-                message_data["voting_session_id"] = completed_voting.id
 
-        # 투표 정보 수정 메시지인지 확인
-        elif (
-            msg.sender_employee_id == "SYSTEM"
-            and "📝" in msg.message
-            and "투표 정보가 수정되었습니다" in msg.message
-        ):
-            message_data["message_type"] = "voting_updated"
-
-        result.append(message_data)
-    return jsonify(result)
-
-
-@app.route("/chat/messages", methods=["POST"])
-def send_chat_message():
-    data = request.get_json()
-    chat_type = data.get("chat_type")
-    chat_id = data.get("chat_id")
-    sender_employee_id = data.get("sender_employee_id")
-    message = data.get("message")
-
-    if not all([chat_type, chat_id, sender_employee_id, message]):
-        return jsonify({"message": "모든 필드가 필요합니다."}), 400
-
-    # 사용자 정보 조회
-    user = User.query.filter_by(employee_id=sender_employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    # 채팅방 타입에 따라 실제 저장할 chat_type 결정
-    chat_room = ChatRoom.query.get(chat_id)
-    if chat_room and chat_room.type == "group":
-        # group 타입 채팅방의 경우 실제로는 'group'으로 저장
-        actual_chat_type = "group"
-        print(
-            f"=== DEBUG: group 타입 채팅방 감지 - chat_id: {chat_id}, 실제 chat_type: group ==="
-        )
-    else:
-        actual_chat_type = chat_type
-
-    print(
-        f"=== DEBUG: 메시지 저장 - 원본 chat_type: {chat_type}, 실제 chat_type: {actual_chat_type}, chat_id: {chat_id}, sender: {sender_employee_id}, message: {message[:50]}... ==="
-    )
-
-    # 메시지 저장
-    new_message = ChatMessage()
-    new_message.chat_type = actual_chat_type
-    new_message.chat_id = chat_id
-    new_message.sender_employee_id = sender_employee_id
-    new_message.sender_nickname = user.nickname
-    new_message.message = message
-
-    try:
-        db.session.add(new_message)
-        db.session.commit()
-
-        return (
-            jsonify(
-                {
-                    "id": new_message.id,
-                    "sender_employee_id": sender_employee_id,
-                    "sender_nickname": user.nickname,
-                    "message": message,
-                    "created_at": format_korean_time(new_message.created_at),
-                    "chat_type": actual_chat_type,
-                    "chat_id": chat_id,
-                }
-            ),
-            201,
-        )
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": "메시지 저장에 실패했습니다."}), 500
-
-
-@app.route("/chat/messages/read", methods=["POST"])
-def mark_message_read():
-    data = request.get_json()
-    message_id = data.get("message_id")
-    user_id = data.get("user_id")
-    if not message_id or not user_id:
-        return jsonify({"message": "message_id와 user_id가 필요합니다."}), 400
-
-    # 이미 읽음 처리된 경우 중복 저장 방지
-    existing = ChatMessageRead.query.filter_by(
-        message_id=message_id, user_id=user_id
-    ).first()
-    if existing:
-        return jsonify({"message": "이미 읽음 처리됨."}), 200
-
-    read = ChatMessageRead(message_id=message_id, user_id=user_id)
-    db.session.add(read)
-    db.session.commit()
-    return jsonify({"message": "읽음 처리 완료."}), 201
-
-
-@app.route("/chat/messages/search", methods=["GET"])
-def search_messages():
-    employee_id = request.args.get("employee_id")
-    chat_type = request.args.get("chat_type")
-    chat_id = request.args.get("chat_id")
-    query = request.args.get("query")
-
-    if not all([employee_id, chat_type, chat_id, query]):
-        return jsonify({"message": "모든 파라미터가 필요합니다."}), 400
-
-    try:
-        if chat_id is None:
-            return jsonify({"message": "chat_id가 필요합니다."}), 400
-        chat_id = int(chat_id)
-    except ValueError:
-        return jsonify({"message": "chat_id는 숫자여야 합니다."}), 400
-
-    # 해당 채팅방의 메시지들 중에서 검색어가 포함된 메시지 찾기
-    messages = (
-        ChatMessage.query.filter(
-            ChatMessage.chat_type == chat_type,
-            ChatMessage.chat_id == chat_id,
-            ChatMessage.message.contains(query),
-        )
-        .order_by(ChatMessage.created_at.desc())
-        .all()
-    )
-
-    result = []
-    for msg in messages:
-        result.append(
-            {
-                "id": msg.id,
-                "sender_employee_id": msg.sender_employee_id,
-                "sender_nickname": msg.sender_nickname,
-                "message": msg.message,
-                "created_at": format_korean_time(msg.created_at),
-            }
-        )
-
-    return jsonify(result)
-
-
-@app.route("/chat/room/title", methods=["PUT"])
-def update_chat_room_title():
-    data = request.get_json()
-    chat_type = data.get("chat_type")
-    chat_id = data.get("chat_id")
-    new_title = data.get("title")
-    user_id = data.get("user_id")
-
-    if not all([chat_type, chat_id, new_title, user_id]):
-        return jsonify({"message": "모든 필드가 필요합니다."}), 400
-
-    try:
-        if chat_type == "party":
-            party = Party.query.get(chat_id)
-            if not party:
-                return jsonify({"message": "파티를 찾을 수 없습니다."}), 404
-            if party.host_employee_id != user_id:
-                return (
-                    jsonify({"message": "파티 호스트만 제목을 변경할 수 있습니다."}),
-                    403,
-                )
-            party.title = new_title
-        elif chat_type == "dangolpot":
-            pot = DangolPot.query.get(chat_id)
-            if not pot:
-                return jsonify({"message": "단골파티를 찾을 수 없습니다."}), 404
-            if pot.host_id != user_id:
-                return (
-                    jsonify(
-                        {"message": "단골파티 호스트만 제목을 변경할 수 있습니다."}
-                    ),
-                    403,
-                )
-            pot.name = new_title
-        else:
-            return jsonify({"message": "지원하지 않는 채팅 타입입니다."}), 400
-
-        db.session.commit()
-        return (
-            jsonify({"message": "채팅방 제목이 변경되었습니다.", "title": new_title}),
-            200,
-        )
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": "제목 변경에 실패했습니다."}), 500
-
-
-@app.route("/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
-def get_chat_room_members(chat_type, chat_id):
-    try:
-        if chat_type == "party":
-            party = Party.query.get(chat_id)
-            if not party:
-                return jsonify({"message": "파티를 찾을 수 없습니다."}), 404
-
-            # 호스트 정보
-            host = User.query.filter_by(employee_id=party.host_employee_id).first()
-            members = [
-                {
-                    "employee_id": party.host_employee_id,
-                    "nickname": host.nickname if host else "알 수 없음",
-                    "is_host": True,
-                }
-            ]
-
-            # 멤버 정보 (호스트 제외)
-            party_members = PartyMember.query.filter_by(party_id=chat_id).all()
-            for member in party_members:
-                # 호스트는 이미 위에서 추가했으므로 중복 제외
-                if member.employee_id != party.host_employee_id:
-                    user = User.query.filter_by(employee_id=member.employee_id).first()
-                    if user:
-                        members.append(
-                            {
-                                "employee_id": member.employee_id,
-                                "nickname": user.nickname,
-                                "is_host": False,
-                            }
-                        )
-
-        elif chat_type == "dangolpot":
-            pot = DangolPot.query.get(chat_id)
-            if not pot:
-                return jsonify({"message": "단골파티를 찾을 수 없습니다."}), 404
-
-            # 호스트 정보
-            host = User.query.filter_by(employee_id=pot.host_id).first()
-            members = [
-                {
-                    "employee_id": pot.host_id,
-                    "nickname": host.nickname if host else "알 수 없음",
-                    "is_host": True,
-                }
-            ]
-
-            # 멤버 정보 (호스트 제외)
-            if pot.members:
-                member_ids = [
-                    mid.strip() for mid in pot.members.split(",") if mid.strip()
-                ]
-                for member_id in member_ids:
-                    # 호스트는 이미 위에서 추가했으므로 중복 제외
-                    if member_id != pot.host_id:
-                        user = User.query.filter_by(employee_id=member_id).first()
-                        if user:
-                            members.append(
-                                {
-                                    "employee_id": member_id,
-                                    "nickname": user.nickname,
-                                    "is_host": False,
-                                }
-                            )
-
-        elif chat_type == "custom":
-            # 1:1 채팅의 경우
-            room = ChatRoom.query.filter_by(type="friend", id=chat_id).first()
-            if not room:
-                return jsonify({"message": "채팅방을 찾을 수 없습니다."}), 404
-
-            participants = ChatParticipant.query.filter_by(room_id=room.id).all()
-            members = []
-            for participant in participants:
-                user = User.query.filter_by(employee_id=participant.user_id).first()
-                if user:
-                    members.append(
-                        {
-                            "employee_id": participant.user_id,
-                            "nickname": user.nickname,
-                            "is_host": False,
-                        }
-                    )
-        else:
-            return jsonify({"message": "지원하지 않는 채팅 타입입니다."}), 400
-
-        return jsonify(members)
-    except Exception as e:
-        return jsonify({"message": "멤버 목록 조회에 실패했습니다."}), 500
-
-
-@app.route("/chat/leave", methods=["POST"])
-def leave_chat_room():
-    """채팅방 나가기"""
-    try:
-        data = request.get_json()
-        chat_type = data.get("chat_type")
-        chat_id = data.get("chat_id")
-        employee_id = data.get("employee_id")
-
-        if not all([chat_type, chat_id, employee_id]):
-            return jsonify({"error": "모든 필드가 필요합니다."}), 400
-
-        if chat_type == "party":
-            party = Party.query.get(chat_id)
-            if not party:
-                return jsonify({"error": "파티를 찾을 수 없습니다."}), 404
-
-            # 호스트는 나갈 수 없음
-            if party.host_employee_id == employee_id:
-                return (
-                    jsonify(
-                        {
-                            "error": "파티 호스트는 파티를 나갈 수 없습니다. 파티를 삭제해주세요."
-                        }
-                    ),
-                    403,
-                )
-
-            # PartyMember 테이블에서 해당 사용자 제거
-            member = PartyMember.query.filter_by(
-                party_id=chat_id, employee_id=employee_id
-            ).first()
-            if member:
-                db.session.delete(member)
-                db.session.commit()
-                return jsonify({"message": "파티에서 나갔습니다."}), 200
-            else:
-                return jsonify({"error": "해당 파티의 멤버가 아닙니다."}), 404
-
-        elif chat_type == "dangolpot":
-            pot = DangolPot.query.get(chat_id)
-            if not pot:
-                return jsonify({"error": "단골파티를 찾을 수 없습니다."}), 404
-
-            # 호스트는 나갈 수 없음
-            if pot.host_id == employee_id:
-                return (
-                    jsonify(
-                        {
-                            "error": "단골파티 호스트는 단골파티를 나갈 수 없습니다. 단골파티를 삭제해주세요."
-                        }
-                    ),
-                    403,
-                )
-
-            # 멤버 목록에서 해당 사용자 제거
-            if pot.members:
-                member_ids = [
-                    mid.strip() for mid in pot.members.split(",") if mid.strip()
-                ]
-                if employee_id in member_ids:
-                    member_ids.remove(employee_id)
-                    pot.members = ",".join(member_ids)
-                    db.session.commit()
-                    return jsonify({"message": "단골파티에서 나갔습니다."}), 200
-                else:
-                    return jsonify({"error": "해당 단골파티의 멤버가 아닙니다."}), 404
-            else:
-                return jsonify({"error": "해당 단골파티의 멤버가 아닙니다."}), 404
-
-        elif chat_type == "custom":
-            # 1:1 채팅의 경우 ChatParticipant에서 제거
-            room = ChatRoom.query.filter_by(type="friend", id=chat_id).first()
-            if not room:
-                return jsonify({"error": "채팅방을 찾을 수 없습니다."}), 404
-
-            participant = ChatParticipant.query.filter_by(
-                room_id=room.id, user_id=employee_id
-            ).first()
-            if not participant:
-                return jsonify({"error": "해당 채팅방의 참여자가 아닙니다."}), 404
-
-            db.session.delete(participant)
-
-            # 남은 참여자가 없으면 채팅방도 삭제
-            remaining_participants = ChatParticipant.query.filter_by(
-                room_id=room.id
-            ).count()
-            if remaining_participants <= 1:  # 현재 사용자 제외하고 0명이면 채팅방 삭제
-                db.session.delete(room)
-
-            db.session.commit()
-            return jsonify({"message": "채팅방에서 나갔습니다."}), 200
-
-        else:
-            return jsonify({"error": "지원하지 않는 채팅 타입입니다."}), 400
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"채팅방 나가기 오류: {e}")
-        return jsonify({"error": "채팅방 나가기에 실패했습니다."}), 500
+# leave_chat_room 함수는 routes/chats.py로 분리됨
 
 
 # --- WebSocket 이벤트 ---
@@ -6238,84 +5559,7 @@ def handle_read_message(data):
 
 
 # --- 친구 API ---
-@app.route("/users/search", methods=["GET"])
-@require_auth
-def search_users():
-    # 인증된 사용자 정보 사용
-    authenticated_user = request.current_user
-    nickname = request.args.get("nickname")
-    employee_id = request.args.get(
-        "employee_id", authenticated_user.employee_id
-    )  # 검색하는 사용자 ID
-
-    if not nickname:
-        return jsonify({"message": "닉네임 파라미터가 필요합니다."}), 400
-
-    # 다른 사용자를 대신해서 검색하는 경우 권한 확인
-    if employee_id != authenticated_user.employee_id:
-        return jsonify({"error": "자신의 검색만 수행할 수 있습니다"}), 403
-
-    users = User.query.filter(User.nickname.contains(nickname)).all()  # type: ignore
-
-    # 각 사용자에 대해 이미 친구인지 확인
-    result = []
-    for user in users:
-        # 자기 자신은 제외
-        if user.employee_id == employee_id:
-            continue
-
-        is_friend = False
-        # 일방적 친구 관계 확인
-        friendship = Friendship.query.filter_by(
-            requester_id=employee_id, receiver_id=user.employee_id, status="accepted"
-        ).first()
-        is_friend = friendship is not None
-
-        result.append(
-            {
-                "employee_id": user.employee_id,
-                "nickname": user.nickname,
-                "lunch_preference": user.lunch_preference,
-                "main_dish_genre": user.main_dish_genre,
-                "is_friend": is_friend,
-                "allergies": user.allergies,
-                "preferred_time": user.preferred_time,
-            }
-        )
-
-    # 가상유저도 검색 결과에 추가
-    if GROUP_MATCHING_AVAILABLE:
-        virtual_users = get_virtual_users_data()
-        for user_id, virtual_user in virtual_users.items():
-            # 자기 자신은 제외
-            if user_id == employee_id:
-                continue
-
-            # 닉네임에 검색어가 포함되어 있는지 확인
-            if nickname.lower() in virtual_user["nickname"].lower():
-                # 친구 관계 확인
-                is_friend = False
-                if hasattr(authenticated_user, "employee_id"):
-                    friendship = Friendship.query.filter_by(
-                        requester_id=authenticated_user.employee_id,
-                        receiver_id=user_id,
-                        status="accepted",
-                    ).first()
-                    is_friend = friendship is not None
-
-                result.append(
-                    {
-                        "employee_id": user_id,
-                        "nickname": virtual_user["nickname"],
-                        "lunch_preference": ",".join(virtual_user["foodPreferences"]),
-                        "main_dish_genre": ",".join(virtual_user["foodPreferences"]),
-                        "is_friend": is_friend,
-                        "allergies": virtual_user["allergies"],
-                        "preferred_time": virtual_user["preferredTime"],
-                    }
-                )
-
-    return jsonify(result)
+# search_users 함수는 routes/users.py로 분리됨
 
 
 @app.route("/friends/add", methods=["POST"])
@@ -6670,105 +5914,13 @@ def get_friend_recommendations():
 
 
 # --- 새로운 채팅 API ---
-@app.route("/chats/friends", methods=["POST"])
-def create_friend_chat():
-    data = request.get_json()
-    user_ids = data.get("user_ids", [])
-
-    if len(user_ids) < 2:
-        return jsonify({"message": "최소 2명의 사용자가 필요합니다."}), 400
-
-    # 기존 친구 채팅방이 있는지 확인
-    existing_room = None
-    for room in ChatRoom.query.filter_by(type="friend").all():
-        participants = ChatParticipant.query.filter_by(room_id=room.id).all()
-        participant_ids = [p.user_id for p in participants]
-
-        if set(user_ids) == set(participant_ids):
-            existing_room = room
-            break
-
-    if existing_room:
-        return (
-            jsonify(
-                {"message": "이미 존재하는 채팅방입니다.", "room_id": existing_room.id}
-            ),
-            200,
-        )
-
-    # 새 채팅방 생성
-    chat_room = ChatRoom(name=None, type="friend")  # 1:1 채팅은 이름 없음
-    db.session.add(chat_room)
-    db.session.flush()
-
-    # 참여자들 추가
-    for user_id in user_ids:
-        participant = ChatParticipant(room_id=chat_room.id, user_id=user_id)
-        db.session.add(participant)
-
-    db.session.commit()
-
-    return (
-        jsonify({"message": "친구 채팅방이 생성되었습니다.", "room_id": chat_room.id}),
-        201,
-    )
+# create_friend_chat 함수는 routes/chats.py로 분리됨
 
 
-@app.route("/chat/create", methods=["POST"])
-def create_chat_room():
-    """일반 채팅방 생성 API"""
-    data = request.get_json()
-    title = data.get("title")
-    creator_employee_id = data.get("creator_employee_id")
-    participant_employee_ids = data.get("participant_employee_ids", [])
-
-    if not title or not creator_employee_id:
-        return jsonify({"message": "채팅방 제목과 생성자 ID가 필요합니다."}), 400
-
-    if not participant_employee_ids:
-        return jsonify({"message": "최소 한 명의 참여자가 필요합니다."}), 400
-
-    # 생성자도 참여자 목록에 추가
-    if creator_employee_id not in participant_employee_ids:
-        participant_employee_ids.append(creator_employee_id)
-
-    try:
-        # 새 채팅방 생성
-        chat_room = ChatRoom(name=title, type="group")  # 일반 그룹 채팅방
-        db.session.add(chat_room)
-        db.session.flush()
-
-        # 참여자들 추가
-        for user_id in participant_employee_ids:
-            participant = ChatParticipant(room_id=chat_room.id, user_id=user_id)
-            db.session.add(participant)
-
-        db.session.commit()
-
-        return (
-            jsonify(
-                {
-                    "message": "채팅방이 생성되었습니다.",
-                    "chat_id": chat_room.id,
-                    "title": chat_room.name,
-                }
-            ),
-            201,
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error creating chat room: {e}")
-        return jsonify({"message": "채팅방 생성에 실패했습니다."}), 500
+# create_chat_room 함수는 routes/chats.py로 분리됨
 
 
-@app.route("/chats/filtered", methods=["GET"])
-def get_filtered_chats():
-    employee_id = request.args.get("employee_id")
-    chat_type = request.args.get("type")  # 'friend', 'group', 'dangolpot' 또는 None
-
-    if not employee_id:
-        return jsonify({"message": "사용자 ID가 필요합니다."}), 400
+# get_filtered_chats 함수는 routes/chats.py로 분리됨
 
     # 사용자가 참여한 채팅방들 조회
     user_participants = ChatParticipant.query.filter_by(user_id=employee_id).all()
@@ -7092,32 +6244,7 @@ def get_nearby_restaurants():
     )
 
 
-@app.route("/users/nearby", methods=["GET"])
-def get_nearby_users():
-    """근처 사용자 찾기 (같은 건물/지역)"""
-    employee_id = request.args.get("employee_id")
-    building = request.args.get("building", "KOICA 본사")  # 기본값
-
-    if not employee_id:
-        return jsonify({"message": "사용자 ID가 필요합니다."}), 400
-
-    # 같은 건물의 다른 사용자들 찾기
-    nearby_users = User.query.filter(User.employee_id != employee_id).limit(20).all()  # type: ignore
-
-    # 실제로는 위치 기반 필터링이 필요
-    users_data = []
-    for user in nearby_users:
-        users_data.append(
-            {
-                "employee_id": user.employee_id,
-                "nickname": user.nickname,
-                "lunch_preference": user.lunch_preference,
-                "main_dish_genre": user.main_dish_genre,
-                "building": building,
-            }
-        )
-
-    return jsonify({"nearby_users": users_data, "building": building})
+# get_nearby_users 함수는 routes/users.py로 분리됨
 
 
 # --- 식당 추천 API ---
@@ -7505,826 +6632,23 @@ def get_smart_recommendations():
 # --- 새로운 투표 시스템 API ---
 
 
-@app.route("/voting-sessions", methods=["POST"])
-def create_voting_session():
-    """새로운 투표 세션 생성"""
-    try:
-        data = request.get_json()
+# create_voting_session 함수는 routes/voting.py로 분리됨
 
-        # 필수 필드 검증
-        required_fields = [
-            "chat_room_id",
-            "title",
-            "participants",
-            "created_by",
-            "expires_at",
-        ]
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({"error": f"{field}가 필요합니다."}), 400
 
-        # 정확한 만료 시간 파싱 (ISO 형식)
-        try:
-            expires_at_str = data["expires_at"]
-            if expires_at_str.endswith("Z"):
-                expires_at_str = expires_at_str[:-1] + "+00:00"
+# get_voting_session 함수는 routes/voting.py로 분리됨
 
-            expires_at = datetime.fromisoformat(expires_at_str)
 
-            # 타임존이 있으면 UTC로 변환 후 naive datetime으로 저장
-            if expires_at.tzinfo:
-                expires_at = expires_at.utctimetuple()
-                expires_at = datetime(*expires_at[:6])
+# vote_for_date 함수는 routes/voting.py로 분리됨
 
-            print(f"Parsed expires_at: {expires_at}")  # 디버깅용
-        except Exception as e:
-            print(f"Error parsing expires_at: {e}")
-            expires_at = datetime.utcnow() + timedelta(hours=24)  # 기본값 24시간
 
-        # 참가자들의 가능한 날짜 계산
-        participant_ids = data["participants"]
-
-        # 프론트엔드에서 전달한 선택된 날짜들 우선 사용
-        if data.get("available_dates"):
-            # 전달받은 날짜들이 실제로 모든 참가자가 가능한지 검증
-            all_available_dates, _ = find_available_dates_for_participants(
-                participant_ids, max_days=365 * 3
-            )
-            all_available_dates_set = set(
-                date_info["date"] for date_info in all_available_dates
-            )
-
-            # 선택된 날짜 중 모든 참가자가 가능한 날짜만 필터링
-            valid_dates = [
-                date
-                for date in data["available_dates"]
-                if date in all_available_dates_set
-            ]
-
-            if valid_dates:
-                available_dates = [
-                    {"date": date, "type": "selected"} for date in valid_dates
-                ]
-            else:
-                # 선택된 날짜가 모두 불가능한 경우 일반 계산 사용
-                available_dates, _ = find_available_dates_for_participants(
-                    participant_ids, max_days=30
-                )
-        else:
-            # 기본 가능한 날짜 계산
-            available_dates, alternative_dates = find_available_dates_for_participants(
-                participant_ids, max_days=30
-            )
-
-        # 채팅방이 없는 경우 자동으로 생성
-        chat_room_id = data["chat_room_id"]
-        print(f"=== DEBUG: 투표 세션 생성 - chat_room_id: {chat_room_id} ===")
-        print(f"=== DEBUG: 전체 요청 데이터: {data} ===")
-
-        if chat_room_id == -1:
-            # 새 채팅방 생성
-            chat_room = ChatRoom(name=data["title"], type="group")
-            db.session.add(chat_room)
-            db.session.flush()
-            chat_room_id = chat_room.id
-
-            print(
-                f"=== DEBUG: 새 채팅방 생성 - ID: {chat_room_id}, 이름: {data['title']}, 타입: group ==="
-            )
-
-            # 참여자들 추가
-            for user_id in participant_ids:
-                participant = ChatParticipant(room_id=chat_room.id, user_id=user_id)
-                db.session.add(participant)
-                print(f"=== DEBUG: 참여자 추가 - user_id: {user_id} ===")
-        else:
-            # 기존 채팅방이 존재하는지 확인
-            chat_room = ChatRoom.query.get(chat_room_id)
-            print(
-                f"=== DEBUG: ChatRoom.query.get({chat_room_id}) 결과: {chat_room} ==="
-            )
-
-            if not chat_room:
-                print(
-                    f"=== DEBUG: 채팅방을 찾을 수 없음 - ID: {chat_room_id}, 새로 생성 ==="
-                )
-                # 채팅방이 존재하지 않으면 새로 생성
-                chat_room = ChatRoom(
-                    name=data["title"],
-                    type="group",  # create_chat_room API와 일치하도록 'group'으로 변경
-                )
-                db.session.add(chat_room)
-                db.session.flush()
-                chat_room_id = chat_room.id
-                print(
-                    f"=== DEBUG: 새로 생성된 채팅방 - ID: {chat_room_id}, 타입: {chat_room.type} ==="
-                )
-
-                # 참여자들 추가
-                for user_id in participant_ids:
-                    participant = ChatParticipant(room_id=chat_room.id, user_id=user_id)
-                    db.session.add(participant)
-                    print(f"=== DEBUG: 참여자 추가 - user_id: {user_id} ===")
-            else:
-                print(
-                    f"=== DEBUG: 기존 채팅방 사용 - ID: {chat_room_id}, 이름: {chat_room.name}, 타입: {chat_room.type} ==="
-                )
-
-        # 새로운 투표 세션 생성
-        voting_session = VotingSession(
-            chat_room_id=chat_room_id,
-            title=data["title"],
-            participants=json.dumps(participant_ids),
-            created_by=data["created_by"],
-            expires_at=expires_at,
-            restaurant_name=data.get("restaurant_name"),
-            restaurant_address=data.get("restaurant_address"),
-            meeting_location=data.get("meeting_location"),
-            meeting_time=data.get("meeting_time"),
-        )
-
-        # 가능한 날짜 저장
-        voting_session.available_dates = json.dumps(
-            [date_info["date"] for date_info in available_dates]
-        )
-
-        db.session.add(voting_session)
-        db.session.commit()
-
-        # 채팅방에 투표 시작 시스템 메시지 추가
-        # 한국 시간으로 변환해서 표시
-        korean_expires_at = voting_session.expires_at + timedelta(hours=9)
-        system_message = f"📊 새로운 투표가 시작되었습니다!\n'{voting_session.title}'\n마감: {korean_expires_at.strftime('%m월 %d일 %H:%M')}\n\n이 메시지를 터치하여 투표에 참여하세요 👆"
-
-        # 채팅방 타입에 따라 chat_type 결정
-        chat_type = chat_room.type  # 실제 채팅방 타입 사용
-        print(
-            f"=== DEBUG: 투표 메시지 생성 - chat_type: {chat_type}, chat_id: {chat_room_id} ==="
-        )
-
-        chat_message = ChatMessage(
-            chat_type=chat_type,
-            chat_id=chat_room_id,
-            sender_employee_id="SYSTEM",
-            sender_nickname="시스템",
-            message=system_message,
-        )
-        chat_message.created_at = datetime.now()  # 한국 시간으로 설정
-        db.session.add(chat_message)
-
-        print(f"=== DEBUG: 투표 메시지 내용: {system_message[:100]}... ===")
-
-        # WebSocket으로 실시간 알림
-        room = f"{chat_type}_{chat_room_id}"
-        print(f"=== DEBUG: WebSocket room: {room} ===")
-
-        # 채팅 메시지 알림 (WebSocket을 통해 voting_session_id 전달)
-        socketio.emit(
-            "new_message",
-            {
-                "id": chat_message.id,
-                "sender_employee_id": "SYSTEM",
-                "sender_nickname": "시스템",
-                "message": system_message,
-                "created_at": chat_message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "message_type": "voting_notification",
-                "voting_session_id": voting_session.id,
-                "chat_type": chat_type,
-                "chat_id": chat_room_id,
-            },
-            room=room,
-        )
-
-        # 투표 세션 알림
-        socketio.emit(
-            "new_voting_session",
-            {
-                "session_id": voting_session.id,
-                "title": voting_session.title,
-                "expires_at": voting_session.expires_at.strftime("%Y-%m-%d %H:%M"),
-                "available_dates": available_dates,
-            },
-            room=room,
-        )
-
-        # 참가자들에게 알림 생성 (투표 생성자도 포함) - 채팅방 여부와 상관없이 항상 생성
-        active_participants = data.get("participants", [])
-        for participant_id in active_participants:
-            notification = Notification(
-                user_id=participant_id,
-                type="voting_started",
-                title=f"새 투표: {voting_session.title}",
-                message=f"'{voting_session.title}' 투표가 시작되었습니다. 원하는 날짜에 투표해주세요!",
-                related_id=voting_session.id,
-            )
-            db.session.add(notification)
-
-        db.session.commit()
-
-        print(
-            f"=== DEBUG: 투표 세션 생성 완료 - ID: {voting_session.id}, 채팅방 ID: {chat_room_id} ==="
-        )
-
-        return (
-            jsonify(
-                {
-                    "id": voting_session.id,
-                    "title": voting_session.title,
-                    "available_dates": available_dates,
-                    "expires_at": voting_session.expires_at.strftime("%Y-%m-%d %H:%M"),
-                    "status": voting_session.status,
-                    "chat_room_id": chat_room_id,  # 생성된 채팅방 ID 반환
-                }
-            ),
-            201,
-        )
-
-    except Exception as e:
-        print(f"Error creating voting session: {e}")
-        return jsonify({"error": "투표 세션 생성에 실패했습니다."}), 500
-
-
-@app.route("/voting-sessions/<int:session_id>", methods=["GET"])
-def get_voting_session(session_id):
-    """투표 세션 정보 조회"""
-    try:
-        session = VotingSession.query.get(session_id)
-        if not session:
-            return jsonify({"error": "투표 세션을 찾을 수 없습니다."}), 404
-
-        # 마감 시간 체크 및 자동 확정
-        if session.status == "active" and datetime.utcnow() > session.expires_at:
-            # 투표 현황 조회
-            votes = DateVote.query.filter_by(voting_session_id=session_id).all()
-            vote_counts = {}
-
-            for vote in votes:
-                vote_counts[vote.voted_date] = vote_counts.get(vote.voted_date, 0) + 1
-
-            if vote_counts:
-                # 가장 많은 표를 받은 날짜 찾기
-                max_votes = max(vote_counts.values())
-                winning_dates = [
-                    date for date, count in vote_counts.items() if count == max_votes
-                ]
-                winning_date = min(winning_dates)  # 동점 시 가장 빠른 날짜
-
-                # 투표 세션 완료
-                session.status = "completed"
-                session.confirmed_date = winning_date
-                session.confirmed_at = datetime.utcnow()
-
-                # 요일 계산
-                weekday = datetime.strptime(winning_date, "%Y-%m-%d").weekday()
-                weekday_name = ["월", "화", "수", "목", "금", "토", "일"][weekday]
-
-                # 채팅방이 있는 경우에만 채팅방에 메시지 전송
-                if session.chat_room_id != -1:
-                    # 채팅방에 투표 마감 시스템 메시지 추가
-                    completion_message = f"⏰ '{session.title}' 투표가 마감되었습니다!\n\n🎉 확정 날짜: {winning_date} ({weekday_name})"
-                    if session.restaurant_name:
-                        completion_message += f"\n🍽️ 식당: {session.restaurant_name}"
-                    if session.meeting_time:
-                        completion_message += f"\n🕐 시간: {session.meeting_time}"
-                    if session.meeting_location:
-                        completion_message += f"\n📍 장소: {session.meeting_location}"
-                    completion_message += f"\n\n일정이 자동으로 저장되었습니다 📅"
-
-                    chat_message = ChatMessage(
-                        chat_type="custom",
-                        chat_id=session.chat_room_id,
-                        sender_employee_id="SYSTEM",
-                        sender_nickname="시스템",
-                        message=completion_message,
-                    )
-                    chat_message.created_at = datetime.now()
-                    db.session.add(chat_message)
-
-                    # WebSocket으로 실시간 알림
-                    room = f"custom_{session.chat_room_id}"
-                    socketio.emit(
-                        "new_message",
-                        {
-                            "id": chat_message.id,
-                            "sender_employee_id": "SYSTEM",
-                            "sender_nickname": "시스템",
-                            "message": completion_message,
-                            "created_at": chat_message.created_at.strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            ),
-                            "message_type": "voting_completed",
-                            "voting_session_id": session.id,
-                            "chat_type": "custom",
-                            "chat_id": session.chat_room_id,
-                        },
-                        room=room,
-                    )
-
-                db.session.commit()
-
-                # 개인 일정 자동 저장 (파티는 생성하지 않고 개인 일정만 생성)
-                save_personal_schedules_from_voting(session)
-            else:
-                # 투표가 없으면 취소 처리
-                session.status = "cancelled"
-                db.session.commit()
-
-        # 투표 현황 조회
-        votes = DateVote.query.filter_by(voting_session_id=session_id).all()
-        vote_counts = {}
-        voter_info = {}
-
-        for vote in votes:
-            date = vote.voted_date
-            if date not in vote_counts:
-                vote_counts[date] = 0
-                voter_info[date] = []
-            vote_counts[date] += 1
-
-            # 투표자 정보
-            voter = User.query.filter_by(employee_id=vote.voter_id).first()
-            if voter:
-                voter_info[date].append(
-                    {"employee_id": vote.voter_id, "nickname": voter.nickname}
-                )
-
-        # 참가자 목록
-        participant_ids = json.loads(session.participants)
-        participants = User.query.filter(User.employee_id.in_(participant_ids)).all()
-        participant_list = [
-            {"employee_id": p.employee_id, "nickname": p.nickname} for p in participants
-        ]
-
-        # 투표율 계산
-        voted_users = set(vote.voter_id for vote in votes)
-        vote_rate = len(voted_users) / len(participant_ids) if participant_ids else 0
-
-        return jsonify(
-            {
-                "id": session.id,
-                "title": session.title,
-                "restaurant_name": session.restaurant_name,
-                "meeting_location": session.meeting_location,
-                "meeting_time": session.meeting_time,
-                "participants": participant_list,
-                "available_dates": (
-                    json.loads(session.available_dates)
-                    if session.available_dates
-                    else []
-                ),
-                "vote_counts": vote_counts,
-                "voter_info": voter_info,
-                "vote_rate": vote_rate,
-                "voted_count": len(voted_users),
-                "total_participants": len(participant_ids),
-                "expires_at": format_korean_time(session.expires_at),
-                "status": session.status,
-                "confirmed_date": session.confirmed_date,
-                "created_by": session.created_by,  # 생성자 정보 추가
-            }
-        )
-
-    except Exception as e:
-        print(f"Error getting voting session: {e}")
-        return jsonify({"error": "투표 세션 조회에 실패했습니다."}), 500
-
-
-@app.route("/voting-sessions/<int:session_id>/vote", methods=["POST", "DELETE"])
-def vote_for_date(session_id):
-    """날짜에 투표하기"""
-    try:
-        data = request.get_json()
-        voter_id = data.get("voter_id")
-        voted_date = data.get("voted_date")
-
-        if not voter_id or not voted_date:
-            return jsonify({"error": "voter_id와 voted_date가 필요합니다."}), 400
-
-        # 투표 세션 확인
-        session = VotingSession.query.get(session_id)
-        if not session:
-            return jsonify({"error": "투표 세션을 찾을 수 없습니다."}), 404
-
-        if session.status != "active":
-            return jsonify({"error": "종료된 투표입니다."}), 400
-
-        if datetime.utcnow() > session.expires_at:
-            return jsonify({"error": "투표 기간이 만료되었습니다."}), 400
-
-        # 참가자 확인
-        participant_ids = json.loads(session.participants)
-        if voter_id not in participant_ids:
-            return jsonify({"error": "투표 권한이 없습니다."}), 403
-
-        # DELETE 요청 처리 (명시적 투표 삭제)
-        if request.method == "DELETE":
-            existing_vote = DateVote.query.filter_by(
-                voting_session_id=session_id, voter_id=voter_id, voted_date=voted_date
-            ).first()
-
-            if existing_vote:
-                db.session.delete(existing_vote)
-                action = "투표가 삭제되었습니다."
-            else:
-                return jsonify({"error": "삭제할 투표가 없습니다."}), 404
-
-        # POST 요청 처리 (새로운 투표만 추가)
-        else:
-            is_editing = data.get("is_editing", False)  # 편집 모드 여부 확인
-
-            existing_vote = DateVote.query.filter_by(
-                voting_session_id=session_id, voter_id=voter_id, voted_date=voted_date
-            ).first()
-
-            if is_editing:
-                # 편집 모드: 무조건 새로운 투표 추가 (toggle 방식 사용 안함)
-                if not existing_vote:  # 혹시 이미 있다면 패스
-                    new_vote = DateVote(
-                        voting_session_id=session_id,
-                        voter_id=voter_id,
-                        voted_date=voted_date,
-                    )
-                    db.session.add(new_vote)
-                action = "투표가 완료되었습니다."
-            else:
-                # 일반 모드: 기존 toggle 방식 유지
-                if existing_vote:
-                    # 이미 투표한 날짜면 투표 취소
-                    db.session.delete(existing_vote)
-                    action = "투표가 취소되었습니다."
-                else:
-                    # 새로운 투표 추가
-                    new_vote = DateVote(
-                        voting_session_id=session_id,
-                        voter_id=voter_id,
-                        voted_date=voted_date,
-                    )
-                    db.session.add(new_vote)
-                    action = "투표가 완료되었습니다."
-
-        db.session.commit()
-
-        # 투표 결과 확인 (모든 참가자가 투표했는지)
-        total_votes = DateVote.query.filter_by(voting_session_id=session_id).count()
-        voted_users = set(
-            vote.voter_id
-            for vote in DateVote.query.filter_by(voting_session_id=session_id).all()
-        )
-
-        # WebSocket으로 실시간 업데이트 (채팅방이 있는 경우에만)
-        if session.chat_room_id != -1:
-            room = f"custom_{session.chat_room_id}"
-            socketio.emit(
-                "vote_updated",
-                {
-                    "session_id": session_id,
-                    "voter_id": voter_id,
-                    "voted_date": voted_date,
-                    "total_votes": total_votes,
-                    "total_participants": len(participant_ids),
-                    "voted_users_count": len(voted_users),
-                },
-                room=room,
-            )
-
-        # 모든 참가자가 투표했으면 자동 확정
-        if len(voted_users) >= len(participant_ids):
-            # 가장 많은 표를 받은 날짜 찾기
-            vote_counts = {}
-            votes = DateVote.query.filter_by(voting_session_id=session_id).all()
-            for vote in votes:
-                vote_counts[vote.voted_date] = vote_counts.get(vote.voted_date, 0) + 1
-
-            if vote_counts:
-                winning_date = max(vote_counts.keys(), key=lambda x: vote_counts[x])
-                winning_count = vote_counts[winning_date]
-
-                # 동점 처리: 가장 가까운 날짜 선택
-                max_votes = max(vote_counts.values())
-                winning_dates = [
-                    date for date, count in vote_counts.items() if count == max_votes
-                ]
-                winning_date = min(winning_dates)  # 가장 가까운 날짜
-
-                # 투표 세션 완료
-                session.status = "completed"
-                session.confirmed_date = winning_date
-                session.confirmed_at = datetime.utcnow()
-
-                # 요일 계산
-                weekday = datetime.strptime(winning_date, "%Y-%m-%d").weekday()
-                weekday_name = ["월", "화", "수", "목", "금", "토", "일"][weekday]
-
-                # 채팅방에 투표 완료 시스템 메시지 추가
-                completion_message = f"🎉 '{session.title}' 투표가 완료되었습니다!\n모든 참가자가 투표를 완료했습니다.\n\n✅ 확정 날짜: {winning_date} ({weekday_name})"
-                if session.restaurant_name:
-                    completion_message += f"\n🍽️ 식당: {session.restaurant_name}"
-                if session.meeting_time:
-                    completion_message += f"\n🕐 시간: {session.meeting_time}"
-                if session.meeting_location:
-                    completion_message += f"\n📍 장소: {session.meeting_location}"
-                completion_message += f"\n\n일정이 자동으로 저장되었습니다 📅"
-
-                chat_message = ChatMessage(
-                    chat_type="custom",
-                    chat_id=session.chat_room_id,
-                    sender_employee_id="SYSTEM",
-                    sender_nickname="시스템",
-                    message=completion_message,
-                )
-                chat_message.created_at = datetime.now()
-                db.session.add(chat_message)
-
-                # WebSocket으로 실시간 알림
-                room = f"custom_{session.chat_room_id}"
-                socketio.emit(
-                    "new_message",
-                    {
-                        "id": chat_message.id,
-                        "sender_employee_id": "SYSTEM",
-                        "sender_nickname": "시스템",
-                        "message": completion_message,
-                        "created_at": chat_message.created_at.strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        "message_type": "voting_completed",
-                        "voting_session_id": session.id,
-                        "chat_type": "custom",
-                        "chat_id": session.chat_room_id,
-                    },
-                    room=room,
-                )
-
-                db.session.commit()
-
-                # 개인 일정 자동 저장 (파티는 생성하지 않고 개인 일정만 생성)
-                save_personal_schedules_from_voting(session)
-
-        return jsonify(
-            {
-                "message": action,
-                "voted_date": voted_date,
-                "total_votes": total_votes,
-                "total_participants": len(participant_ids),
-            }
-        )
-
-    except Exception as e:
-        print(f"Error voting for date: {e}")
-        return jsonify({"error": "투표에 실패했습니다."}), 500
-
-
-@app.route("/voting-sessions/<int:session_id>/cancel", methods=["POST"])
-def cancel_voting_session(session_id):
-    """투표 세션 취소"""
-    try:
-        data = request.get_json()
-        user_id = data.get("user_id")
-
-        session = VotingSession.query.get(session_id)
-        if not session:
-            return jsonify({"error": "투표 세션을 찾을 수 없습니다."}), 404
-
-        if session.created_by != user_id:
-            return jsonify({"error": "투표를 생성한 사용자만 취소할 수 있습니다."}), 403
-
-        if session.status != "active":
-            return jsonify({"error": "이미 완료되거나 취소된 투표입니다."}), 400
-
-        # 투표 생성자 정보 조회
-        creator = User.query.filter_by(employee_id=session.created_by).first()
-        creator_name = creator.nickname if creator else session.created_by
-
-        session.status = "cancelled"
-
-        # 채팅방이 있는 경우에만 채팅방에 메시지 전송
-        if session.chat_room_id != -1:
-            # 채팅방에 투표 취소 시스템 메시지 추가
-            cancel_message = (
-                f"🚫 '{session.title}' 투표가 삭제되었습니다.\n삭제자: {creator_name}"
-            )
-
-            chat_message = ChatMessage(
-                chat_type="party",
-                chat_id=session.chat_room_id,
-                sender_employee_id="SYSTEM",
-                sender_nickname="시스템",
-                message=cancel_message,
-            )
-            chat_message.created_at = datetime.now()  # 한국 시간으로 설정
-            db.session.add(chat_message)
-
-            # WebSocket으로 실시간 알림
-            room = f"party_{session.chat_room_id}"
-
-            # 채팅 메시지 알림
-            socketio.emit(
-                "new_message",
-                {
-                    "id": chat_message.id,
-                    "sender_employee_id": "SYSTEM",
-                    "sender_nickname": "시스템",
-                    "message": cancel_message,
-                    "created_at": chat_message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "message_type": "voting_cancelled",
-                    "voting_session_id": session_id,
-                    "chat_type": "party",
-                    "chat_id": session.chat_room_id,
-                },
-                room=room,
-            )
-
-            # 투표 취소 알림
-            socketio.emit(
-                "voting_cancelled",
-                {"session_id": session_id, "message": "투표가 취소되었습니다."},
-                room=room,
-            )
-
-        db.session.commit()
-
-        return jsonify({"message": "투표가 취소되었습니다."})
-
-    except Exception as e:
-        print(f"Error cancelling voting session: {e}")
-        return jsonify({"error": "투표 취소에 실패했습니다."}), 500
+# cancel_voting_session 함수는 routes/voting.py로 분리됨
 
 
 @app.route("/voting-sessions/<int:session_id>/update", methods=["PUT"])
-def update_voting_session(session_id):
-    """투표 세션 정보 수정 (생성자만 가능)"""
-    try:
-        data = request.get_json()
-
-        # 투표 세션 조회
-        session = VotingSession.query.get(session_id)
-        if not session:
-            return jsonify({"error": "투표 세션을 찾을 수 없습니다."}), 404
-
-        # 활성 상태인지 확인
-        if session.status != "active":
-            return (
-                jsonify({"error": "완료되거나 취소된 투표는 수정할 수 없습니다."}),
-                400,
-            )
-
-        # 수정 가능한 필드들 업데이트
-        if "title" in data:
-            session.title = data["title"]
-
-        if "restaurant_name" in data:
-            session.restaurant_name = data["restaurant_name"]
-
-        if "meeting_time" in data:
-            session.meeting_time = data["meeting_time"]
-
-        if "meeting_location" in data:
-            session.meeting_location = data["meeting_location"]
-
-        if "expires_at" in data:
-            # 새로운 마감시간 파싱
-            try:
-                expires_at_str = data["expires_at"]
-                if expires_at_str.endswith("Z"):
-                    expires_at_str = expires_at_str[:-1] + "+00:00"
-
-                new_expires_at = datetime.fromisoformat(expires_at_str)
-
-                # 타임존이 있으면 UTC로 변환 후 naive datetime으로 저장
-                if new_expires_at.tzinfo:
-                    new_expires_at = new_expires_at.utctimetuple()
-                    new_expires_at = datetime(*new_expires_at[:6])
-
-                # 현재 시간보다 미래인지 확인
-                if new_expires_at <= datetime.utcnow():
-                    return (
-                        jsonify({"error": "마감시간은 현재 시간보다 미래여야 합니다."}),
-                        400,
-                    )
-
-                session.expires_at = new_expires_at
-            except Exception as e:
-                return jsonify({"error": "올바르지 않은 마감시간 형식입니다."}), 400
-
-        db.session.commit()
-
-        # 채팅방이 있는 경우에만 채팅방에 메시지 전송
-        if session.chat_room_id != -1:
-            # 채팅방에 수정 알림 메시지 전송
-            update_message = f"📝 '{session.title}' 투표 정보가 수정되었습니다."
-            chat_message = ChatMessage(
-                chat_type="party",
-                chat_id=session.chat_room_id,
-                sender_employee_id="SYSTEM",
-                sender_nickname="시스템",
-                message=update_message,
-            )
-            chat_message.created_at = datetime.now()
-            db.session.add(chat_message)
-            db.session.commit()
-
-            # WebSocket으로 실시간 알림
-            room = f"party_{session.chat_room_id}"
-            socketio.emit(
-                "new_message",
-                {
-                    "id": chat_message.id,
-                    "sender_employee_id": "SYSTEM",
-                    "sender_nickname": "시스템",
-                    "message": update_message,
-                    "created_at": chat_message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "message_type": "voting_updated",
-                    "voting_session_id": session.id,
-                    "chat_type": "party",
-                    "chat_id": session.chat_room_id,
-                },
-                room=room,
-            )
-
-        return jsonify(
-            {
-                "message": "투표 정보가 수정되었습니다.",
-                "session": {
-                    "id": session.id,
-                    "title": session.title,
-                    "restaurant_name": session.restaurant_name,
-                    "meeting_time": session.meeting_time,
-                    "meeting_location": session.meeting_location,
-                    "expires_at": format_korean_time(session.expires_at),
-                },
-            }
-        )
-
-    except Exception as e:
-        print(f"투표 정보 수정 오류: {e}")
-        db.session.rollback()
-        return jsonify({"error": "투표 정보 수정에 실패했습니다."}), 500
+# update_voting_session 함수는 routes/voting.py로 분리됨
 
 
-@app.route("/voting-sessions/<int:session_id>/replace-votes", methods=["PUT"])
-def replace_user_votes(session_id):
-    """사용자의 모든 투표를 새로운 투표로 교체 (편집 모드 전용)"""
-    try:
-        data = request.get_json()
-        voter_id = data.get("voter_id")
-        new_voted_dates = data.get("new_voted_dates", [])
-
-        if not voter_id:
-            return jsonify({"error": "voter_id가 필요합니다."}), 400
-
-        # 투표 세션 확인
-        session = VotingSession.query.get(session_id)
-        if not session:
-            return jsonify({"error": "투표 세션을 찾을 수 없습니다."}), 404
-
-        if session.status != "active":
-            return jsonify({"error": "종료된 투표입니다."}), 400
-
-        if datetime.utcnow() > session.expires_at:
-            return jsonify({"error": "투표 기간이 만료되었습니다."}), 400
-
-        # 참가자 확인
-        participant_ids = json.loads(session.participants)
-        if voter_id not in participant_ids:
-            return jsonify({"error": "투표 권한이 없습니다."}), 403
-
-        # 트랜잭션으로 안전하게 처리
-        try:
-            # 1. 기존 투표 모두 삭제
-            existing_votes = DateVote.query.filter_by(
-                voting_session_id=session_id, voter_id=voter_id
-            ).all()
-
-            for vote in existing_votes:
-                db.session.delete(vote)
-
-            # 2. 새로운 투표 추가
-            for date in new_voted_dates:
-                # 투표 가능한 날짜인지 확인
-                available_dates = json.loads(session.available_dates)
-                if date in available_dates:
-                    new_vote = DateVote(
-                        voting_session_id=session_id, voter_id=voter_id, voted_date=date
-                    )
-                    db.session.add(new_vote)
-
-            db.session.commit()
-
-            return jsonify(
-                {
-                    "message": "투표가 성공적으로 변경되었습니다.",
-                    "voted_dates": new_voted_dates,
-                }
-            )
-
-        except Exception as e:
-            db.session.rollback()
-            print(f"투표 교체 중 오류: {e}")
-            return jsonify({"error": "투표 교체 중 오류가 발생했습니다."}), 500
-
-    except Exception as e:
-        print(f"투표 교체 오류: {e}")
-        return jsonify({"error": "투표 교체에 실패했습니다."}), 500
+# replace_user_votes 함수는 routes/voting.py로 분리됨
 
 
 def save_personal_schedules_from_voting(session):
@@ -9114,7 +7438,7 @@ def get_dev_friends(employee_id):
 
                 return jsonify(friends_data)
 
-        except Exception as db_error:
+        except (AttributeError, KeyError, TypeError) as db_error:
             print(
                 f"⚠️ [개발용] 데이터베이스 친구 관계 조회 실패, 가상 데이터 사용: {db_error}"
             )
@@ -9212,7 +7536,7 @@ def get_dev_friends(employee_id):
         else:
             return jsonify([])  # 친구가 없는 경우 빈 배열
 
-    except Exception as e:
+    except (AttributeError, KeyError, TypeError) as e:
 
         return jsonify({"error": "친구 관계 조회 중 오류가 발생했습니다."}), 500
 
@@ -9926,6 +8250,38 @@ with app.app_context():
         print("✅ 파티 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 파티 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.users import users_bp
+
+        app.register_blueprint(users_bp)
+        print("✅ 사용자 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 사용자 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.chats import chats_bp
+
+        app.register_blueprint(chats_bp)
+        print("✅ 채팅 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 채팅 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.voting import voting_bp
+
+        app.register_blueprint(voting_bp)
+        print("✅ 투표 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 투표 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.matching import matching_bp
+
+        app.register_blueprint(matching_bp)
+        print("✅ 매칭 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 매칭 관리 Blueprint 등록 실패: {e}")
 
     print("✅ 모든 Blueprint 등록 완료")
 
