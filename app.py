@@ -487,29 +487,6 @@ if AUTH_AVAILABLE:
         # 인증 시스템 초기화 (Blueprint 등록 전에 먼저 실행)
         app = init_auth(app)
 
-        # 인증 시스템 초기화 후 Blueprint 등록 (순환 참조 방지)
-        from auth.routes import auth_bp
-
-        app.register_blueprint(auth_bp)
-
-        # 새로운 일정 관리 Blueprint 등록
-        try:
-            from api.schedules import schedules_bp
-
-            app.register_blueprint(schedules_bp)
-            print("✅ 일정 관리 Blueprint 등록 성공")
-        except Exception as e:
-            print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
-
-        # 제안 관리 Blueprint 등록
-        try:
-            from api.proposals import proposals_bp
-
-            app.register_blueprint(proposals_bp)
-            print("✅ 제안 관리 Blueprint 등록 성공")
-        except Exception as e:
-            print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
-
         print("✅ 인증 시스템이 성공적으로 초기화되었습니다.")
     except Exception as e:
         print(f"⚠️ 인증 시스템 초기화 실패: {e}")
@@ -9358,30 +9335,64 @@ def create_default_users():
 def init_database_on_startup():
     """애플리케이션 첫 요청 시 데이터베이스 자동 초기화"""
     try:
-        # SQLAlchemy 2.x 호환 방식으로 테이블 존재 여부 확인
-        from sqlalchemy import inspect
+        # PostgreSQL 환경에서 더 안정적인 테이블 존재 여부 확인
+        from sqlalchemy import text
+        
+        def check_table_exists(table_name):
+            """PostgreSQL에서 테이블 존재 여부를 안정적으로 확인"""
+            try:
+                # 방법 1: information_schema 사용 (가장 안정적)
+                result = db.session.execute(
+                    text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = :table_name)"),
+                    {"table_name": table_name}
+                ).scalar()
+                if result:
+                    return True
+                
+                # 방법 2: pg_tables 사용 (PostgreSQL 전용)
+                result = db.session.execute(
+                    text("SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = :table_name)"),
+                    {"table_name": table_name}
+                ).scalar()
+                if result:
+                    return True
+                
+                # 방법 3: 직접 테이블 조회 시도 (마지막 수단)
+                result = db.session.execute(
+                    text(f"SELECT 1 FROM {table_name} LIMIT 1")
+                ).fetchone()
+                return result is not None
+                
+            except Exception:
+                return False
 
-        if not inspect(db.engine).has_table("users"):
+        if not check_table_exists("users"):
             print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
             db.create_all()
             print("✅ 데이터베이스 테이블 생성 완료")
 
-            # 테이블 생성 완료 확인 (더 강화된 방식)
-            max_retries = 10  # 5 → 10으로 증가
+            # 테이블 생성 완료 확인 (PostgreSQL 최적화)
+            max_retries = 15  # 10 → 15로 증가
             for attempt in range(max_retries):
                 try:
-                    if inspect(db.engine).has_table("users"):
+                    if check_table_exists("users"):
                         print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
                         break
                     else:
                         print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
                         import time
-                        time.sleep(2)  # 1초 → 2초로 증가
+                        time.sleep(3)  # 2초 → 3초로 증가 (PostgreSQL 최적화)
                 except Exception as e:
                     print(f"⚠️ 테이블 확인 중 오류: {e}")
-                    time.sleep(2)
+                    time.sleep(3)
             else:
-                print("⚠️ 테이블 생성 확인 실패, 사용자 생성을 건너뜁니다")
+                print("⚠️ 테이블 생성 확인 실패, 하지만 강제로 사용자 생성을 시도합니다...")
+                # 마지막 수단: 강제로 사용자 생성 시도
+                try:
+                    create_default_users()
+                    print("✅ 강제 사용자 생성 완료")
+                except Exception as e:
+                    print(f"❌ 강제 사용자 생성도 실패: {e}")
                 return
 
             # 기본 사용자 생성
@@ -9396,6 +9407,30 @@ def init_database_on_startup():
 # Flask 3.x 호환 방식으로 데이터베이스 초기화
 with app.app_context():
     init_database_on_startup()
+    
+    # 데이터베이스 초기화 완료 후 Blueprint 등록
+    try:
+        from auth.routes import auth_bp
+        app.register_blueprint(auth_bp)
+        print("✅ 인증 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 인증 Blueprint 등록 실패: {e}")
+    
+    try:
+        from api.schedules import schedules_bp
+        app.register_blueprint(schedules_bp)
+        print("✅ 일정 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
+    
+    try:
+        from api.proposals import proposals_bp
+        app.register_blueprint(proposals_bp)
+        print("✅ 제안 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
+    
+    print("✅ 모든 Blueprint 등록 완료")
 
 # 공통 로직은 group_matching.py 모듈로 이동
 
