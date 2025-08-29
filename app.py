@@ -4531,71 +4531,7 @@ def get_my_dangolpots():
         )
 
 
-# --- 파티 API ---
-@app.route("/parties", methods=["GET"])
-def get_all_parties():
-    """파티 목록 조회 API (보안 강화)"""
-    try:
-        # 인증 확인
-        if not hasattr(request, "current_user") or not request.current_user:
-            return jsonify({"error": "인증이 필요합니다."}), 401
-
-        # 인증된 사용자 ID 사용
-        employee_id = request.current_user.get("employee_id")
-        if not employee_id:
-            return jsonify({"error": "사용자 정보를 찾을 수 없습니다."}), 400
-
-        is_from_match = request.args.get("is_from_match")
-
-        if is_from_match:
-            # 특정 사용자의 랜덤런치 그룹 조회
-            parties = (
-                Party.query.join(PartyMember)
-                .filter(Party.is_from_match == True, PartyMember.employee_id == employee_id)  # type: ignore
-                .order_by(desc(Party.id))
-                .all()
-            )
-        else:
-            # 일반 파티 조회 (랜덤런치 제외)
-            parties = (
-                Party.query.filter_by(is_from_match=False)
-                .order_by(desc(Party.id))
-                .all()
-            )
-
-        # Pydantic 모델을 사용한 응답 데이터 검증
-        from models.schemas import SuccessResponse
-
-        return jsonify(
-            {
-                "success": True,
-                "employee_id": employee_id,
-                "is_from_match": bool(is_from_match),
-                "total_parties": len(parties),
-                "parties": [
-                    {
-                        "id": p.id,
-                        "title": p.title,
-                        "restaurant_name": p.restaurant_name,
-                        "current_members": p.current_members,
-                        "max_members": p.max_members,
-                        "party_date": p.party_date,
-                        "party_time": p.party_time,
-                        "is_from_match": p.is_from_match,
-                    }
-                    for p in parties
-                ],
-            }
-        )
-
-    except Exception as e:
-        print(f"Error in get_all_parties: {e}")
-        return (
-            jsonify(
-                {"error": "파티 목록 조회 중 오류가 발생했습니다.", "details": str(e)}
-            ),
-            500,
-        )
+# Party API는 routes/parties.py로 분리됨
 
 
 @app.route("/parties", methods=["POST"])
