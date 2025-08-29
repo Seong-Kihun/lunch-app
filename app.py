@@ -533,6 +533,19 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 def root():
     return jsonify({"message": "Lunch App API Server", "status": "running", "version": "1.0.0"})
 
+# API 테스트 엔드포인트
+@app.route("/api/test")
+def api_test():
+    return jsonify({
+        "message": "API 서버가 정상적으로 작동하고 있습니다",
+        "endpoints": {
+            "schedules": "/api/schedules/",
+            "proposals": "/api/proposals/",
+            "auth": "/auth/status"
+        },
+        "timestamp": datetime.now().isoformat()
+    })
+
 
 # Health check endpoint
 @app.route("/health")
@@ -9353,16 +9366,20 @@ def init_database_on_startup():
             db.create_all()
             print("✅ 데이터베이스 테이블 생성 완료")
 
-            # 테이블 생성 완료 확인 (안전한 방식)
-            max_retries = 5
+            # 테이블 생성 완료 확인 (더 강화된 방식)
+            max_retries = 10  # 5 → 10으로 증가
             for attempt in range(max_retries):
-                if inspect(db.engine).has_table("users"):
-                    print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
-                    break
-                else:
-                    print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
-                    import time
-                    time.sleep(1)
+                try:
+                    if inspect(db.engine).has_table("users"):
+                        print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
+                        break
+                    else:
+                        print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
+                        import time
+                        time.sleep(2)  # 1초 → 2초로 증가
+                except Exception as e:
+                    print(f"⚠️ 테이블 확인 중 오류: {e}")
+                    time.sleep(2)
             else:
                 print("⚠️ 테이블 생성 확인 실패, 사용자 생성을 건너뜁니다")
                 return
