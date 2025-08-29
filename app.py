@@ -2684,27 +2684,6 @@ def sync_excel_data():
 
 
 # get_restaurants 함수는 routes/restaurants.py로 분리됨
-                "longitude": r.longitude,
-                "rating": round(r.avg_rating, 1),
-                "review_count": r.review_count,
-                "recommend_count": get_restaurant_recommend_count(
-                    r.id
-                ),  # 오찬 추천 하트 개수 추가
-            }
-            for r in restaurants_q
-        ]
-    except Exception as e:
-        print(f"데이터 변환 오류: {e}")
-        return jsonify({"error": "데이터 변환 오류"}), 500
-
-    response_data = {
-        "restaurants": restaurants_list,
-        "total": total_count,
-        "pages": total_pages,
-        "current_page": page,
-        "per_page": per_page,
-    }
-    return jsonify(response_data)
 
 
 @app.route("/restaurants/<int:restaurant_id>", methods=["GET"])
