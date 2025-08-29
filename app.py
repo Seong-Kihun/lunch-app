@@ -1,7 +1,7 @@
 import random
 import json
 from datetime import datetime, timedelta
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
@@ -9390,13 +9390,27 @@ def init_database_on_startup():
                 if result:
                     return True
                 
-                # 방법 3: 직접 테이블 조회 시도 (마지막 수단)
+                # 방법 3: pg_class 사용 (PostgreSQL 시스템 카탈로그)
                 result = db.session.execute(
-                    text(f"SELECT 1 FROM {table_name} LIMIT 1")
-                ).fetchone()
-                return result is not None
+                    text("SELECT EXISTS(SELECT 1 FROM pg_class WHERE relname = :table_name AND relkind = 'r')"),
+                    {"table_name": table_name}
+                ).scalar()
+                if result:
+                    return True
                 
-            except Exception:
+                # 방법 4: 직접 테이블 조회 시도 (마지막 수단)
+                try:
+                    result = db.session.execute(
+                        text(f"SELECT 1 FROM {table_name} LIMIT 1")
+                    ).fetchone()
+                    return result is not None
+                except Exception:
+                    pass
+                
+                return False
+                
+            except Exception as e:
+                print(f"⚠️ 테이블 존재 확인 중 오류: {e}")
                 return False
 
         def force_create_tables():
