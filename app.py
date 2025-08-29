@@ -9316,45 +9316,48 @@ def create_default_users():
             {"email": "park@example.com", "nickname": "박민수", "employee_id": "3"},
         ]
 
-        # PostgreSQL 특성을 고려한 사용자 생성
-        def create_user_safely(user_data):
-            """안전한 사용자 생성 (PostgreSQL 트랜잭션 특성 고려)"""
+        # 세션 상태 확인 및 재설정
+        try:
+            db.session.rollback()
+        except:
+            pass
+
+        created_count = 0
+        for user_data in default_users:
             try:
-                # 세션 상태 초기화
-                db.session.rollback()
-                
                 # 이미 존재하는지 확인
                 existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
                 if not existing_user:
                     user = User(**user_data)
                     db.session.add(user)
-                    db.session.commit()
-                    print(f"✅ 사용자 생성 성공: {user_data['nickname']} ({user_data['employee_id']})")
-                    return True
-                else:
-                    print(f"ℹ️ 사용자 이미 존재: {user_data['nickname']} ({user_data['employee_id']})")
-                    return True
+                    created_count += 1
+                    print(f"✅ 사용자 추가: {user_data['nickname']} ({user_data['employee_id']})")
             except Exception as e:
-                print(f"❌ 사용자 생성 실패 {user_data['nickname']}: {e}")
+                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
+                # 개별 사용자 실패 시에도 계속 진행
+                continue
+
+        if created_count > 0:
+            try:
+                db.session.commit()
+                print(f"✅ {created_count}명의 기본 사용자 생성 완료")
+            except Exception as e:
+                print(f"❌ 사용자 커밋 실패: {e}")
+                # 커밋 실패 시 개별 커밋 시도
                 db.session.rollback()
-                return False
-
-        # 각 사용자를 개별적으로 생성 (PostgreSQL 트랜잭션 안정성)
-        success_count = 0
-        for user_data in default_users:
-            if create_user_safely(user_data):
-                success_count += 1
-            else:
-                # 실패 시 재시도
-                import time
-                time.sleep(2)
-                if create_user_safely(user_data):
-                    success_count += 1
-
-        if success_count == len(default_users):
-            print(f"✅ 모든 기본 사용자 생성 완료 ({success_count}/{len(default_users)})")
+                for user_data in default_users:
+                    try:
+                        existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
+                        if not existing_user:
+                            user = User(**user_data)
+                            db.session.add(user)
+                            db.session.commit()
+                            print(f"✅ 개별 커밋 성공: {user_data['nickname']}")
+                    except Exception as e2:
+                        print(f"❌ 개별 커밋 실패 {user_data['nickname']}: {e2}")
+                        db.session.rollback()
         else:
-            print(f"⚠️ 부분적 사용자 생성 완료 ({success_count}/{len(default_users)})")
+            print("ℹ️ 추가할 사용자가 없습니다 (이미 모두 존재)")
 
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
@@ -9390,27 +9393,13 @@ def init_database_on_startup():
                 if result:
                     return True
                 
-                # 방법 3: pg_class 사용 (PostgreSQL 시스템 카탈로그)
+                # 방법 3: 직접 테이블 조회 시도 (마지막 수단)
                 result = db.session.execute(
-                    text("SELECT EXISTS(SELECT 1 FROM pg_class WHERE relname = :table_name AND relkind = 'r')"),
-                    {"table_name": table_name}
-                ).scalar()
-                if result:
-                    return True
+                    text(f"SELECT 1 FROM {table_name} LIMIT 1")
+                ).fetchone()
+                return result is not None
                 
-                # 방법 4: 직접 테이블 조회 시도 (마지막 수단)
-                try:
-                    result = db.session.execute(
-                        text(f"SELECT 1 FROM {table_name} LIMIT 1")
-                    ).fetchone()
-                    return result is not None
-                except Exception:
-                    pass
-                
-                return False
-                
-            except Exception as e:
-                print(f"⚠️ 테이블 존재 확인 중 오류: {e}")
+            except Exception:
                 return False
 
         def force_create_tables():
@@ -9439,72 +9428,43 @@ def init_database_on_startup():
                 db.session.rollback()
                 return False
 
-        def create_tables_with_retry():
-            """재시도 로직을 포함한 테이블 생성"""
-            max_creation_retries = 3
-            for creation_attempt in range(max_creation_retries):
-                try:
-                    print(f"🔧 테이블 생성 시도 {creation_attempt + 1}/{max_creation_retries}")
-                    
-                    # 세션 상태 초기화
-                    db.session.rollback()
-                    
-                    # 테이블 생성
-                    db.create_all()
-                    print("✅ 테이블 생성 완료")
-                    
-                    # PostgreSQL 특성상 즉시 사용할 수 없음 - 대기 필요
-                    import time
-                    time.sleep(8)  # 5초 → 8초로 증가
-                    
-                    # 테이블 존재 확인
-                    if check_table_exists("users"):
-                        print("✅ 테이블 생성 확인 성공")
-                        return True
-                    else:
-                        print(f"⚠️ 테이블 생성 확인 실패 (시도 {creation_attempt + 1})")
-                        if creation_attempt < max_creation_retries - 1:
-                            time.sleep(5)  # 다음 시도 전 대기
-                        
-                except Exception as e:
-                    print(f"❌ 테이블 생성 시도 {creation_attempt + 1} 실패: {e}")
-                    db.session.rollback()
-                    if creation_attempt < max_creation_retries - 1:
-                        time.sleep(5)
-            
-            return False
-
         if not check_table_exists("users"):
             print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
             
-            # 재시도 로직을 포함한 테이블 생성
-            if not create_tables_with_retry():
-                print("⚠️ 모든 테이블 생성 방법 실패, 강제 생성 시도...")
+            # 첫 번째 시도: 일반적인 방법
+            try:
+                db.create_all()
+                print("✅ 데이터베이스 테이블 생성 완료")
+            except Exception as e:
+                print(f"⚠️ 일반 테이블 생성 실패: {e}")
+                # 강제 생성 시도
                 if not force_create_tables():
-                    print("❌ 강제 테이블 생성도 실패")
+                    print("❌ 모든 테이블 생성 방법 실패")
                     return
 
-            # 최종 테이블 존재 확인
-            final_check_retries = 25  # 20 → 25로 증가
+            # 테이블 생성 완료 확인 (PostgreSQL 최적화)
+            max_retries = 20  # 15 → 20으로 증가
             table_created = False
             
-            for attempt in range(final_check_retries):
+            for attempt in range(max_retries):
                 try:
                     if check_table_exists("users"):
-                        print(f"✅ 최종 테이블 확인 완료 (시도 {attempt + 1})")
+                        print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
                         table_created = True
                         break
                     else:
-                        print(f"⏳ 최종 테이블 확인 대기 중... (시도 {attempt + 1}/{final_check_retries})")
+                        print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
                         import time
-                        time.sleep(5)  # 4초 → 5초로 증가
+                        time.sleep(4)  # 3초 → 4초로 증가
                 except Exception as e:
-                    print(f"⚠️ 최종 테이블 확인 중 오류: {e}")
-                    time.sleep(5)
+                    print(f"⚠️ 테이블 확인 중 오류: {e}")
+                    time.sleep(4)
             
             if not table_created:
-                print("❌ 모든 테이블 생성 방법 실패")
-                return
+                print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
+                if not force_create_tables():
+                    print("❌ 강제 테이블 생성도 실패")
+                    return
 
             # 기본 사용자 생성 (세션 재설정 후)
             try:
