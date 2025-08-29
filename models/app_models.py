@@ -338,3 +338,149 @@ class ChatMessageRead(db.Model):
     def __init__(self, message_id, user_id):
         self.message_id = message_id
         self.user_id = user_id
+
+class CategoryActivity(db.Model):
+    """카테고리별 활동 기록 테이블"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False)  # 'ramen', 'pizza', 'korean' 등
+    activity_type = db.Column(db.String(50), nullable=False)  # 'search', 'review', 'visit' 등
+    points_earned = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, category, activity_type, points_earned):
+        self.user_id = user_id
+        self.category = category
+        self.activity_type = activity_type
+        self.points_earned = points_earned
+
+class Badge(db.Model):
+    """배지 정보 테이블"""
+    id = db.Column(db.Integer, primary_key=True)
+    badge_name = db.Column(db.String(50), nullable=False)
+    badge_icon = db.Column(db.String(20), nullable=False)
+    badge_color = db.Column(db.String(10), nullable=True)
+    requirement_type = db.Column(db.String(50), nullable=False)  # 'activity_count', 'points_threshold' 등
+    requirement_count = db.Column(db.Integer, nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, badge_name, badge_icon, requirement_type, requirement_count, description=None, badge_color=None):
+        self.badge_name = badge_name
+        self.badge_icon = badge_icon
+        self.requirement_type = requirement_type
+        self.requirement_count = requirement_count
+        self.description = description
+        self.badge_color = badge_color
+
+class UserBadge(db.Model):
+    """사용자 배지 획득 기록 테이블"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey('badge.id'), nullable=False)
+    earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, badge_id):
+        self.user_id = user_id
+        self.badge_id = badge_id
+
+class VotingSession(db.Model):
+    """투표 세션 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    chat_room_id = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    restaurant_name = db.Column(db.String(100), nullable=True)
+    restaurant_address = db.Column(db.String(200), nullable=True)
+    meeting_location = db.Column(db.String(200), nullable=True)
+    meeting_time = db.Column(db.String(10), nullable=True)
+    participants = db.Column(db.Text, nullable=False)  # JSON 형태로 참가자 목록
+    available_dates = db.Column(db.Text, nullable=True)  # JSON 형태로 가능한 날짜 목록
+    expires_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default="active")  # active, completed, cancelled
+    created_by = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    confirmed_date = db.Column(db.String(20), nullable=True)  # 확정된 날짜
+    confirmed_at = db.Column(db.DateTime, nullable=True)
+    
+    def __init__(self, chat_room_id, title, participants, created_by, expires_at, restaurant_name=None, restaurant_address=None, meeting_location=None, meeting_time=None):
+        self.chat_room_id = chat_room_id
+        self.title = title
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.meeting_location = meeting_location
+        self.meeting_time = meeting_time
+        self.participants = participants
+        self.created_by = created_by
+        self.expires_at = expires_at
+
+class DateVote(db.Model):
+    """날짜 투표 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    voting_session_id = db.Column(db.Integer, db.ForeignKey("voting_session.id"), nullable=False)
+    voter_id = db.Column(db.String(50), nullable=False)
+    voted_date = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, voting_session_id, voter_id, voted_date):
+        self.voting_session_id = voting_session_id
+        self.voter_id = voter_id
+        self.voted_date = voted_date
+
+class DailyRecommendation(db.Model):
+    """일별 추천 그룹 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(20), nullable=False)  # YYYY-MM-DD 형식
+    group_members = db.Column(db.Text, nullable=False)  # JSON 형태로 멤버 정보 저장
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, date, group_members):
+        self.date = date
+        self.group_members = group_members
+
+class RestaurantRequest(db.Model):
+    """식당 신청/수정/삭제 요청 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    request_type = db.Column(db.String(20), nullable=False)  # 'add', 'update', 'delete'
+    restaurant_name = db.Column(db.String(100), nullable=True)
+    restaurant_address = db.Column(db.String(200), nullable=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=True)  # 수정/삭제 시
+    reason = db.Column(db.Text, nullable=True)  # 수정/삭제 사유
+    status = db.Column(db.String(20), default="pending")  # 'pending', 'approved', 'rejected'
+    requester_id = db.Column(db.String(50), nullable=False)
+    requester_nickname = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approved_by = db.Column(db.String(50), nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)  # 거절 사유
+    
+    def __init__(self, request_type, requester_id, requester_nickname, restaurant_name=None, restaurant_address=None, restaurant_id=None, reason=None):
+        self.request_type = request_type
+        self.requester_id = requester_id
+        self.requester_nickname = requester_nickname
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.restaurant_id = restaurant_id
+        self.reason = reason
+
+class UserFavorite(db.Model):
+    """사용자 즐겨찾기 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)  # 식당 ID
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    restaurant = db.relationship("Restaurant", backref="favorites")
+    
+    def __init__(self, user_id, restaurant_id):
+        self.user_id = user_id
+        self.restaurant_id = restaurant_id
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "restaurant_id": self.restaurant_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "restaurant": self.restaurant.to_dict() if self.restaurant else None,
+        }
