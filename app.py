@@ -1314,6 +1314,17 @@ def initialize_database():
 def create_initial_data():
     """초기 데이터 생성 - 가상 유저 20명 기반"""
     try:
+        # users 테이블이 실제로 존재하는지 확인
+        try:
+            db.session.execute(text("SELECT 1 FROM users LIMIT 1"))
+            print("DEBUG: users 테이블이 존재합니다.")
+        except Exception as e:
+            print(f"DEBUG: users 테이블이 존재하지 않습니다. 다시 생성합니다: {e}")
+            # 테이블이 없으면 다시 생성
+            db.create_all()
+            db.session.commit()
+            print("DEBUG: users 테이블 재생성 완료")
+        
         # 가상 유저 데이터 생성 (20명) - 온보딩 정보에 맞춤
         users_data = [
             {
@@ -1440,20 +1451,33 @@ def create_initial_data():
 
         # User 생성
         for user_data in users_data:
-            user = User(
-                email=f"user{user_data['employee_id']}@example.com",  # 가상 이메일
-                nickname=user_data["nickname"],
-                employee_id=user_data["employee_id"],
-            )
-            # 추가 필드 설정
-            user.food_preferences = user_data["food_preferences"]
-            user.lunch_preference = user_data["lunch_style"]
-            user.allergies = "없음"
-            user.preferred_time = "12:00"
-            user.main_dish_genre = user_data["food_preferences"]
-            user.frequent_areas = "강남구,서초구"
-            user.notification_settings = "push_notification,party_reminder"
-            db.session.add(user)
+            try:
+                # 이미 존재하는 사용자인지 확인
+                existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
+                if existing_user:
+                    print(f"DEBUG: 사용자 {user_data['nickname']}은 이미 존재합니다.")
+                    continue
+                
+                user = User(
+                    email=f"user{user_data['employee_id']}@example.com",  # 가상 이메일
+                    nickname=user_data["nickname"],
+                    employee_id=user_data["employee_id"],
+                )
+                # 추가 필드 설정
+                user.food_preferences = user_data["food_preferences"]
+                user.lunch_preference = user_data["lunch_style"]
+                user.allergies = "없음"
+                user.preferred_time = "12:00"
+                user.main_dish_genre = user_data["food_preferences"]
+                user.frequent_areas = "강남구,서초구"
+                user.notification_settings = "push_notification,party_reminder"
+                db.session.add(user)
+                print(f"DEBUG: 사용자 {user_data['nickname']} 추가 완료")
+            except Exception as e:
+                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
+                # 트랜잭션 롤백 후 계속 진행
+                db.session.rollback()
+                continue
 
         # 친구 관계 생성 (서로 다른 사용자들 간의 관계)
         friend_relationships = [
