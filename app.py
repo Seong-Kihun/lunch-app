@@ -9316,26 +9316,55 @@ def create_default_users():
             {"email": "park@example.com", "nickname": "박민수", "employee_id": "3"},
         ]
 
-        for user_data in default_users:
-            # 이미 존재하는지 확인 (db.session.query() 사용으로 Flask app context 문제 해결)
-            existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
-            if not existing_user:
-                user = User(**user_data)
-                db.session.add(user)
+        # 세션 상태 확인 및 재설정
+        try:
+            db.session.rollback()
+        except:
+            pass
 
-        db.session.commit()
-        print("✅ 기본 사용자 생성 완료")
+        created_count = 0
+        for user_data in default_users:
+            try:
+                # 이미 존재하는지 확인
+                existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
+                if not existing_user:
+                    user = User(**user_data)
+                    db.session.add(user)
+                    created_count += 1
+                    print(f"✅ 사용자 추가: {user_data['nickname']} ({user_data['employee_id']})")
+            except Exception as e:
+                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
+                # 개별 사용자 실패 시에도 계속 진행
+                continue
+
+        if created_count > 0:
+            try:
+                db.session.commit()
+                print(f"✅ {created_count}명의 기본 사용자 생성 완료")
+            except Exception as e:
+                print(f"❌ 사용자 커밋 실패: {e}")
+                # 커밋 실패 시 개별 커밋 시도
+                db.session.rollback()
+                for user_data in default_users:
+                    try:
+                        existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
+                        if not existing_user:
+                            user = User(**user_data)
+                            db.session.add(user)
+                            db.session.commit()
+                            print(f"✅ 개별 커밋 성공: {user_data['nickname']}")
+                    except Exception as e2:
+                        print(f"❌ 개별 커밋 실패 {user_data['nickname']}: {e2}")
+                        db.session.rollback()
+        else:
+            print("ℹ️ 추가할 사용자가 없습니다 (이미 모두 존재)")
 
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
-        # PostgreSQL 트랜잭션 문제 해결: 세션 새로 시작
         try:
             db.session.rollback()
-            db.session.close()
-            db.session = db.create_scoped_session()
-            print("✅ 데이터베이스 세션 재시작 완료")
-        except Exception as session_error:
-            print(f"⚠️ 세션 재시작 실패: {session_error}")
+        except:
+            pass
 
 
 # Flask 3.x 호환 데이터베이스 초기화
@@ -9373,47 +9402,95 @@ def init_database_on_startup():
             except Exception:
                 return False
 
+        def force_create_tables():
+            """강제로 테이블을 생성하고 확인"""
+            try:
+                print("🔧 강제 테이블 생성 시작...")
+                
+                # 기존 세션 정리
+                db.session.rollback()
+                db.session.close()
+                
+                # 테이블 생성
+                db.create_all()
+                print("✅ 강제 테이블 생성 완료")
+                
+                # PostgreSQL 특성상 약간의 대기 시간 필요
+                import time
+                time.sleep(5)
+                
+                # 세션 재설정
+                db.session.rollback()
+                
+                return True
+            except Exception as e:
+                print(f"❌ 강제 테이블 생성 실패: {e}")
+                db.session.rollback()
+                return False
+
         if not check_table_exists("users"):
             print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
-            db.create_all()
-            print("✅ 데이터베이스 테이블 생성 완료")
+            
+            # 첫 번째 시도: 일반적인 방법
+            try:
+                db.create_all()
+                print("✅ 데이터베이스 테이블 생성 완료")
+            except Exception as e:
+                print(f"⚠️ 일반 테이블 생성 실패: {e}")
+                # 강제 생성 시도
+                if not force_create_tables():
+                    print("❌ 모든 테이블 생성 방법 실패")
+                    return
 
             # 테이블 생성 완료 확인 (PostgreSQL 최적화)
-            max_retries = 15  # 10 → 15로 증가
+            max_retries = 20  # 15 → 20으로 증가
+            table_created = False
+            
             for attempt in range(max_retries):
                 try:
                     if check_table_exists("users"):
                         print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
+                        table_created = True
                         break
                     else:
                         print(f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})")
                         import time
-                        time.sleep(3)  # 2초 → 3초로 증가 (PostgreSQL 최적화)
+                        time.sleep(4)  # 3초 → 4초로 증가
                 except Exception as e:
                     print(f"⚠️ 테이블 확인 중 오류: {e}")
-                    time.sleep(3)
-            else:
-                print("⚠️ 테이블 생성 확인 실패, 하지만 강제로 사용자 생성을 시도합니다...")
-                # 마지막 수단: 강제로 사용자 생성 시도
+                    time.sleep(4)
+            
+            if not table_created:
+                print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
+                if not force_create_tables():
+                    print("❌ 강제 테이블 생성도 실패")
+                    return
+
+            # 기본 사용자 생성 (세션 재설정 후)
+            try:
+                db.session.rollback()  # 세션 상태 초기화
+                create_default_users()
+                print("✅ 기본 사용자 생성 완료")
+            except Exception as e:
+                print(f"❌ 기본 사용자 생성 실패: {e}")
+                # 마지막 시도: 세션 재설정 후 사용자 생성
                 try:
-                    # PostgreSQL 트랜잭션 문제 해결: 세션 새로 시작
                     db.session.rollback()
                     db.session.close()
-                    db.session = db.create_scoped_session()
-                    
                     create_default_users()
-                    print("✅ 강제 사용자 생성 완료")
-                except Exception as e:
-                    print(f"❌ 강제 사용자 생성도 실패: {e}")
-                return
-
-            # 기본 사용자 생성
-            create_default_users()
-            print("✅ 기본 사용자 생성 완료")
+                    print("✅ 세션 재설정 후 사용자 생성 성공")
+                except Exception as e2:
+                    print(f"❌ 모든 사용자 생성 방법 실패: {e2}")
         else:
             print("✅ 데이터베이스 테이블이 이미 존재합니다")
     except Exception as e:
         print(f"❌ 데이터베이스 초기화 실패: {e}")
+        # 마지막 수단: 세션 재설정
+        try:
+            db.session.rollback()
+            db.session.close()
+        except:
+            pass
 
 
 # Flask 3.x 호환 방식으로 데이터베이스 초기화
