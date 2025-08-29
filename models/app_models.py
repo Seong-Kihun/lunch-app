@@ -313,3 +313,28 @@ class RestaurantVisit(db.Model):
         self.visit_date = visit_date
         self.visit_time = visit_time
         self.party_size = party_size
+
+class OfflineData(db.Model):
+    """오프라인 데이터 저장 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    data_type = db.Column(db.String(50), nullable=False)  # 'restaurants', 'parties', 'reviews'
+    data_json = db.Column(db.Text, nullable=False)  # JSON 형태로 저장된 데이터
+    last_sync = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, data_type, data_json):
+        self.user_id = user_id
+        self.data_type = data_type
+        self.data_json = data_json
+
+class ChatMessageRead(db.Model):
+    """채팅 메시지 읽음 상태 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    read_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, message_id, user_id):
+        self.message_id = message_id
+        self.user_id = user_id
