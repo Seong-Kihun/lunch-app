@@ -9328,7 +9328,14 @@ def create_default_users():
 
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
-        db.session.rollback()
+        # PostgreSQL 트랜잭션 문제 해결: 세션 새로 시작
+        try:
+            db.session.rollback()
+            db.session.close()
+            db.session = db.create_scoped_session()
+            print("✅ 데이터베이스 세션 재시작 완료")
+        except Exception as session_error:
+            print(f"⚠️ 세션 재시작 실패: {session_error}")
 
 
 # Flask 3.x 호환 데이터베이스 초기화
@@ -9389,6 +9396,11 @@ def init_database_on_startup():
                 print("⚠️ 테이블 생성 확인 실패, 하지만 강제로 사용자 생성을 시도합니다...")
                 # 마지막 수단: 강제로 사용자 생성 시도
                 try:
+                    # PostgreSQL 트랜잭션 문제 해결: 세션 새로 시작
+                    db.session.rollback()
+                    db.session.close()
+                    db.session = db.create_scoped_session()
+                    
                     create_default_users()
                     print("✅ 강제 사용자 생성 완료")
                 except Exception as e:
