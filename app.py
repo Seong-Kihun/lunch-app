@@ -866,12 +866,17 @@ def generate_recommendation_cache():
     # 캐시 초기화
     _initialize_cache()
 
-    # 모든 사용자 조회 (한 번만) - 배치 처리로 최적화
-    all_users = db.session.query(User).all()
-    user_count = len(all_users)
+    # User 모델이 사용 가능한지 확인
+    try:
+        # 모든 사용자 조회 (한 번만) - 배치 처리로 최적화
+        all_users = db.session.query(User).all()
+        user_count = len(all_users)
 
-    if user_count == 0:
-        print("DEBUG: No users found")
+        if user_count == 0:
+            print("DEBUG: No users found")
+            return
+    except Exception as e:
+        print(f"DEBUG: User model not available or table doesn't exist: {e}")
         return
 
     # 사용자별 호환성 점수를 미리 계산하여 캐시
@@ -922,7 +927,11 @@ def _get_scheduled_users(date_str):
 
 def _get_all_user_ids():
     """전체 사용자 ID 목록 조회"""
-    return {user.employee_id for user in db.session.query(User).all()}
+    try:
+        return {user.employee_id for user in db.session.query(User).all()}
+    except Exception as e:
+        print(f"DEBUG: User model not available or table doesn't exist: {e}")
+        return set()
 
 
 def get_available_users_for_date(date_str):
@@ -1282,19 +1291,20 @@ def initialize_database():
                 try:
                     create_initial_data()
                     print("DEBUG: 초기 데이터 생성 완료!")
+                    
+                    # 초기 데이터 생성 후 추천 그룹 캐시 생성
+                    try:
+                        print("INFO: 추천 캐시 초기화 중...")
+                        generate_recommendation_cache()
+                        print("INFO: 추천 캐시 초기화 완료")
+                    except Exception as e:
+                        print(f"WARNING: 추천 캐시 초기화 실패: {e}")
+                        print("   이는 정상적인 상황일 수 있으며, 애플리케이션은 계속 실행됩니다.")
+                        
                 except (AttributeError, KeyError, ValueError) as e:
                     print(f"DEBUG: 초기 데이터 생성 실패 (이미 존재할 수 있음): {e}")
             else:
                 print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
-
-            # 앱 시작 시 추천 그룹 캐시 생성 (PersonalSchedule 모델 충돌 방지)
-            try:
-                print("INFO: 추천 캐시 초기화 중...")
-                generate_recommendation_cache()
-                print("INFO: 추천 캐시 초기화 완료")
-            except (AttributeError, KeyError, ImportError) as e:
-                print(f"WARNING: 추천 캐시 초기화 실패 (PersonalSchedule 모델 충돌 가능성): {e}")
-                print("   이는 정상적인 상황일 수 있으며, 애플리케이션은 계속 실행됩니다.")
 
         except (AttributeError, KeyError, ImportError, RuntimeError) as e:
             print(f"ERROR: Database initialization failed: {e}")
