@@ -484,3 +484,99 @@ class UserFavorite(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "restaurant": self.restaurant.to_dict() if self.restaurant else None,
         }
+
+class RestaurantFavorite(db.Model):
+    """식당 즐겨찾기 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, user_id, restaurant_id):
+        self.user_id = user_id
+        self.restaurant_id = restaurant_id
+
+class UserPreference(db.Model):
+    """사용자 선호도 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    food_preferences = db.Column(db.String(200), nullable=True)  # '한식,중식,양식'
+    lunch_style = db.Column(db.String(200), nullable=True)  # '맛집 탐방,건강한 식사'
+    max_distance = db.Column(db.Integer, default=1000)  # 최대 거리 (미터)
+    budget_range = db.Column(db.String(50), nullable=True)  # '10000-15000'
+    preferred_time = db.Column(db.String(20), nullable=True)  # '12:00-13:00'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __init__(self, user_id, food_preferences=None, lunch_style=None, max_distance=1000, budget_range=None, preferred_time=None):
+        self.user_id = user_id
+        self.food_preferences = food_preferences
+        self.lunch_style = lunch_style
+        self.max_distance = max_distance
+        self.budget_range = budget_range
+        self.preferred_time = preferred_time
+
+class VotingOption(db.Model):
+    """투표 옵션 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    voting_session_id = db.Column(db.Integer, db.ForeignKey("voting_session.id"), nullable=False)
+    option_text = db.Column(db.String(200), nullable=False)
+    option_type = db.Column(db.String(50), nullable=False)  # 'date', 'restaurant', 'time'
+    votes_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, voting_session_id, option_text, option_type):
+        self.voting_session_id = voting_session_id
+        self.option_text = option_text
+        self.option_type = option_type
+
+class Vote(db.Model):
+    """투표 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    voting_session_id = db.Column(db.Integer, db.ForeignKey("voting_session.id"), nullable=False)
+    voter_id = db.Column(db.String(50), nullable=False)
+    option_id = db.Column(db.Integer, db.ForeignKey("voting_option.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, voting_session_id, voter_id, option_id):
+        self.voting_session_id = voting_session_id
+        self.voter_id = voter_id
+        self.option_id = option_id
+
+class MatchRequest(db.Model):
+    """매칭 요청 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.String(50), nullable=False)
+    target_user_id = db.Column(db.String(50), nullable=True)  # 특정 사용자와 매칭 원할 때
+    preferred_date = db.Column(db.String(20), nullable=True)  # YYYY-MM-DD 형식
+    preferred_time = db.Column(db.String(10), nullable=True)  # HH:MM 형식
+    max_distance = db.Column(db.Integer, default=1000)  # 최대 거리 (미터)
+    status = db.Column(db.String(20), default="pending")  # 'pending', 'matched', 'cancelled'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    matched_at = db.Column(db.DateTime, nullable=True)
+    
+    def __init__(self, requester_id, preferred_date=None, preferred_time=None, max_distance=1000, target_user_id=None):
+        self.requester_id = requester_id
+        self.preferred_date = preferred_date
+        self.preferred_time = preferred_time
+        self.max_distance = max_distance
+        self.target_user_id = target_user_id
+
+class Match(db.Model):
+    """매칭 결과 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    match_request_id = db.Column(db.Integer, db.ForeignKey("match_request.id"), nullable=False)
+    user1_id = db.Column(db.String(50), nullable=False)
+    user2_id = db.Column(db.String(50), nullable=False)
+    matched_date = db.Column(db.String(20), nullable=True)  # YYYY-MM-DD 형식
+    matched_time = db.Column(db.String(10), nullable=True)  # HH:MM 형식
+    status = db.Column(db.String(20), default="active")  # 'active', 'completed', 'cancelled'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    
+    def __init__(self, match_request_id, user1_id, user2_id, matched_date=None, matched_time=None):
+        self.match_request_id = match_request_id
+        self.user1_id = user1_id
+        self.user2_id = user2_id
+        self.matched_date = matched_date
+        self.matched_time = matched_time
