@@ -43,11 +43,15 @@ def get_schedules():
         
         # 일정 조회
         try:
-            from services.schedule_service import ScheduleService
+            # 순환 참조 방지를 위해 지연 import
+            import importlib
+            schedule_service_module = importlib.import_module('services.schedule_service')
+            ScheduleService = getattr(schedule_service_module, 'ScheduleService')
+            
             from extensions import db  # 직접 db import
             
-            schedule_service = ScheduleService(db)
-            schedules = schedule_service.get_schedules_for_period(
+            # ScheduleService.get_schedules_for_period는 정적 메서드
+            schedules = ScheduleService.get_schedules_for_period(
                 employee_id=employee_id,
                 start_date=start_date,
                 end_date=end_date
