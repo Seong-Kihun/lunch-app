@@ -2617,29 +2617,7 @@ def clear_read_notifications(employee_id):
         return jsonify({"message": "알림 삭제에 실패했습니다."}), 500
 
 
-# --- 맛집 API ---
-@app.route("/restaurants", methods=["POST"])
-def add_restaurant():
-    data = request.get_json()
-    lat, lon = geocode_address(data["address"])
-    new_restaurant = Restaurant(
-        name=data["name"],
-        category=data["category"],
-        address=data["address"],
-        latitude=lat,
-        longitude=lon,
-    )
-    db.session.add(new_restaurant)
-    db.session.commit()
-    return (
-        jsonify(
-            {
-                "message": "새로운 맛집이 등록되었습니다!",
-                "restaurant_id": new_restaurant.id,
-            }
-        ),
-        201,
-    )
+# Restaurant API는 routes/restaurants.py로 분리됨
 
 
 @app.route("/restaurants/sync-excel-data", methods=["POST"])
@@ -2705,106 +2683,7 @@ def sync_excel_data():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/restaurants", methods=["GET"])
-def get_restaurants():
-    # 먼저 파라미터 파싱
-    query = request.args.get("query", "")
-    sort_by = request.args.get("sort_by", "name")
-    category_filter = request.args.get("category", None)
-    lat = request.args.get("lat", None)
-    lon = request.args.get("lon", None)
-    radius = request.args.get("radius", 10)  # 기본 10km
-    page = request.args.get("page", 1, type=int)
-    per_page = min(
-        request.args.get("per_page", 50, type=int), 200
-    )  # 한 번에 최대 200개까지
-
-    q = Restaurant.query
-
-    # 카테고리 필터
-    if category_filter:
-        q = q.filter(Restaurant.category == category_filter)  # type: ignore
-
-    # 검색어 필터
-    if query:
-        q = q.filter(or_(Restaurant.name.ilike(f"%{query}%"), Restaurant.category.ilike(f"%{query}%")))  # type: ignore
-
-    # 지역 필터 (위도/경도가 제공된 경우)
-    if lat and lon:
-        # 간단한 거리 계산 (대략적)
-        lat = float(lat)
-        lon = float(lon)
-        radius = float(radius)
-
-        print(f"지역 필터링: 중심점({lat}, {lon}), 반지름 {radius}km")
-
-        # 위도 1도 ≈ 111km, 경도 1도 ≈ 88.9km (한반도 기준)
-        lat_range = radius / 111.0
-        lon_range = radius / 88.9
-
-        print(f"위도 범위: {lat - lat_range} ~ {lat + lat_range}")
-        print(f"경도 범위: {lon - lon_range} ~ {lon + lon_range}")
-
-        # 좌표가 있는 식당만 필터링
-        q = q.filter(
-            Restaurant.latitude.isnot(None),
-            Restaurant.longitude.isnot(None),
-            Restaurant.latitude >= lat - lat_range,
-            Restaurant.latitude <= lat + lat_range,
-            Restaurant.longitude >= lon - lon_range,
-            Restaurant.longitude <= lon + lon_range,
-        )
-
-        # 필터링된 결과 수 확인
-        filtered_count = q.count()
-        print(f"지역 필터링 후 식당 수: {filtered_count}")
-
-    # 전체 데이터를 먼저 가져와서 정렬 (전체 데이터 기반 정렬)
-    try:
-        all_restaurants = q.all()
-    except Exception as e:
-        print(f"쿼리 실행 오류: {e}")
-        return jsonify({"error": "데이터베이스 쿼리 오류"}), 500
-
-    # 정렬 로직 개선
-    try:
-        if sort_by == "rating_desc":
-            # 평점순 정렬 (내림차순)
-            all_restaurants.sort(key=lambda r: r.avg_rating, reverse=True)
-        elif sort_by == "reviews_desc":
-            # 리뷰순 정렬 (내림차순)
-            all_restaurants.sort(key=lambda r: r.review_count, reverse=True)
-        elif sort_by == "recommend_desc":
-            # 오찬 추천순 정렬 (내림차순) - 추천 데이터가 있는 경우
-            all_restaurants.sort(
-                key=lambda r: getattr(r, "recommend_count", 0), reverse=True
-            )
-        else:
-            # 이름순 정렬 (기본값)
-            all_restaurants.sort(key=lambda r: r.name)
-    except Exception as e:
-        print(f"정렬 오류: {e}")
-        return jsonify({"error": "정렬 오류"}), 500
-
-    # 전체 결과 수
-    total_count = len(all_restaurants)
-
-    # 수동 페이지네이션 구현
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    restaurants_q = all_restaurants[start_index:end_index]
-
-    # 페이지 정보 계산
-    total_pages = (total_count + per_page - 1) // per_page
-
-    try:
-        restaurants_list = [
-            {
-                "id": r.id,
-                "name": r.name,
-                "category": r.category,
-                "address": r.address,
-                "latitude": r.latitude,
+# get_restaurants 함수는 routes/restaurants.py로 분리됨
                 "longitude": r.longitude,
                 "rating": round(r.avg_rating, 1),
                 "review_count": r.review_count,
@@ -10660,6 +10539,14 @@ with app.app_context():
         print("✅ 제안 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.restaurants import restaurants_bp
+
+        app.register_blueprint(restaurants_bp)
+        print("✅ 식당 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 식당 관리 Blueprint 등록 실패: {e}")
 
     print("✅ 모든 Blueprint 등록 완료")
 
