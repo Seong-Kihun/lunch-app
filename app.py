@@ -7684,29 +7684,17 @@ def init_database_on_startup():
                     print("❌ 모든 테이블 생성 방법 실패")
                     return
 
-            # 테이블 생성 완료 확인 (PostgreSQL 최적화)
-            max_retries = 20  # 15 → 20으로 증가
-            table_created = False
-            
-            for attempt in range(max_retries):
-                try:
-                    if check_table_exists("users"):
-                        print(f"✅ 테이블 생성 확인 완료 (시도 {attempt + 1})")
-                        table_created = True
-                        break
-                    else:
-                        print(
-                            f"⏳ 테이블 생성 대기 중... (시도 {attempt + 1}/{max_retries})"
-                        )
-                        import time
-
-                        time.sleep(4)  # 3초 → 4초로 증가
-                except Exception as e:
-                    print(f"⚠️ 테이블 확인 중 오류: {e}")
-                    time.sleep(4)
-            
-            if not table_created:
-                print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
+            # 테이블 생성 완료 확인 (1번만 시도)
+            try:
+                if check_table_exists("users"):
+                    print("✅ 테이블 생성 확인 완료")
+                else:
+                    print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
+                    if not force_create_tables():
+                        print("❌ 강제 테이블 생성도 실패")
+                        return
+            except Exception as e:
+                print(f"⚠️ 테이블 확인 중 오류: {e}, 강제 테이블 생성 시도...")
                 if not force_create_tables():
                     print("❌ 강제 테이블 생성도 실패")
                     return
