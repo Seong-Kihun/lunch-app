@@ -18,14 +18,10 @@ from sqlalchemy.orm import joinedload
 def get_all_parties():
     """파티 목록 조회"""
     try:
-        # 인증 확인
-        if not hasattr(request, 'current_user') or not request.current_user:
-            return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        # 인증된 사용자 ID 사용
-        employee_id = request.current_user.get('employee_id')
+        # 쿼리 파라미터에서 employee_id 받기
+        employee_id = request.args.get('employee_id')
         if not employee_id:
-            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
+            return jsonify({'error': 'employee_id가 필요합니다.'}), 400
         
         is_from_match = request.args.get('is_from_match')
         
@@ -78,14 +74,10 @@ def get_all_parties():
 def get_party(party_id):
     """파티 상세 정보 조회"""
     try:
-        # 인증 확인
-        if not hasattr(request, 'current_user') or not request.current_user:
-            return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        # 인증된 사용자 ID 사용
-        employee_id = request.current_user.get('employee_id')
+        # 쿼리 파라미터에서 employee_id 받기
+        employee_id = request.args.get('employee_id')
         if not employee_id:
-            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
+            return jsonify({'error': 'employee_id가 필요합니다.'}), 400
         
         # 데이터베이스에서 파티 조회
         from models.schemas import Party, PartyMember
