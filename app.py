@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -41,17 +41,8 @@ except ImportError as e:
 
 # 인증 시스템이 없을 때 사용할 fallback 데코레이터
 if not AUTH_AVAILABLE:
-
-    def require_auth(f):
-        """인증 시스템이 없을 때 사용하는 fallback 데코레이터"""
-        from functools import wraps
-        from flask import jsonify
-
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            return jsonify({"error": "Authentication system not available"}), 503
-
-        return decorated_function
+    # require_auth는 이미 위에서 정의되었습니다
+    pass
 
 
 AUTH_USER_AVAILABLE = AUTH_AVAILABLE
@@ -1108,7 +1099,8 @@ def get_korean_time():
 def format_korean_time(dt):
     """한국 시간으로 포맷팅하는 함수"""
     if dt:
-        korean_time = dt + timedelta(hours=9)
+        return (dt + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
+    return None
 
 
 def get_restaurant_recommend_count(restaurant_id):
@@ -1147,8 +1139,6 @@ def get_restaurant_recommend_count(restaurant_id):
     except (AttributeError, KeyError, TypeError) as e:
         print(f"Error getting restaurant recommend count: {e}")
         return random.randint(5, 25)  # 에러 시 테스트용 랜덤 값
-        return korean_time.strftime("%Y-%m-%d %H:%M")
-    return None
 
 
 # --- AI/외부 API 연동 (가상 함수) ---
@@ -1257,8 +1247,7 @@ def get_notification_icon(notification_type):
 # 인증 시스템의 User 모델을 사용합니다.
 # 기존 User 관련 모델들은 auth/models.py에 정의되어 있습니다.
 
-# User 모델은 auth.models에서 가져옴 (중복 정의 제거)
-from auth.models import User
+# User 모델은 이미 위에서 import되었습니다
 
 # UserPreference는 User 모델에 통합되어 있음
 
