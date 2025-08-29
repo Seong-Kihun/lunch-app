@@ -9316,48 +9316,45 @@ def create_default_users():
             {"email": "park@example.com", "nickname": "박민수", "employee_id": "3"},
         ]
 
-        # 세션 상태 확인 및 재설정
-        try:
-            db.session.rollback()
-        except:
-            pass
-
-        created_count = 0
-        for user_data in default_users:
+        # PostgreSQL 특성을 고려한 사용자 생성
+        def create_user_safely(user_data):
+            """안전한 사용자 생성 (PostgreSQL 트랜잭션 특성 고려)"""
             try:
+                # 세션 상태 초기화
+                db.session.rollback()
+                
                 # 이미 존재하는지 확인
                 existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
                 if not existing_user:
                     user = User(**user_data)
                     db.session.add(user)
-                    created_count += 1
-                    print(f"✅ 사용자 추가: {user_data['nickname']} ({user_data['employee_id']})")
+                    db.session.commit()
+                    print(f"✅ 사용자 생성 성공: {user_data['nickname']} ({user_data['employee_id']})")
+                    return True
+                else:
+                    print(f"ℹ️ 사용자 이미 존재: {user_data['nickname']} ({user_data['employee_id']})")
+                    return True
             except Exception as e:
-                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
-                # 개별 사용자 실패 시에도 계속 진행
-                continue
-
-        if created_count > 0:
-            try:
-                db.session.commit()
-                print(f"✅ {created_count}명의 기본 사용자 생성 완료")
-            except Exception as e:
-                print(f"❌ 사용자 커밋 실패: {e}")
-                # 커밋 실패 시 개별 커밋 시도
+                print(f"❌ 사용자 생성 실패 {user_data['nickname']}: {e}")
                 db.session.rollback()
-                for user_data in default_users:
-                    try:
-                        existing_user = db.session.query(User).filter_by(employee_id=user_data["employee_id"]).first()
-                        if not existing_user:
-                            user = User(**user_data)
-                            db.session.add(user)
-                            db.session.commit()
-                            print(f"✅ 개별 커밋 성공: {user_data['nickname']}")
-                    except Exception as e2:
-                        print(f"❌ 개별 커밋 실패 {user_data['nickname']}: {e2}")
-                        db.session.rollback()
+                return False
+
+        # 각 사용자를 개별적으로 생성 (PostgreSQL 트랜잭션 안정성)
+        success_count = 0
+        for user_data in default_users:
+            if create_user_safely(user_data):
+                success_count += 1
+            else:
+                # 실패 시 재시도
+                import time
+                time.sleep(2)
+                if create_user_safely(user_data):
+                    success_count += 1
+
+        if success_count == len(default_users):
+            print(f"✅ 모든 기본 사용자 생성 완료 ({success_count}/{len(default_users)})")
         else:
-            print("ℹ️ 추가할 사용자가 없습니다 (이미 모두 존재)")
+            print(f"⚠️ 부분적 사용자 생성 완료 ({success_count}/{len(default_users)})")
 
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
