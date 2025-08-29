@@ -688,12 +688,12 @@ def root():
 def api_test():
     return jsonify(
         {
-            "message": "API 서버가 정상적으로 작동하고 있습니다",
-            "endpoints": {
-                "schedules": "/api/schedules/",
-                "proposals": "/api/proposals/",
+        "message": "API 서버가 정상적으로 작동하고 있습니다",
+        "endpoints": {
+            "schedules": "/api/schedules/",
+            "proposals": "/api/proposals/",
                 "auth": "/auth/status",
-            },
+        },
             "timestamp": datetime.now().isoformat(),
         }
     )
@@ -10362,7 +10362,7 @@ def init_database_on_startup():
     try:
         # PostgreSQL 환경에서 더 안정적인 테이블 존재 여부 확인
         from sqlalchemy import text
-
+        
         def check_table_exists(table_name):
             """PostgreSQL에서 테이블 존재 여부를 안정적으로 확인"""
             try:
@@ -10375,7 +10375,7 @@ def init_database_on_startup():
                 ).scalar()
                 if result:
                     return True
-
+                
                 # 방법 2: pg_tables 사용 (PostgreSQL 전용)
                 result = db.session.execute(
                     text(
@@ -10385,13 +10385,13 @@ def init_database_on_startup():
                 ).scalar()
                 if result:
                     return True
-
+                
                 # 방법 3: 직접 테이블 조회 시도 (마지막 수단)
                 result = db.session.execute(
                     text(f"SELECT 1 FROM {table_name} LIMIT 1")
                 ).fetchone()
                 return result is not None
-
+                
             except Exception:
                 return False
 
@@ -10399,23 +10399,23 @@ def init_database_on_startup():
             """강제로 테이블을 생성하고 확인"""
             try:
                 print("🔧 강제 테이블 생성 시작...")
-
+                
                 # 기존 세션 정리
                 db.session.rollback()
                 db.session.close()
-
+                
                 # 테이블 생성
                 db.create_all()
                 print("✅ 강제 테이블 생성 완료")
-
+                
                 # PostgreSQL 특성상 약간의 대기 시간 필요
                 import time
 
                 time.sleep(5)
-
+                
                 # 세션 재설정
                 db.session.rollback()
-
+                
                 return True
             except Exception as e:
                 print(f"❌ 강제 테이블 생성 실패: {e}")
@@ -10424,7 +10424,7 @@ def init_database_on_startup():
 
         if not check_table_exists("users"):
             print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
-
+            
             # 첫 번째 시도: 일반적인 방법
             try:
                 db.create_all()
@@ -10439,7 +10439,7 @@ def init_database_on_startup():
             # 테이블 생성 완료 확인 (PostgreSQL 최적화)
             max_retries = 20  # 15 → 20으로 증가
             table_created = False
-
+            
             for attempt in range(max_retries):
                 try:
                     if check_table_exists("users"):
@@ -10456,7 +10456,7 @@ def init_database_on_startup():
                 except Exception as e:
                     print(f"⚠️ 테이블 확인 중 오류: {e}")
                     time.sleep(4)
-
+            
             if not table_created:
                 print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
                 if not force_create_tables():
@@ -10493,7 +10493,7 @@ def init_database_on_startup():
 # Flask 3.x 호환 방식으로 데이터베이스 초기화
 with app.app_context():
     init_database_on_startup()
-
+    
     # 데이터베이스 초기화 완료 후 Blueprint 등록
     try:
         from auth.routes import auth_bp
@@ -10502,7 +10502,7 @@ with app.app_context():
         print("✅ 인증 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 인증 Blueprint 등록 실패: {e}")
-
+    
     try:
         from api.schedules import schedules_bp
 
@@ -10510,7 +10510,7 @@ with app.app_context():
         print("✅ 일정 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
-
+    
     try:
         from api.proposals import proposals_bp
 
@@ -10518,7 +10518,7 @@ with app.app_context():
         print("✅ 제안 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
-
+    
     try:
         from routes.restaurants import restaurants_bp
 
@@ -10526,6 +10526,14 @@ with app.app_context():
         print("✅ 식당 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 식당 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from routes.parties import parties_bp
+
+        app.register_blueprint(parties_bp)
+        print("✅ 파티 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 파티 관리 Blueprint 등록 실패: {e}")
 
     print("✅ 모든 Blueprint 등록 완료")
 
