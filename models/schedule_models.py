@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from app import db
+from extensions import db
 
 class PersonalSchedule(db.Model):
     """반복 일정의 마스터 규칙을 저장하는 모델"""
@@ -11,6 +11,7 @@ class PersonalSchedule(db.Model):
     employee_id = Column(String(50), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     start_date = Column(DateTime, nullable=False, index=True)
+    schedule_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD 형식 (기존 코드 호환성)
     time = Column(String(10), nullable=False)  # HH:MM 형식
     restaurant = Column(String(200))
     location = Column(String(500))
@@ -40,6 +41,7 @@ class PersonalSchedule(db.Model):
             'employee_id': self.employee_id,
             'title': self.title,
             'start_date': self.start_date.isoformat() if self.start_date else None,
+            'schedule_date': self.schedule_date,
             'time': self.time,
             'restaurant': self.restaurant,
             'location': self.location,
