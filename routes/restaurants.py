@@ -2,8 +2,13 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from extensions import db
 from models.app_models import Restaurant, Review, RestaurantRequest, RestaurantFavorite, RestaurantVisit
-from utils.date_utils import get_seoul_today
+from datetime import datetime, timedelta
 import random
+
+def get_seoul_today():
+    """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
+    korean_time = datetime.now() + timedelta(hours=9)
+    return korean_time.date()
 
 # Blueprint 생성
 restaurants_bp = Blueprint('restaurants', __name__)
