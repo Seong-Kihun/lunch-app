@@ -6008,6 +6008,35 @@ def delete_all_parties():
         return jsonify({"error": str(e)}), 500
 
 
+# 오늘 날짜 확인 API 추가
+@app.route("/api/today", methods=["GET"])
+def get_today():
+    """백엔드에서 인식하는 오늘 날짜를 반환"""
+    try:
+        today = get_seoul_today()
+        now_utc = datetime.utcnow()
+        now_korean = datetime.now() + timedelta(hours=9)
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "today_date": today.strftime("%Y-%m-%d"),
+                "today_datetime": today.isoformat(),
+                "current_utc": now_utc.isoformat(),
+                "current_korean": now_korean.isoformat(),
+                "timezone_info": {
+                    "utc_offset": "+00:00",
+                    "korean_offset": "+09:00"
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 # 잘못된 날짜 데이터 정리 API 추가
 @app.route("/cleanup-invalid-dates", methods=["GET"])
 def cleanup_invalid_dates():
