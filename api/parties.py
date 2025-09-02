@@ -14,14 +14,95 @@ parties_bp = Blueprint('parties', __name__)
 from flask import current_app
 from sqlalchemy.orm import joinedload
 
+@parties_bp.route('/parties', methods=['POST'])
+def create_party():
+    """새로운 파티 생성"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 필수 필드 검증
+        required_fields = ['title', 'date', 'time', 'created_by']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
+        
+        # 데이터베이스에서 파티 생성
+        from models.schemas import Party, PartyMember
+        from app import db
+        
+        # 새 파티 생성
+        new_party = Party(
+            title=data['title'],
+            restaurant_name=data.get('restaurant', ''),
+            restaurant_address=data.get('location', ''),
+            party_date=data['date'],
+            party_time=data['time'],
+            meeting_location=data.get('location', ''),
+            max_members=data.get('maxMembers', 4),
+            current_members=1,  # 생성자 포함
+            is_from_match=False,  # 일반 파티
+            host_employee_id=data['created_by']
+        )
+        
+        db.session.add(new_party)
+        db.session.flush()  # ID 생성을 위해 flush
+        
+        # 파티 생성자를 멤버로 추가
+        party_member = PartyMember(
+            party_id=new_party.id,
+            employee_id=data['created_by']
+        )
+        db.session.add(party_member)
+        
+        # 참여자들 추가 (있는 경우)
+        attendees = data.get('attendees', [])
+        for attendee in attendees:
+            if attendee.get('employee_id') and attendee['employee_id'] != data['created_by']:
+                member = PartyMember(
+                    party_id=new_party.id,
+                    employee_id=attendee['employee_id']
+                )
+                db.session.add(member)
+                new_party.current_members += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '파티가 생성되었습니다',
+            'data': {
+                'id': new_party.id,
+                'title': new_party.title,
+                'restaurant_name': new_party.restaurant_name,
+                'restaurant_address': new_party.restaurant_address,
+                'party_date': new_party.party_date,
+                'party_time': new_party.party_time,
+                'meeting_location': new_party.meeting_location,
+                'max_members': new_party.max_members,
+                'current_members': new_party.current_members,
+                'is_from_match': new_party.is_from_match,
+                'host_employee_id': new_party.host_employee_id
+            }
+        }), 201
+        
+    except Exception as e:
+        print(f"Error in create_party: {e}")
+        return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
 @parties_bp.route('/parties', methods=['GET'])
 def get_all_parties():
     """파티 목록 조회"""
     try:
-        # 쿼리 파라미터에서 employee_id 받기
-        employee_id = request.args.get('employee_id')
+        # 인증 확인
+        if not hasattr(request, 'current_user') or not request.current_user:
+            return jsonify({'error': '인증이 필요합니다.'}), 401
+        
+        # 인증된 사용자 ID 사용
+        employee_id = request.current_user.get('employee_id')
         if not employee_id:
-            return jsonify({'error': 'employee_id가 필요합니다.'}), 400
+            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         is_from_match = request.args.get('is_from_match')
         
@@ -74,10 +155,14 @@ def get_all_parties():
 def get_party(party_id):
     """파티 상세 정보 조회"""
     try:
-        # 쿼리 파라미터에서 employee_id 받기
-        employee_id = request.args.get('employee_id')
+        # 인증 확인
+        if not hasattr(request, 'current_user') or not request.current_user:
+            return jsonify({'error': '인증이 필요합니다.'}), 401
+        
+        # 인증된 사용자 ID 사용
+        employee_id = request.current_user.get('employee_id')
         if not employee_id:
-            return jsonify({'error': 'employee_id가 필요합니다.'}), 400
+            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 파티 조회
         from models.schemas import Party, PartyMember
