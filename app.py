@@ -91,9 +91,9 @@ from models.app_models import (
 
 print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
 
-# Flask-Migrate 초기화
-from flask_migrate import Migrate
-migrate = Migrate(app, db)
+# Flask-Migrate 초기화 (일시적으로 비활성화 - 스키마 불일치 문제 해결 후 활성화)
+# from flask_migrate import Migrate
+# migrate = Migrate(app, db)
 
 # 에러 핸들러 등록
 try:
