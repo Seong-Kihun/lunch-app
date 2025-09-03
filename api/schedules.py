@@ -3,9 +3,12 @@
 일정 관련 모든 API 엔드포인트를 포함합니다.
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 from typing import Dict, Any
+from services.schedule_service import ScheduleService
+from models.schedule_models import PersonalSchedule, ScheduleException
+from extensions import db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,46 +45,23 @@ def get_schedules():
             }), 400
         
         # 일정 조회
-        try:
-            # 순환 참조 방지를 위해 지연 import
-            import importlib
-            schedule_service_module = importlib.import_module('services.schedule_service')
-            ScheduleService = getattr(schedule_service_module, 'ScheduleService')
-            
-            from extensions import db  # 직접 db import
-            
-            # ScheduleService.get_schedules_for_period는 정적 메서드
-            schedules = ScheduleService.get_schedules_for_period(
-                employee_id=employee_id,
-                start_date=start_date,
-                end_date=end_date
-            )
-            
-            logger.info(f"일정 조회 성공: {employee_id}, {start_date} ~ {end_date}")
-            
-            return jsonify({
-                'success': True,
-                'data': schedules,
-                'period': {
-                    'start_date': start_date_str,
-                    'end_date': end_date_str
-                },
-                'total_dates': len(schedules)
-            })
-            
-        except Exception as service_error:
-            logger.error(f"ScheduleService 오류: {service_error}")
-            # 서비스 오류 시 빈 배열 반환 (에러 방지)
-            return jsonify({
-                'success': True,
-                'data': [],
-                'period': {
-                    'start_date': start_date_str,
-                    'end_date': end_date_str
-                },
-                'total_dates': 0,
-                'message': '일정 데이터를 가져올 수 없습니다'
-            })
+        schedules = ScheduleService.get_schedules_for_period(
+            employee_id=employee_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        logger.info(f"일정 조회 성공: {employee_id}, {start_date} ~ {end_date}")
+        
+        return jsonify({
+            'success': True,
+            'data': schedules,
+            'period': {
+                'start_date': start_date_str,
+                'end_date': end_date_str
+            },
+            'total_dates': len(schedules)
+        })
         
     except Exception as e:
         logger.error(f"일정 조회 중 오류 발생: {e}")
@@ -145,27 +125,15 @@ def create_schedule():
         }
         
         # 마스터 일정 생성
-        try:
-            from services.schedule_service import ScheduleService
-            from extensions import db  # 직접 db import
-            
-            schedule_service = ScheduleService(db)
-            schedule = schedule_service.create_master_schedule(schedule_data)
-            
-            logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
-            
-            return jsonify({
-                'success': True,
-                'message': '일정이 생성되었습니다',
-                'data': schedule.to_dict()
-            }), 201
-            
-        except Exception as service_error:
-            logger.error(f"ScheduleService 생성 오류: {service_error}")
-            return jsonify({
-                'error': '일정 생성에 실패했습니다',
-                'message': str(service_error)
-            }), 500
+        schedule = ScheduleService.create_master_schedule(schedule_data)
+        
+        logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 생성되었습니다',
+            'data': schedule.to_dict()
+        }), 201
         
     except Exception as e:
         logger.error(f"일정 생성 중 오류 발생: {e}")
@@ -194,7 +162,7 @@ def update_schedule(schedule_id):
                     'format': 'YYYY-MM-DD'
                 }), 400
         
-        if 'recurrence_end_date' in data:
+        if 'recurrence_end_date' in data and data['recurrence_end_date'] is not None:
             try:
                 data['recurrence_end_date'] = datetime.strptime(
                     data['recurrence_end_date'], '%Y-%m-%d'
@@ -206,29 +174,17 @@ def update_schedule(schedule_id):
                 }), 400
         
         # 마스터 일정 수정
-        try:
-            from services.schedule_service import ScheduleService
-            from extensions import db  # 직접 db import
-            
-            schedule_service = ScheduleService(db)
-            success = schedule_service.update_master_schedule(schedule_id, data)
-            
-            if not success:
-                return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
-            
-            logger.info(f"일정 수정 성공: ID {schedule_id}")
-            
-            return jsonify({
-                'success': True,
-                'message': '일정이 수정되었습니다'
-            })
-            
-        except Exception as service_error:
-            logger.error(f"ScheduleService 수정 오류: {service_error}")
-            return jsonify({
-                'error': '일정 수정에 실패했습니다',
-                'message': str(service_error)
-            }), 500
+        success = ScheduleService.update_master_schedule(schedule_id, data)
+        
+        if not success:
+            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
+        
+        logger.info(f"일정 수정 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 수정되었습니다'
+        })
         
     except Exception as e:
         logger.error(f"일정 수정 중 오류 발생: {e}")
@@ -244,29 +200,17 @@ def delete_schedule(schedule_id):
     """
     try:
         # 마스터 일정 삭제
-        try:
-            from services.schedule_service import ScheduleService
-            from extensions import db  # 직접 db import
-            
-            schedule_service = ScheduleService(db)
-            success = schedule_service.delete_master_schedule(schedule_id)
-            
-            if not success:
-                return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
-            
-            logger.info(f"일정 삭제 성공: ID {schedule_id}")
-            
-            return jsonify({
-                'success': True,
-                'message': '일정이 삭제되었습니다'
-            })
-            
-        except Exception as service_error:
-            logger.error(f"ScheduleService 삭제 오류: {service_error}")
-            return jsonify({
-                'error': '일정 삭제에 실패했습니다',
-                'message': str(service_error)
-            }), 500
+        success = ScheduleService.delete_master_schedule(schedule_id)
+        
+        if not success:
+            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
+        
+        logger.info(f"일정 삭제 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 삭제되었습니다'
+        })
         
     except Exception as e:
         logger.error(f"일정 삭제 중 오류 발생: {e}")
@@ -315,7 +259,6 @@ def create_schedule_exception(schedule_id):
             })
         
         # 예외 생성
-        from services.schedule_service import ScheduleService
         exception = ScheduleService.create_exception(
             master_schedule_id=schedule_id,
             exception_date=exception_date,
@@ -343,8 +286,6 @@ def delete_schedule_exception(schedule_id, exception_id):
     일정 예외 삭제
     """
     try:
-        from models.schedule_models import ScheduleException
-        
         exception = ScheduleException.query.get(exception_id)
         if not exception:
             return jsonify({'error': '예외를 찾을 수 없습니다'}), 404
@@ -352,8 +293,8 @@ def delete_schedule_exception(schedule_id, exception_id):
         if exception.original_schedule_id != schedule_id:
             return jsonify({'error': '잘못된 요청입니다'}), 400
         
-        current_app.extensions['sqlalchemy'].db.session.delete(exception)
-        current_app.extensions['sqlalchemy'].db.session.commit()
+        db.session.delete(exception)
+        db.session.commit()
         
         logger.info(f"일정 예외 삭제 성공: 예외 ID {exception_id}")
         
@@ -363,7 +304,7 @@ def delete_schedule_exception(schedule_id, exception_id):
         })
         
     except Exception as e:
-        current_app.extensions['sqlalchemy'].db.session.rollback()
+        db.session.rollback()
         logger.error(f"일정 예외 삭제 중 오류 발생: {e}")
         return jsonify({
             'error': '서버 내부 오류가 발생했습니다',
