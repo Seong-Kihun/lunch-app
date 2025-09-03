@@ -84,23 +84,27 @@ def get_parties():
 def create_party():
     """새로운 파티를 생성"""
     data = request.get_json()
+    print(f"🔍 [create_party] 받은 데이터: {data}")
     
-    # 필수 필드 검증
-    required_fields = ["title", "restaurant_name", "party_date", "party_time"]
+    # 필수 필드 검증 (프론트엔드 필드명에 맞춤)
+    required_fields = ["title", "date", "time", "created_by", "restaurant"]
     for field in required_fields:
-        if not data.get(field):
-            return jsonify({"error": f"{field}는 필수입니다."}), 400
+        if field not in data or not data[field]:
+            print(f"❌ [create_party] 필수 필드 누락: {field}, 값: {data.get(field)}")
+            return jsonify({"error": f"필수 필드가 누락되었습니다: {field}"}), 400
+    
+    print(f"✅ [create_party] 필수 필드 검증 통과")
     
     try:
         new_party = Party(
-            host_employee_id=data.get("host_employee_id"),
+            host_employee_id=data.get("created_by"),
             title=data["title"],
-            restaurant_name=data["restaurant_name"],
-            restaurant_address=data.get("restaurant_address", ""),
-            party_date=data["party_date"],
-            party_time=data["party_time"],
-            meeting_location=data.get("meeting_location", ""),
-            max_members=data.get("max_members", 4),
+            restaurant_name=data["restaurant"],
+            restaurant_address=data.get("location", ""),
+            party_date=data["date"],
+            party_time=data["time"],
+            meeting_location=data.get("location", ""),
+            max_members=data.get("maxMembers", 4),
             is_from_match=data.get("is_from_match", False)
         )
         
