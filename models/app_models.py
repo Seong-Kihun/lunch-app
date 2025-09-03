@@ -65,7 +65,7 @@ class PartyMember(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
-    employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False)  # 외래키 제약조건 제거
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_host = db.Column(db.Boolean, default=False)
     
