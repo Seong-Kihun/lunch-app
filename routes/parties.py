@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from extensions import db
-from models.app_models import Party, PartyMember, User, Restaurant
+from models.app_models import Party, PartyMember, Restaurant
 from datetime import datetime, timedelta
 import random
 
@@ -45,8 +45,8 @@ def get_parties():
     
     parties_data = []
     for party in parties:
-        # 호스트 정보
-        host = User.query.filter_by(employee_id=party.host_employee_id).first()
+        # 호스트 정보 (User 모델 없이 간단하게 처리)
+        host_name = f"사용자 {party.host_employee_id}"
         
         # 멤버 수
         member_count = PartyMember.query.filter_by(party_id=party.id).count()
@@ -63,7 +63,7 @@ def get_parties():
             "current_members": member_count + 1,  # 호스트 포함
             "host": {
                 "employee_id": party.host_employee_id,
-                "name": host.name if host else "Unknown"
+                "name": host_name
             },
             "is_from_match": party.is_from_match,
             "created_at": party.created_at.isoformat() if party.created_at else None
@@ -135,21 +135,21 @@ def get_party_detail(party_id):
     """특정 파티의 상세 정보를 반환"""
     party = Party.query.get_or_404(party_id)
     
-    # 호스트 정보
-    host = User.query.filter_by(employee_id=party.host_employee_id).first()
+    # 호스트 정보 (User 모델 없이 간단하게 처리)
+    host_name = f"사용자 {party.host_employee_id}"
     
     # 멤버 목록
     members = PartyMember.query.filter_by(party_id=party_id).all()
     member_data = []
     
     for member in members:
-        user = User.query.filter_by(employee_id=member.employee_id).first()
-        if user:
-            member_data.append({
-                "employee_id": member.employee_id,
-                "name": user.name,
-                "joined_at": member.created_at.isoformat() if member.created_at else None
-            })
+        # User 모델 없이 간단하게 처리
+        member_name = f"사용자 {member.employee_id}"
+        member_data.append({
+            "employee_id": member.employee_id,
+            "name": member_name,
+            "joined_at": member.joined_at.isoformat() if member.joined_at else None
+        })
     
     party_detail = {
         "id": party.id,
@@ -163,7 +163,7 @@ def get_party_detail(party_id):
         "current_members": len(member_data) + 1,
         "host": {
             "employee_id": party.host_employee_id,
-            "name": host.name if host else "Unknown"
+            "name": host_name
         },
         "members": member_data,
         "is_from_match": party.is_from_match,
