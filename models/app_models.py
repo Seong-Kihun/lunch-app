@@ -74,10 +74,12 @@ class PartyMember(db.Model):
         db.Index('idx_member_party', 'employee_id', 'party_id'),
     )
     
-    def __init__(self, party_id, employee_id, is_host=False):
+    def __init__(self, party_id, employee_id, is_host=False, joined_at=None):
         self.party_id = party_id
         self.employee_id = employee_id
         self.is_host = is_host
+        if joined_at:
+            self.joined_at = joined_at
 
 class DangolPot(db.Model):
     """단골파티 모델"""
