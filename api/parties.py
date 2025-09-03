@@ -19,6 +19,7 @@ def create_party():
     """새로운 파티 생성"""
     try:
         data = request.get_json()
+        print(f"🔍 [create_party] 받은 데이터: {data}")
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다'}), 400
         
@@ -26,7 +27,10 @@ def create_party():
         required_fields = ['title', 'date', 'time', 'created_by', 'restaurant']
         for field in required_fields:
             if field not in data or not data[field]:
+                print(f"❌ [create_party] 필수 필드 누락: {field}, 값: {data.get(field)}")
                 return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
+        
+        print(f"✅ [create_party] 필수 필드 검증 통과")
         
         # 데이터베이스에서 파티 생성
         from models.schemas import Party, PartyMember
@@ -431,4 +435,3 @@ def get_my_parties():
     except Exception as e:
         print(f"Error in get_my_parties: {e}")
         return jsonify({'error': '내 파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
-
