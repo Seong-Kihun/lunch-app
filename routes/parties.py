@@ -109,6 +109,15 @@ def create_party():
         )
         
         db.session.add(new_party)
+        db.session.flush()  # 파티 ID를 얻기 위해 flush
+        
+        # 호스트를 PartyMember에 추가
+        host_member = PartyMember(
+            party_id=new_party.id,
+            employee_id=data.get("created_by"),
+            joined_at=datetime.utcnow()
+        )
+        db.session.add(host_member)
         db.session.commit()
         
         return jsonify({
