@@ -90,7 +90,8 @@ class ScheduleService:
             'recurrence_type': master_schedule.recurrence_type,
             'recurrence_interval': master_schedule.recurrence_interval,
             'created_by': master_schedule.created_by,
-            'created_at': master_schedule.created_at.isoformat() if master_schedule.created_at else None
+            'created_at': master_schedule.created_at.isoformat() if master_schedule.created_at else None,
+            'type': 'personal_schedule'  # 개인일정 구분을 위한 타입 추가
         }
     
     @staticmethod
