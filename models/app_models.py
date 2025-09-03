@@ -15,7 +15,7 @@ class Party(db.Model):
     __table_args__ = {'extend_existing': True}  # 중복 정의 문제 해결
     
     id = db.Column(db.Integer, primary_key=True)
-    host_employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
+    host_employee_id = db.Column(db.String(50), nullable=False)  # 외래키 제약조건 제거
     title = db.Column(db.String(100), nullable=False)
     restaurant_name = db.Column(db.String(100), nullable=False)
     restaurant_address = db.Column(db.String(200), nullable=True)
