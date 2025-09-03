@@ -33,8 +33,8 @@ def create_party():
         print(f"✅ [create_party] 필수 필드 검증 통과")
         
         # 데이터베이스에서 파티 생성
-        from models.schemas import Party, PartyMember
-        from app import db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         # 새 파티 생성
         new_party = Party(
@@ -110,8 +110,8 @@ def get_all_parties():
         is_from_match = request.args.get('is_from_match')
         
         # 데이터베이스에서 파티 조회
-        from models.schemas import Party, PartyMember
-        from app import db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         if is_from_match:
             # 특정 사용자의 랜덤런치 그룹 조회
@@ -168,8 +168,8 @@ def get_party(party_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 파티 조회
-        from models.schemas import Party, PartyMember
-        from app import db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -182,7 +182,7 @@ def get_party(party_id):
             return jsonify({'error': '파티 멤버만 상세 정보를 볼 수 있습니다.'}), 403
         
         # 멤버 상세 정보 조회
-        from models.schemas import User
+        from auth.models import User
         members_details = []
         for member_id in member_ids:
             user = User.query.filter_by(employee_id=member_id).first()
@@ -289,7 +289,8 @@ def join_party(party_id):
         # employee_id = request.current_user.get('employee_id')
         
         # 데이터베이스에서 파티 조회
-        from app import Party, PartyMember, db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -343,7 +344,8 @@ def leave_party(party_id):
         # employee_id = request.current_user.get('employee_id')
         
         # 데이터베이스에서 파티 조회
-        from app import Party, PartyMember, db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -394,7 +396,8 @@ def get_my_parties():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 내 파티 조회
-        from app import Party, PartyMember, db
+        from models.app_models import Party, PartyMember
+        from extensions import db
         
         # 내가 참여한 파티들 (호스트이거나 멤버인 경우)
         my_parties = Party.query.filter(
