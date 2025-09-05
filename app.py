@@ -763,7 +763,9 @@ CACHE_GENERATION_DATE = None
 # --- 유틸리티 함수 ---
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
-    korean_time = datetime.now() + timedelta(hours=9)
+    # 현재 UTC 시간을 가져와서 한국 시간(UTC+9)으로 변환
+    utc_now = datetime.utcnow()
+    korean_time = utc_now + timedelta(hours=9)
     return korean_time.date()
 
 
