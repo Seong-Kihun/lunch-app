@@ -5,7 +5,7 @@
 
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models.app_models import Party, PartyMember, User, Friendship, ChatRoom, ChatMessage, RandomLunchGroup, RandomLunchProposal
+from models.app_models import Party, PartyMember, User, Friendship, ChatRoom, ChatMessage, RandomLunchProposal
 from models.schedule_models import PersonalSchedule as Schedule
 from sqlalchemy import text
 import logging
@@ -61,8 +61,6 @@ def clear_all_data():
             logger.info("🗑️ [전체정리] 랜덤런치 제안 데이터 삭제 중...")
             db.session.execute(text("DELETE FROM random_lunch_proposal"))
             
-            logger.info("🗑️ [전체정리] 랜덤런치 그룹 데이터 삭제 중...")
-            db.session.execute(text("DELETE FROM random_lunch_group"))
             
             # 6. 사용자 데이터 정리 (선택적)
             if clear_users:
@@ -73,7 +71,7 @@ def clear_all_data():
             logger.info("🔄 [전체정리] 시퀀스 리셋 중...")
             try:
                 # SQLite에서 자동 증가 ID 리셋
-                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friendship', 'chat_room', 'chat_message', 'random_lunch_group', 'random_lunch_proposal']
+                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friendship', 'chat_room', 'chat_message', 'random_lunch_proposal']
                 if clear_users:
                     tables.append('user')
                 
