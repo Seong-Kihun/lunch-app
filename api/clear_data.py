@@ -5,7 +5,7 @@
 
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models.app_models import Party, PartyMember, User, Friend, ChatRoom, ChatMessage, RandomLunchGroup, RandomLunchProposal
+from models.app_models import Party, PartyMember, User, Friendship, ChatRoom, ChatMessage, RandomLunchGroup, RandomLunchProposal
 from models.schedule_models import PersonalSchedule as Schedule
 from sqlalchemy import text
 import logging
@@ -48,7 +48,7 @@ def clear_all_data():
             
             # 3. 친구 데이터 정리
             logger.info("🗑️ [전체정리] 친구 데이터 삭제 중...")
-            db.session.execute(text("DELETE FROM friend"))
+            db.session.execute(text("DELETE FROM friendship"))
             
             # 4. 채팅 데이터 정리
             logger.info("🗑️ [전체정리] 채팅 메시지 데이터 삭제 중...")
@@ -73,7 +73,7 @@ def clear_all_data():
             logger.info("🔄 [전체정리] 시퀀스 리셋 중...")
             try:
                 # SQLite에서 자동 증가 ID 리셋
-                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friend', 'chat_room', 'chat_message', 'random_lunch_group', 'random_lunch_proposal']
+                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friendship', 'chat_room', 'chat_message', 'random_lunch_group', 'random_lunch_proposal']
                 if clear_users:
                     tables.append('user')
                 
@@ -159,8 +159,8 @@ def clear_friends():
     """친구 데이터만 정리"""
     try:
         with db.session.begin():
-            db.session.execute(text("DELETE FROM friend"))
-            db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='friend'"))
+            db.session.execute(text("DELETE FROM friendship"))
+            db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='friendship'"))
         
         return jsonify({
             'success': True,
