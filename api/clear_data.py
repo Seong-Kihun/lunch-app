@@ -5,7 +5,8 @@
 
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models.app_models import Party, PartyMember, Schedule, User, Friend, ChatRoom, ChatMessage, RandomLunchGroup, RandomLunchProposal
+from models.app_models import Party, PartyMember, User, Friend, ChatRoom, ChatMessage, RandomLunchGroup, RandomLunchProposal
+from models.schedule_models import PersonalSchedule as Schedule
 from sqlalchemy import text
 import logging
 
@@ -42,7 +43,8 @@ def clear_all_data():
             
             # 2. 일정 데이터 정리
             logger.info("🗑️ [전체정리] 일정 데이터 삭제 중...")
-            db.session.execute(text("DELETE FROM schedule"))
+            db.session.execute(text("DELETE FROM personal_schedules"))
+            db.session.execute(text("DELETE FROM schedule_exceptions"))
             
             # 3. 친구 데이터 정리
             logger.info("🗑️ [전체정리] 친구 데이터 삭제 중...")
@@ -71,7 +73,7 @@ def clear_all_data():
             logger.info("🔄 [전체정리] 시퀀스 리셋 중...")
             try:
                 # SQLite에서 자동 증가 ID 리셋
-                tables = ['party', 'schedule', 'friend', 'chat_room', 'chat_message', 'random_lunch_group', 'random_lunch_proposal']
+                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friend', 'chat_room', 'chat_message', 'random_lunch_group', 'random_lunch_proposal']
                 if clear_users:
                     tables.append('user')
                 
@@ -134,8 +136,10 @@ def clear_schedules():
     """일정 데이터만 정리"""
     try:
         with db.session.begin():
-            db.session.execute(text("DELETE FROM schedule"))
-            db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='schedule'"))
+            db.session.execute(text("DELETE FROM personal_schedules"))
+            db.session.execute(text("DELETE FROM schedule_exceptions"))
+            db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='personal_schedules'"))
+            db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='schedule_exceptions'"))
         
         return jsonify({
             'success': True,
