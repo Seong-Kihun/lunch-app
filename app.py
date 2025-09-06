@@ -6601,6 +6601,28 @@ def send_dev_chat_message():
         print(f"개발용 메시지 전송 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 채팅방 생성 API
+@app.route("/dev/chat/create", methods=["POST"])
+def create_dev_chat_room():
+    """개발용 채팅방 생성 API - 인증 없이 테스트 가능"""
+    try:
+        data = request.get_json()
+        print(f"개발용 채팅방 생성 요청: {data}")
+        
+        # 가상 채팅방 ID 생성
+        import time
+        chat_id = int(time.time() * 1000) % 10000
+        
+        return jsonify({
+            "message": "채팅방이 생성되었습니다!",
+            "chat_id": chat_id,
+            "title": data.get("title", "새로운 채팅방"),
+            "success": True
+        })
+    except Exception as e:
+        print(f"개발용 채팅방 생성 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
