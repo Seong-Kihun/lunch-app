@@ -6477,6 +6477,47 @@ def get_nickname_by_id(employee_id):
     return nicknames.get(employee_id, f"사용자{employee_id}")
 
 
+# 🚀 개발용 채팅 API
+@app.route("/dev/chats/<employee_id>", methods=["GET"])
+def get_dev_chats(employee_id):
+    """개발용 채팅 목록 API - 인증 없이 테스트 가능"""
+    try:
+        # 가상 채팅 데이터 생성
+        mock_chats = [
+            {
+                "id": 1,
+                "type": "party",
+                "title": "점심파티 - 맛있는 김치찌개",
+                "last_message": "오늘 정말 맛있었어요!",
+                "last_message_time": "2025-09-05T12:30:00Z",
+                "unread_count": 2,
+                "created_at": "2025-09-05T11:00:00Z"
+            },
+            {
+                "id": 2,
+                "type": "dangolpot",
+                "title": "단골파티 - 한식러버",
+                "last_message": "다음주에도 여기 올까요?",
+                "last_message_time": "2025-09-04T18:20:00Z",
+                "unread_count": 0,
+                "created_at": "2025-09-01T09:00:00Z"
+            },
+            {
+                "id": 3,
+                "type": "custom",
+                "title": "김철수님과의 채팅",
+                "last_message": "고마워요!",
+                "last_message_time": "2025-09-03T14:15:00Z",
+                "unread_count": 1,
+                "created_at": "2025-09-02T10:30:00Z"
+            }
+        ]
+        
+        return jsonify(mock_chats)
+    except Exception as e:
+        print(f"개발용 채팅 목록 조회 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
