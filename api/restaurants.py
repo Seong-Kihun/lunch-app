@@ -195,23 +195,24 @@ def load_restaurants_from_csv():
             with open(csv_path, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
                 for i, row in enumerate(reader, 1):
-                    # CSV 데이터를 API 형식으로 변환
+                    # CSV 데이터를 API 형식으로 변환 (실제 CSV 컬럼명에 맞춤)
                     restaurant = {
                         'id': i,
-                        'name': row.get('name', ''),
-                        'category': row.get('category', ''),
-                        'location': row.get('location', ''),
-                        'address': row.get('address', ''),
-                        'phone': row.get('phone', ''),
-                        'description': row.get('description', ''),
-                        'price_range': int(row.get('price_range', 0)) if row.get('price_range') else 0,
-                        'rating': float(row.get('rating', 0)) if row.get('rating') else 0.0,
-                        'latitude': float(row.get('latitude', 0)) if row.get('latitude') else 0.0,
-                        'longitude': float(row.get('longitude', 0)) if row.get('longitude') else 0.0,
-                        'image_url': row.get('image_url', ''),
-                        'tags': row.get('tags', '').split(',') if row.get('tags') else [],
+                        'name': row.get('식당명', ''),
+                        'category': '한식',  # 기본값
+                        'location': '판교',  # 기본값
+                        'address': row.get('주소', ''),
+                        'phone': '',
+                        'description': f"{row.get('식당명', '')} - 판교 지역 맛집",
+                        'price_range': 10000,  # 기본값
+                        'rating': 4.0,  # 기본값
+                        'latitude': float(row.get('위도', 0)) if row.get('위도') else 0.0,
+                        'longitude': float(row.get('경도', 0)) if row.get('경도') else 0.0,
+                        'image_url': '',
+                        'tags': ['맛집', '판교'],
                         'is_active': True,
-                        'created_at': datetime.now().isoformat()
+                        'created_at': datetime.now().isoformat(),
+                        'distance': float(row.get('거리(km)', 0)) if row.get('거리(km)') else 0.0
                     }
                     restaurants.append(restaurant)
         
