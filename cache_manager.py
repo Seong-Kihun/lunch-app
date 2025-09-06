@@ -26,10 +26,19 @@ class CacheManager:
     
     def __init__(self, redis_url: Optional[str] = None):
         self.redis_client = None
+        self.offline_mode = False
         
         # 환경변수에서 Redis URL 가져오기
         if not redis_url:
             redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        
+        # 오프라인 모드 체크 (맥도날드 같은 공공 WiFi에서 개발할 때)
+        offline_mode = os.getenv('OFFLINE_MODE', 'false').lower() == 'true'
+        
+        if offline_mode:
+            logger.info("🔧 오프라인 모드로 실행됩니다. Redis 캐싱이 비활성화됩니다.")
+            self.offline_mode = True
+            return
         
         if REDIS_AVAILABLE:
             try:
@@ -38,15 +47,17 @@ class CacheManager:
                 self.redis_client.ping()
                 logger.info(f"✅ Redis 연결 성공: {redis_url}")
             except Exception as e:
-                logger.error(f"❌ Redis 연결 실패: {e}")
-                logger.error(f"   Redis URL: {redis_url}")
-                logger.error("   환경변수 REDIS_URL을 확인하거나 Redis 서비스를 시작하세요")
-                logger.info("   Redis 없이 애플리케이션이 계속 실행됩니다 (캐싱 기능만 비활성화)")
+                logger.warning(f"⚠️ Redis 연결 실패: {e}")
+                logger.warning(f"   Redis URL: {redis_url}")
+                logger.warning("   오프라인 모드로 전환합니다. 캐싱이 비활성화됩니다.")
+                logger.warning("   OFFLINE_MODE=true 환경변수를 설정하여 이 경고를 숨길 수 있습니다.")
                 self.redis_client = None
+                self.offline_mode = True
         else:
             logger.warning("⚠️ Redis 패키지가 설치되지 않았습니다")
-            logger.info("   Redis 없이 애플리케이션이 계속 실행됩니다 (캐싱 기능만 비활성화)")
+            logger.warning("   pip install redis를 실행하거나 OFFLINE_MODE=true로 설정하세요")
             self.redis_client = None
+            self.offline_mode = True
     
     def _generate_cache_key(self, prefix: str, *args, **kwargs) -> str:
         """캐시 키 생성"""
@@ -63,8 +74,9 @@ class CacheManager:
     
     def set_cache(self, key: str, value: Any, expire_seconds: int = 3600) -> bool:
         """캐시에 데이터 저장"""
-        if not self.redis_client:
-            logger.warning("⚠️ Redis가 연결되지 않아 캐싱을 건너뜁니다")
+        if self.offline_mode or not self.redis_client:
+            if not self.offline_mode:
+                logger.warning("⚠️ Redis가 연결되지 않아 캐싱을 건너뜁니다")
             return False
         
         try:
@@ -79,8 +91,9 @@ class CacheManager:
     
     def get_cache(self, key: str) -> Optional[Any]:
         """캐시에서 데이터 조회"""
-        if not self.redis_client:
-            logger.warning("⚠️ Redis가 연결되지 않아 캐시를 조회할 수 없습니다")
+        if self.offline_mode or not self.redis_client:
+            if not self.offline_mode:
+                logger.warning("⚠️ Redis가 연결되지 않아 캐시를 조회할 수 없습니다")
             return None
         
         try:
@@ -98,8 +111,9 @@ class CacheManager:
     
     def delete_cache(self, key: str) -> bool:
         """캐시 삭제"""
-        if not self.redis_client:
-            logger.warning("⚠️ Redis가 연결되지 않아 캐시를 삭제할 수 없습니다")
+        if self.offline_mode or not self.redis_client:
+            if not self.offline_mode:
+                logger.warning("⚠️ Redis가 연결되지 않아 캐시를 삭제할 수 없습니다")
             return False
         
         try:
@@ -113,8 +127,9 @@ class CacheManager:
     
     def clear_pattern(self, pattern: str) -> int:
         """패턴에 맞는 캐시들 삭제"""
-        if not self.redis_client:
-            logger.warning("⚠️ Redis가 연결되지 않아 패턴 캐시를 삭제할 수 없습니다")
+        if self.offline_mode or not self.redis_client:
+            if not self.offline_mode:
+                logger.warning("⚠️ Redis가 연결되지 않아 패턴 캐시를 삭제할 수 없습니다")
             return 0
         
         try:
@@ -130,6 +145,11 @@ class CacheManager:
     
     def get_cache_stats(self) -> dict:
         """캐시 통계 정보"""
+        if self.offline_mode:
+            return {
+                'status': 'offline',
+                'message': '오프라인 모드로 실행 중입니다'
+            }
         if not self.redis_client:
             return {
                 'status': 'disconnected',
