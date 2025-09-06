@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+import os
 from datetime import datetime, timedelta
 import re
 from config.auth_config import AuthConfig
@@ -51,6 +52,8 @@ def send_magic_link():
 def test_login(employee_id):
     """개발/테스트용 임시 로그인 (프로덕션에서는 제거)"""
     try:
+        if os.getenv("ENV", "development") == "production":
+            return jsonify({'error': 'Forbidden in production'}), 403
         from .models import User
         from .utils import AuthUtils
         
@@ -99,8 +102,8 @@ def verify_magic_link():
         is_new_user = verification_result['is_new_user']
         
         if is_new_user:
-            # 신규 사용자: 임시 토큰 발급
-            temp_token = AuthUtils.generate_jwt_token(0, 'temp')  # user_id 0은 임시
+            # 신규 사용자: 임시 토큰 발급 (이메일을 클레임에 포함)
+            temp_token = AuthUtils.generate_jwt_token(0, 'temp', extra_claims={"email": email})  # user_id 0은 임시
             
             # 딥링크로 앱 실행
             deep_link = AuthConfig.get_deep_link_url('register', tempToken=temp_token)
@@ -178,9 +181,9 @@ def register_user():
         if User.query.filter_by(nickname=nickname).first():
             return jsonify({'error': '이미 사용 중인 닉네임입니다.'}), 400
         
-        # 사용자 생성
+        # 사용자 생성 (임시 토큰에서 이메일 추출)
         user = User(
-            email=data.get('email'),  # 임시 토큰에서 이메일 추출 필요
+            email=payload.get('email'),
             nickname=nickname,
             employee_id=AuthUtils.generate_employee_id()
         )
