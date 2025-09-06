@@ -6518,6 +6518,89 @@ def get_dev_chats(employee_id):
         print(f"개발용 채팅 목록 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 채팅방 멤버 API
+@app.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_room_members(chat_type, chat_id):
+    """개발용 채팅방 멤버 조회 API - 인증 없이 테스트 가능"""
+    try:
+        mock_members = [
+            {
+                "employee_id": "1",
+                "name": "사용자",
+                "nickname": "사용자",
+                "joined_at": "2025-09-01T09:00:00Z"
+            },
+            {
+                "employee_id": "2",
+                "name": "김철수",
+                "nickname": "철수",
+                "joined_at": "2025-09-01T09:00:00Z"
+            }
+        ]
+        
+        return jsonify({
+            "members": mock_members,
+            "total": len(mock_members)
+        })
+    except Exception as e:
+        print(f"개발용 채팅방 멤버 조회 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 🚀 개발용 채팅 메시지 API
+@app.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_messages(chat_type, chat_id):
+    """개발용 채팅 메시지 조회 API - 인증 없이 테스트 가능"""
+    try:
+        mock_messages = [
+            {
+                "id": 1,
+                "sender_id": "2",
+                "content": "안녕하세요!",
+                "created_at": "2025-09-05T12:30:00Z"
+            },
+            {
+                "id": 2,
+                "sender_id": "1",
+                "content": "안녕하세요! 반갑습니다.",
+                "created_at": "2025-09-05T12:31:00Z"
+            },
+            {
+                "id": 3,
+                "sender_id": "2",
+                "content": "오늘 정말 맛있었어요!",
+                "created_at": "2025-09-05T12:32:00Z"
+            }
+        ]
+        
+        return jsonify({
+            "messages": mock_messages,
+            "total": len(mock_messages)
+        })
+    except Exception as e:
+        print(f"개발용 채팅 메시지 조회 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 🚀 개발용 메시지 전송 API
+@app.route("/dev/chat/messages", methods=["POST"])
+def send_dev_chat_message():
+    """개발용 메시지 전송 API - 인증 없이 테스트 가능"""
+    try:
+        data = request.get_json()
+        print(f"개발용 메시지 전송 요청: {data}")
+        
+        # 가상 메시지 ID 생성
+        import time
+        message_id = int(time.time() * 1000) % 10000
+        
+        return jsonify({
+            "message": "메시지가 전송되었습니다!",
+            "message_id": message_id,
+            "success": True
+        })
+    except Exception as e:
+        print(f"개발용 메시지 전송 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
