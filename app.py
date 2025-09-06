@@ -106,19 +106,25 @@ except ImportError as e:
     print("   에러 핸들링 기능은 비활성화됩니다.")
 
 # Celery 백그라운드 작업 설정
-try:
-    from celery_config import create_celery, setup_periodic_tasks
+offline_mode = os.getenv('OFFLINE_MODE', 'false').lower() == 'true'
 
-    celery_app = create_celery(app)
-    if celery_app:
-        setup_periodic_tasks(celery_app)
-        print("✅ Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
-    else:
-        print("ℹ️ Celery가 비활성화되어 백그라운드 작업을 건너뜁니다.")
-except ImportError as e:
-    print(f"⚠️ Celery 설정 실패: {e}")
-    print("   백그라운드 작업은 비활성화됩니다.")
+if offline_mode:
+    print("🔧 오프라인 모드: Celery 백그라운드 작업이 비활성화됩니다.")
     celery_app = None
+else:
+    try:
+        from celery_config import create_celery, setup_periodic_tasks
+
+        celery_app = create_celery(app)
+        if celery_app:
+            setup_periodic_tasks(celery_app)
+            print("✅ Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
+        else:
+            print("ℹ️ Celery가 비활성화되어 백그라운드 작업을 건너뜁니다.")
+    except ImportError as e:
+        print(f"⚠️ Celery 설정 실패: {e}")
+        print("   백그라운드 작업은 비활성화됩니다.")
+        celery_app = None
 
 # 성능 모니터링 설정 (개발 환경에서만)
 try:
