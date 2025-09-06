@@ -114,15 +114,21 @@ def get_all_parties():
         from models.app_models import Party, PartyMember
         from extensions import db
         
+        print(f"🔍 [get_all_parties] is_from_match: {is_from_match}")
+        
         if is_from_match:
             # 특정 사용자의 랜덤런치 그룹 조회
+            print("🔍 [get_all_parties] 랜덤런치 그룹 조회 경로")
             parties = Party.query.join(PartyMember).filter(
                 Party.is_from_match == True,
                 PartyMember.employee_id == employee_id
             ).order_by(desc(Party.id)).all()
         else:
             # 일반 파티 조회 (랜덤런치 제외)
+            print("🔍 [get_all_parties] 일반 파티 조회 경로")
             parties = Party.query.filter_by(is_from_match=False).order_by(desc(Party.id)).all()
+        
+        print(f"🔍 [get_all_parties] 조회된 파티 수: {len(parties)}")
         
         parties_data = []
         for party in parties:
