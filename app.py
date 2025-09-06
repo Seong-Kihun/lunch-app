@@ -7498,7 +7498,7 @@ with app.app_context():
         print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.restaurants import restaurants_bp
+        from api.restaurants import restaurants_bp
 
         app.register_blueprint(restaurants_bp)
         print("✅ 식당 관리 Blueprint 등록 성공")
