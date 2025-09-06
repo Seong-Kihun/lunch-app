@@ -131,16 +131,27 @@ def get_all_parties():
             members = PartyMember.query.filter_by(party_id=party.id).all()
             member_ids = [member.employee_id for member in members]
             
+            # 호스트 정보 조회
+            from models.app_models import User
+            host = User.query.filter_by(employee_id=party.host_employee_id).first()
+            host_info = {
+                'employee_id': host.employee_id if host else party.host_employee_id,
+                'name': host.name if host else 'Unknown'
+            } if host else {'employee_id': party.host_employee_id, 'name': 'Unknown'}
+            
             parties_data.append({
                 'id': party.id,
                 'title': party.title,
                 'restaurant_name': party.restaurant_name,
+                'restaurant_address': party.restaurant_address,
+                'meeting_location': party.meeting_location,
                 'current_members': party.current_members,
                 'max_members': party.max_members,
                 'party_date': party.party_date,
                 'party_time': party.party_time,
                 'is_from_match': party.is_from_match,
                 'description': party.description,
+                'host': host_info,
                 'member_count': len(member_ids)
             })
         
@@ -185,16 +196,15 @@ def get_party(party_id):
             return jsonify({'error': '파티 멤버만 상세 정보를 볼 수 있습니다.'}), 403
         
         # 멤버 상세 정보 조회
-        from auth.models import User
+        from models.app_models import User
         members_details = []
         for member_id in member_ids:
             user = User.query.filter_by(employee_id=member_id).first()
             if user:
                 members_details.append({
                     'employee_id': user.employee_id,
-                    'nickname': user.nickname,
-                    'lunch_preference': user.lunch_preference,
-                    'main_dish_genre': user.main_dish_genre
+                    'name': user.name,
+                    'nickname': getattr(user, 'nickname', user.name)
                 })
         
         return jsonify({
@@ -321,9 +331,6 @@ def join_party(party_id):
             employee_id=employee_id
         )
         db.session.add(member)
-        
-        # 현재 인원 수 증가
-        party.current_members += 1
         db.session.commit()
         
         return jsonify({
@@ -372,9 +379,6 @@ def leave_party(party_id):
         
         # 멤버 제거
         db.session.delete(member)
-        
-        # 현재 인원 수 감소
-        party.current_members -= 1
         db.session.commit()
         
         return jsonify({
