@@ -255,7 +255,7 @@ def get_dev_user(employee_id):
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
     
     # 방문 기록
-    visits = RestaurantVisit.query.filter_by(user_id=employee_id).all()
+    visits = RestaurantVisit.query.filter_by(user_id=user.id).all()
     visit_data = []
     for visit in visits:
         visit_info = {
@@ -267,7 +267,7 @@ def get_dev_user(employee_id):
         visit_data.append(visit_info)
     
     # 리뷰 기록
-    reviews = Review.query.filter_by(user_id=employee_id).all()
+    reviews = Review.query.filter_by(user_id=user.id).all()
     review_data = []
     for review in reviews:
         review_info = {
@@ -339,12 +339,12 @@ def get_user_lunch_history(employee_id):
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
     
     # 방문 기록
-    visits = RestaurantVisit.query.filter_by(user_id=employee_id).order_by(
+    visits = RestaurantVisit.query.filter_by(user_id=user.id).order_by(
         desc(RestaurantVisit.visit_date)
     ).all()
     
     # 리뷰 기록
-    reviews = Review.query.filter_by(user_id=employee_id).order_by(
+    reviews = Review.query.filter_by(user_id=user.id).order_by(
         desc(Review.created_at)
     ).all()
     

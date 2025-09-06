@@ -9,12 +9,15 @@ from flask_cors import CORS
 def create_app(config_name=None):
     """Application Factory 패턴으로 Flask 앱 생성"""
     app = Flask(__name__)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")
+    CORS(app, resources={r"/*": {"origins": allowed_origins.split(",") if allowed_origins != "*" else "*"}})
 
     # 기본 설정
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-flask-secret-key-change-in-production")
+    app.config["ENV"] = os.getenv("ENV", "development")
+    app.config["DEBUG"] = app.config["ENV"] != "production"
     
     # 테스트 환경 설정
     if config_name == 'testing':
@@ -23,6 +26,7 @@ def create_app(config_name=None):
 
     # 데이터베이스 객체 import (extensions.py에서)
     from extensions import db
+    db.init_app(app)
 
     # 모델 import
     from models.app_models import (
@@ -262,11 +266,8 @@ if __name__ == "__main__":
     try:
         from realtime_system import socketio
         if socketio:
-            # Socket.IO와 함께 실행
-            socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+            socketio.run(app, host="0.0.0.0", port=5000, debug=app.config.get("DEBUG", False))
         else:
-            # 일반 Flask로 실행
-            app.run(debug=True, host="0.0.0.0", port=5000)
+            app.run(debug=app.config.get("DEBUG", False), host="0.0.0.0", port=5000)
     except ImportError:
-        # 일반 Flask로 실행
-        app.run(debug=True, host="0.0.0.0", port=5000)
+        app.run(debug=app.config.get("DEBUG", False), host="0.0.0.0", port=5000)
