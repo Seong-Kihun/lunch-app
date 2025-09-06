@@ -192,9 +192,15 @@ def load_restaurants_from_csv():
         restaurants = []
         
         if os.path.exists(csv_path):
-            with open(csv_path, 'r', encoding='utf-8') as file:
+            logger.info(f"CSV 파일 경로: {csv_path}")
+            with open(csv_path, 'r', encoding='utf-8-sig') as file:  # BOM 제거
                 reader = csv.DictReader(file)
+                logger.info(f"CSV 컬럼명: {reader.fieldnames}")
                 for i, row in enumerate(reader, 1):
+                    # 빈 행 건너뛰기
+                    if not row.get('식당명'):
+                        continue
+                    logger.info(f"처리 중인 식당 {i}: {row.get('식당명', '')}")
                     # CSV 데이터를 API 형식으로 변환 (실제 CSV 컬럼명에 맞춤)
                     restaurant = {
                         'id': i,
