@@ -45,7 +45,6 @@ def create_party():
             party_time=data['time'],
             meeting_location=data.get('location', ''),
             max_members=data.get('maxMembers', 4),
-            current_members=1,  # 생성자 포함
             is_from_match=False,  # 일반 파티
             host_employee_id=data['created_by'],
             description=data.get('description', '')  # 설명 필드 추가
