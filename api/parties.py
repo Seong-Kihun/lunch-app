@@ -258,6 +258,8 @@ def update_party(party_id):
             party.party_time = data['party_time']
         if 'meeting_location' in data:
             party.meeting_location = data['meeting_location']
+        if 'description' in data:
+            party.description = data['description']
         if 'max_members' in data:
             try:
                 max_members = int(data['max_members'])
