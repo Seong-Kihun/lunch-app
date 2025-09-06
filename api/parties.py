@@ -144,7 +144,7 @@ def get_all_parties():
                 'restaurant_name': party.restaurant_name,
                 'restaurant_address': party.restaurant_address,
                 'meeting_location': party.meeting_location,
-                'current_members': party.current_members,
+                'current_members': len(members),  # 실제 멤버 수 계산
                 'max_members': party.max_members,
                 'party_date': party.party_date,
                 'party_time': party.party_time,
@@ -223,7 +223,7 @@ def get_party(party_id):
                 'party_time': party.party_time,
                 'meeting_location': party.meeting_location,
                 'max_members': party.max_members,
-                'current_members': party.current_members,
+                'current_members': len(party_members),  # 실제 멤버 수 계산
                 'is_from_match': party.is_from_match,
                 'description': party.description,
                 'members': members_details
