@@ -6551,26 +6551,48 @@ def get_dev_chat_room_members(chat_type, chat_id):
 def get_dev_chat_messages(chat_type, chat_id):
     """개발용 채팅 메시지 조회 API - 인증 없이 테스트 가능"""
     try:
+        print(f"개발용 채팅 메시지 조회: {chat_type}/{chat_id}")
+        
+        chat_key = f"{chat_type}_{chat_id}"
+        
+        # 저장된 메시지가 있으면 반환
+        if hasattr(app, 'dev_messages') and chat_key in app.dev_messages:
+            messages = app.dev_messages[chat_key]
+            print(f"📋 저장된 메시지 반환: {len(messages)}개")
+            return jsonify({
+                "messages": messages,
+                "total": len(messages)
+            })
+        
+        # 저장된 메시지가 없으면 기본 메시지 반환
         mock_messages = [
             {
                 "id": 1,
                 "sender_id": "2",
                 "content": "안녕하세요!",
-                "created_at": "2025-09-05T12:30:00Z"
+                "created_at": "2025-09-05T12:30:00Z",
+                "message_type": "text"
             },
             {
                 "id": 2,
                 "sender_id": "1",
                 "content": "안녕하세요! 반갑습니다.",
-                "created_at": "2025-09-05T12:31:00Z"
+                "created_at": "2025-09-05T12:31:00Z",
+                "message_type": "text"
             },
             {
                 "id": 3,
                 "sender_id": "2",
                 "content": "오늘 정말 맛있었어요!",
-                "created_at": "2025-09-05T12:32:00Z"
+                "created_at": "2025-09-05T12:32:00Z",
+                "message_type": "text"
             }
         ]
+        
+        # 기본 메시지를 저장소에 추가
+        if not hasattr(app, 'dev_messages'):
+            app.dev_messages = {}
+        app.dev_messages[chat_key] = mock_messages
         
         return jsonify({
             "messages": mock_messages,
@@ -6589,8 +6611,30 @@ def send_dev_chat_message():
         data = request.get_json()
         print(f"개발용 메시지 전송 요청: {data}")
         
-        # 가상 메시지 ID 생성
+        # 메시지 ID 생성
         message_id = int(time.time() * 1000) % 10000
+        
+        # 메시지 저장
+        message = {
+            "id": message_id,
+            "chat_type": data.get("chat_type"),
+            "chat_id": data.get("chat_id"),
+            "sender_id": data.get("sender_id"),
+            "content": data.get("content"),
+            "message_type": data.get("message_type", "text"),
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        }
+        
+        # 메모리에 메시지 저장
+        if not hasattr(app, 'dev_messages'):
+            app.dev_messages = {}
+        
+        chat_key = f"{data.get('chat_type')}_{data.get('chat_id')}"
+        if chat_key not in app.dev_messages:
+            app.dev_messages[chat_key] = []
+        
+        app.dev_messages[chat_key].append(message)
+        print(f"💾 메시지 저장됨: {chat_key} - {len(app.dev_messages[chat_key])}개")
         
         return jsonify({
             "message": "메시지가 전송되었습니다!",
