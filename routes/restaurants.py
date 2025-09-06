@@ -162,7 +162,10 @@ def get_restaurants():
         restaurants_query = restaurants_query.order_by(
             func.abs(Restaurant.latitude - lat) + func.abs(Restaurant.longitude - lon)
         )
+    elif sort_by == "name":
+        restaurants_query = restaurants_query.order_by(Restaurant.name)
     else:
+        # 기본값: 이름순 정렬
         restaurants_query = restaurants_query.order_by(Restaurant.name)
 
     # 페이지네이션
