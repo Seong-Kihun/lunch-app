@@ -245,7 +245,9 @@ def get_party(party_id):
         })
         
     except Exception as e:
-        print(f"Error in get_party: {e}")
+        print(f"❌ [get_party] 오류 발생: {e}")
+        import traceback
+        print(f"❌ [get_party] 스택 트레이스: {traceback.format_exc()}")
         return jsonify({'error': '파티 정보 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 @parties_bp.route('/parties/<int:party_id>', methods=['PUT'])
