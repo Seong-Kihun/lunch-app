@@ -47,7 +47,8 @@ def create_party():
             max_members=data.get('maxMembers', 4),
             current_members=1,  # 생성자 포함
             is_from_match=False,  # 일반 파티
-            host_employee_id=data['created_by']
+            host_employee_id=data['created_by'],
+            description=data.get('description', '')  # 설명 필드 추가
         )
         
         db.session.add(new_party)
@@ -87,7 +88,8 @@ def create_party():
                 'max_members': new_party.max_members,
                 'current_members': new_party.current_members,
                 'is_from_match': new_party.is_from_match,
-                'host_employee_id': new_party.host_employee_id
+                'host_employee_id': new_party.host_employee_id,
+                'description': new_party.description
             }
         }), 201
         
@@ -138,6 +140,7 @@ def get_all_parties():
                 'party_date': party.party_date,
                 'party_time': party.party_time,
                 'is_from_match': party.is_from_match,
+                'description': party.description,
                 'member_count': len(member_ids)
             })
         
@@ -210,6 +213,7 @@ def get_party(party_id):
                 'max_members': party.max_members,
                 'current_members': party.current_members,
                 'is_from_match': party.is_from_match,
+                'description': party.description,
                 'members': members_details
             }
         })
@@ -438,3 +442,75 @@ def get_my_parties():
     except Exception as e:
         print(f"Error in get_my_parties: {e}")
         return jsonify({'error': '내 파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@parties_bp.route('/parties/<int:party_id>', methods=['PUT'])
+def update_party(party_id):
+    """파티 정보 수정"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 개발 환경에서는 인증 우회
+        employee_id = request.args.get('employee_id', '1')
+        
+        # 프로덕션 환경에서는 인증 확인
+        # if not hasattr(request, 'current_user') or not request.current_user:
+        #     return jsonify({'error': '인증이 필요합니다.'}), 401
+        # employee_id = request.current_user.get('employee_id')
+        
+        # 데이터베이스에서 파티 조회
+        from models.app_models import Party
+        from extensions import db
+        
+        party = Party.query.get(party_id)
+        if not party:
+            return jsonify({'error': '파티를 찾을 수 없습니다.'}), 404
+        
+        # 호스트만 수정 가능
+        if party.host_employee_id != employee_id:
+            return jsonify({'error': '파티 호스트만 수정할 수 있습니다.'}), 403
+        
+        # 수정 가능한 필드들 업데이트
+        if 'title' in data:
+            party.title = data['title']
+        if 'restaurant' in data:
+            party.restaurant_name = data['restaurant']
+        if 'location' in data:
+            party.restaurant_address = data['location']
+            party.meeting_location = data['location']
+        if 'date' in data:
+            party.party_date = data['date']
+        if 'time' in data:
+            party.party_time = data['time']
+        if 'maxMembers' in data:
+            # 최대 멤버 수는 현재 멤버 수보다 작을 수 없음
+            if data['maxMembers'] < party.current_members:
+                return jsonify({'error': f'최대 멤버 수는 현재 멤버 수({party.current_members})보다 작을 수 없습니다.'}), 400
+            party.max_members = data['maxMembers']
+        
+        db.session.commit()
+        
+        print(f"✅ [update_party] 파티 수정 성공: ID {party_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '파티가 수정되었습니다.',
+            'party': {
+                'id': party.id,
+                'title': party.title,
+                'restaurant_name': party.restaurant_name,
+                'restaurant_address': party.restaurant_address,
+                'party_date': party.party_date,
+                'party_time': party.party_time,
+                'meeting_location': party.meeting_location,
+                'max_members': party.max_members,
+                'current_members': party.current_members,
+                'is_from_match': party.is_from_match,
+                'host_employee_id': party.host_employee_id
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in update_party: {e}")
+        return jsonify({'error': '파티 수정 중 오류가 발생했습니다.', 'details': str(e)}), 500
