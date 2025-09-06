@@ -6585,11 +6585,11 @@ def get_dev_chat_messages(chat_type, chat_id):
 def send_dev_chat_message():
     """개발용 메시지 전송 API - 인증 없이 테스트 가능"""
     try:
+        import time
         data = request.get_json()
         print(f"개발용 메시지 전송 요청: {data}")
         
         # 가상 메시지 ID 생성
-        import time
         message_id = int(time.time() * 1000) % 10000
         
         return jsonify({
@@ -6606,11 +6606,11 @@ def send_dev_chat_message():
 def create_dev_chat_room():
     """개발용 채팅방 생성 API - 인증 없이 테스트 가능"""
     try:
+        import time
         data = request.get_json()
         print(f"개발용 채팅방 생성 요청: {data}")
         
         # 가상 채팅방 ID 생성
-        import time
         chat_id = int(time.time() * 1000) % 10000
         
         return jsonify({
