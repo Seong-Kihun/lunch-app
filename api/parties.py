@@ -130,12 +130,19 @@ def get_all_parties():
             members = PartyMember.query.filter_by(party_id=party.id).all()
             member_ids = [member.employee_id for member in members]
             
+            # 디버그: 멤버 정보 출력
+            print(f"🔍 [get_all_parties] 파티 ID: {party.id}")
+            print(f"   - 실제 멤버 수: {len(members)}")
+            print(f"   - 멤버 ID 목록: {member_ids}")
+            print(f"   - party.current_members: {party.current_members}")
+            print(f"   - 계산된 멤버 수: {len(members)}")
+            
             # 호스트 정보 조회
             from models.app_models import User
             host = User.query.filter_by(employee_id=party.host_employee_id).first()
             host_info = {
                 'employee_id': host.employee_id if host else party.host_employee_id,
-                'name': host.name if host else 'Unknown'
+                'name': getattr(host, 'nickname', f'사용자 {party.host_employee_id}') if host else 'Unknown'
             } if host else {'employee_id': party.host_employee_id, 'name': 'Unknown'}
             
             parties_data.append({
@@ -193,6 +200,13 @@ def get_party(party_id):
         party_members = PartyMember.query.filter_by(party_id=party_id).all()
         member_ids = [member.employee_id for member in party_members]
         
+        # 디버그: 멤버 정보 출력
+        print(f"🔍 [get_party] 파티 ID: {party_id}")
+        print(f"   - 실제 멤버 수: {len(party_members)}")
+        print(f"   - 멤버 ID 목록: {member_ids}")
+        print(f"   - party.current_members: {party.current_members}")
+        print(f"   - 계산된 멤버 수: {len(party_members)}")
+        
         # 개발 환경에서는 멤버 확인 우회
         # if employee_id not in member_ids:
         #     return jsonify({'error': '파티 멤버만 상세 정보를 볼 수 있습니다.'}), 403
@@ -205,8 +219,8 @@ def get_party(party_id):
             if user:
                 members_details.append({
                     'employee_id': user.employee_id,
-                    'name': user.name,
-                    'nickname': getattr(user, 'nickname', user.name)
+                    'name': getattr(user, 'nickname', f'사용자 {user.employee_id}'),
+                    'nickname': getattr(user, 'nickname', f'사용자 {user.employee_id}')
                 })
         
         return jsonify({
