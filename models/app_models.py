@@ -24,6 +24,7 @@ class Party(db.Model):
     meeting_location = db.Column(db.String(200), nullable=True)
     max_members = db.Column(db.Integer, nullable=False, default=4)
     is_from_match = db.Column(db.Boolean, default=False)
+    description = db.Column(db.Text, nullable=True)  # 파티 설명 필드 추가
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
@@ -32,7 +33,7 @@ class Party(db.Model):
         db.Index('idx_party_restaurant', 'restaurant_name'),
     )
     
-    def __init__(self, host_employee_id, title, restaurant_name, restaurant_address, party_date, party_time, meeting_location, max_members, is_from_match=False):
+    def __init__(self, host_employee_id, title, restaurant_name, restaurant_address, party_date, party_time, meeting_location, max_members, is_from_match=False, description=None):
         self.host_employee_id = host_employee_id
         self.title = title
         self.restaurant_name = restaurant_name
@@ -42,6 +43,7 @@ class Party(db.Model):
         self.meeting_location = meeting_location
         self.max_members = max_members
         self.is_from_match = is_from_match
+        self.description = description
 
     @property
     def current_members(self):
