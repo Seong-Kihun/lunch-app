@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import hashlib
 
-# extensions.py에서 db 객체 import
+# 공통 db 객체 사용 (extensions.py에서)
 from extensions import db
 
 class User(db.Model):
