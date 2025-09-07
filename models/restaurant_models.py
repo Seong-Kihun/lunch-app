@@ -132,3 +132,57 @@ class RestaurantVisitV2(db.Model):
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class RestaurantRecommendV2(db.Model):
+    """식당 오찬추천 모델 v2"""
+    __tablename__ = 'restaurant_recommends_v2'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants_v2.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    restaurant = db.relationship('RestaurantV2', backref=db.backref('recommends', lazy=True))
+    
+    # 복합 유니크 인덱스 (한 사용자가 같은 식당을 중복 추천하지 않도록)
+    __table_args__ = (
+        db.UniqueConstraint('restaurant_id', 'user_id', name='unique_restaurant_user_recommend'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'restaurant_id': self.restaurant_id,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class RestaurantSavedV2(db.Model):
+    """식당 저장 모델 v2"""
+    __tablename__ = 'restaurant_saved_v2'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants_v2.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    restaurant = db.relationship('RestaurantV2', backref=db.backref('saved_by', lazy=True))
+    
+    # 복합 유니크 인덱스 (한 사용자가 같은 식당을 중복 저장하지 않도록)
+    __table_args__ = (
+        db.UniqueConstraint('restaurant_id', 'user_id', name='unique_restaurant_user_saved'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'restaurant_id': self.restaurant_id,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
