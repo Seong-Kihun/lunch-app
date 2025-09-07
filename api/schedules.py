@@ -310,3 +310,64 @@ def delete_schedule_exception(schedule_id, exception_id):
             'error': '서버 내부 오류가 발생했습니다',
             'message': str(e)
         }), 500
+
+# ===== 호환성을 위한 personal_schedules 엔드포인트 =====
+# 프론트엔드에서 기대하는 URL 형식을 지원하기 위한 별도 Blueprint
+
+personal_schedules_bp = Blueprint('personal_schedules', __name__, url_prefix='/api/personal_schedules')
+
+@personal_schedules_bp.route('/<int:schedule_id>', methods=['DELETE'])
+def delete_personal_schedule(schedule_id):
+    """
+    개인 일정 삭제 (schedules API와 동일한 기능)
+    프론트엔드 호환성을 위한 엔드포인트
+    """
+    try:
+        # 기존 schedules API의 delete_schedule 함수와 동일한 로직 사용
+        success = ScheduleService.delete_master_schedule(schedule_id)
+        
+        if not success:
+            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
+        
+        logger.info(f"개인 일정 삭제 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 삭제되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"개인 일정 삭제 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@personal_schedules_bp.route('/cleanup', methods=['POST'])
+def cleanup_personal_schedules():
+    """
+    개인 일정 정리 (개발용)
+    """
+    try:
+        # 모든 개인 일정 삭제
+        from sqlalchemy import text
+        db.session.execute(text("DELETE FROM personal_schedules"))
+        db.session.execute(text("DELETE FROM schedule_exceptions"))
+        db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='personal_schedules'"))
+        db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='schedule_exceptions'"))
+        db.session.commit()
+        
+        logger.info("개인 일정 정리 완료")
+        
+        return jsonify({
+            'success': True,
+            'message': '개인 일정이 정리되었습니다'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"개인 일정 정리 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
