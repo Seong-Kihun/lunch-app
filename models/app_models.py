@@ -12,7 +12,6 @@ from auth.models import User
 class Party(db.Model):
     """파티 모델"""
     __tablename__ = 'party'
-    __table_args__ = {'extend_existing': True}  # 중복 정의 문제 해결
     
     id = db.Column(db.Integer, primary_key=True)
     host_employee_id = db.Column(db.String(50), nullable=False)  # 외래키 제약조건 제거
@@ -274,17 +273,7 @@ class Review(db.Model):
         self.photo_url = photo_url
         self.tags = tags
 
-class Friendship(db.Model):
-    """친구 관계 모델"""
-    id = db.Column(db.Integer, primary_key=True)
-    requester_id = db.Column(db.String(50), nullable=False)
-    receiver_id = db.Column(db.String(50), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # 'pending', 'accepted'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __init__(self, requester_id, receiver_id):
-        self.requester_id = requester_id
-        self.receiver_id = receiver_id
+# Friendship 모델은 auth/models.py에서 정의됨 (중복 제거)
 
 class UserActivity(db.Model):
     """사용자 활동 모델"""
