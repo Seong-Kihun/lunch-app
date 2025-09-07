@@ -200,6 +200,7 @@ def get_error_dashboard_data() -> Dict[str, Any]:
 # Flask 에러 핸들러 통합
 def setup_flask_error_handlers(app):
     """Flask 앱에 에러 핸들러 설정"""
+    from flask import request, jsonify
     
     @app.errorhandler(404)
     def handle_404(error):
@@ -234,6 +235,7 @@ def setup_flask_error_handlers(app):
 # 에러 모니터링 API 엔드포인트
 def create_error_monitoring_routes(app):
     """에러 모니터링 API 엔드포인트 생성"""
+    from flask import request, jsonify
     
     @app.route('/api/monitoring/errors/stats')
     def get_error_stats():
