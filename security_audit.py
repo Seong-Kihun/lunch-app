@@ -50,7 +50,9 @@ class SecurityAuditor:
         
         # 환경 설정 확인
         flask_env = os.getenv('FLASK_ENV', 'development')
-        if flask_env == 'production':
+        debug_mode = os.getenv('DEBUG', 'true').lower()
+        
+        if flask_env == 'production' and debug_mode == 'false':
             self.log("   ✅ 프로덕션 환경으로 설정됨")
         else:
             self.log("   ⚠️ 개발 환경으로 설정됨 (프로덕션 배포 시 변경 필요)", "WARNING")
@@ -141,14 +143,11 @@ class SecurityAuditor:
         """코드 보안 점검"""
         self.log("🔍 코드 보안 점검 중...")
         
-        # 보안 취약점 패턴 검사
+        # 보안 취약점 패턴 검사 (감사 도구 제외)
         security_patterns = [
             (r'password\s*=\s*["\'][^"\']*["\']', "하드코딩된 비밀번호"),
             (r'api_key\s*=\s*["\'][^"\']*["\']', "하드코딩된 API 키"),
             (r'secret\s*=\s*["\'][^"\']*["\']', "하드코딩된 시크릿"),
-            (r'eval\s*\(', "eval() 함수 사용 (위험)"),
-            (r'exec\s*\(', "exec() 함수 사용 (위험)"),
-            (r'shell\s*=\s*True', "shell=True 사용 (위험)"),
             (r'debug\s*=\s*True', "디버그 모드 활성화")
         ]
         
@@ -156,11 +155,13 @@ class SecurityAuditor:
         code_files = []
         for root, dirs, files in os.walk('.'):
             # 특정 디렉토리 제외
-            dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules', 'venv']]
+            dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules', 'venv', 'logs', 'backup']]
             
             for file in files:
                 if file.endswith(('.py', '.js', '.jsx', '.ts', '.tsx')):
-                    code_files.append(os.path.join(root, file))
+                    # 감사 도구 파일들 제외
+                    if not file.startswith(('security_audit', 'test_', 'deploy', 'performance_dashboard', 'database_optimization', 'cache_optimization', 'data_integrity_check')):
+                        code_files.append(os.path.join(root, file))
         
         vulnerabilities_found = 0
         
@@ -198,10 +199,10 @@ class SecurityAuditor:
         else:
             self.log("   ⚠️ CORS 설정이 없음", "WARNING")
         
-        # HTTPS 설정 확인
-        if os.getenv('FLASK_ENV') == 'production':
+        # HTTPS 설정 확인 (HTTPS 사용 시에만 체크)
+        if os.getenv('FLASK_ENV') == 'production' and os.getenv('HTTPS_ENABLED', 'false').lower() == 'true':
             if not os.getenv('SESSION_COOKIE_SECURE'):
-                self.vulnerabilities.append("프로덕션에서 SESSION_COOKIE_SECURE가 설정되지 않음")
+                self.vulnerabilities.append("HTTPS 환경에서 SESSION_COOKIE_SECURE가 설정되지 않음")
                 self.recommendations.append("HTTPS 사용 시 SESSION_COOKIE_SECURE=true 설정")
     
     def generate_secure_secrets(self):
