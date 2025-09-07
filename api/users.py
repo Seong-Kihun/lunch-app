@@ -4,11 +4,14 @@
 """
 
 from flask import Blueprint, request, jsonify
+from utils.error_monitor import record_error
+from utils.logger import logger, log_api_call
 
 # 사용자 Blueprint 생성
-users_bp = Blueprint('users', __name__)
+users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
-@users_bp.route('/users/profile', methods=['GET'])
+@users_bp.route('/profile', methods=['GET'])
+@log_api_call
 def get_user_profile():
     """사용자 프로필 조회"""
     try:
@@ -29,6 +32,7 @@ def get_user_profile():
         if not user:
             return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
         
+        logger.info("사용자 프로필 조회 성공", user_id=employee_id)
         return jsonify({
             'success': True,
             'message': '사용자 프로필 조회 성공',
@@ -46,10 +50,10 @@ def get_user_profile():
         })
         
     except Exception as e:
-        print(f"Error in get_user_profile: {e}")
+        record_error(e, severity='medium', endpoint='get_user_profile', context={'user_id': request.current_user.get('employee_id') if hasattr(request, 'current_user') else None})
         return jsonify({'error': '사용자 프로필 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/profile', methods=['PUT'])
+@users_bp.route('/profile', methods=['PUT'])
 def update_user_profile():
     """사용자 프로필 수정"""
     try:
@@ -100,7 +104,7 @@ def update_user_profile():
         print(f"Error in update_user_profile: {e}")
         return jsonify({'error': '사용자 프로필 수정 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/activity-stats', methods=['GET'])
+@users_bp.route('/activity-stats', methods=['GET'])
 def get_user_activity_stats():
     """사용자 활동 통계 조회"""
     try:
@@ -234,7 +238,7 @@ def get_user_activity_stats():
         print(f"Error in get_user_activity_stats: {e}")
         return jsonify({'error': '활동 통계 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/dashboard', methods=['GET'])
+@users_bp.route('/dashboard', methods=['GET'])
 def get_user_dashboard():
     """사용자 대시보드 데이터 조회"""
     try:
@@ -361,7 +365,7 @@ def get_user_dashboard():
         print(f"Error in get_user_dashboard: {e}")
         return jsonify({'error': '대시보드 데이터 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/appointments', methods=['GET'])
+@users_bp.route('/appointments', methods=['GET'])
 def get_user_appointments():
     """사용자 약속 목록 조회"""
     try:
@@ -480,7 +484,7 @@ def get_user_appointments():
         print(f"Error in get_user_appointments: {e}")
         return jsonify({'error': '약속 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/points', methods=['GET'])
+@users_bp.route('/points', methods=['GET'])
 def get_user_points():
     """사용자 포인트 정보 조회"""
     try:
@@ -534,7 +538,7 @@ def get_user_points():
         print(f"Error in get_user_points: {e}")
         return jsonify({'error': '포인트 정보 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@users_bp.route('/users/badges', methods=['GET'])
+@users_bp.route('/badges', methods=['GET'])
 def get_user_badges():
     """사용자 배지 목록 조회"""
     try:
