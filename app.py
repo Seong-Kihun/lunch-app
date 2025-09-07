@@ -7482,9 +7482,10 @@ with app.app_context():
         print(f"❌ 인증 Blueprint 등록 실패: {e}")
 
     try:
-        from api.schedules import schedules_bp
+        from api.schedules import schedules_bp, personal_schedules_bp
 
         app.register_blueprint(schedules_bp)
+        app.register_blueprint(personal_schedules_bp)
         print("✅ 일정 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
