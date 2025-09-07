@@ -57,7 +57,16 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-flask-secret-key-change-in-production")
+# 보안 키 설정 - 프로덕션에서는 반드시 환경변수로 설정
+secret_key = os.getenv("SECRET_KEY")
+if not secret_key:
+    if os.getenv("FLASK_ENV") == "production":
+        raise ValueError("프로덕션 환경에서는 SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
+    else:
+        secret_key = "dev-flask-secret-key-change-in-production"
+        print("⚠️ 개발 환경에서 기본 SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
+
+app.config["SECRET_KEY"] = secret_key
 
 # 데이터베이스 객체 import (extensions.py에서)
 from extensions import db
