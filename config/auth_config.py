@@ -5,8 +5,17 @@ from .env_loader import get_env_var
 class AuthConfig:
     """인증 시스템 설정"""
     
-    # JWT 토큰 설정
+    # JWT 토큰 설정 - 보안 강화
     JWT_SECRET_KEY = get_env_var('JWT_SECRET_KEY', 'dev-jwt-secret-key-change-in-production')
+    
+    @classmethod
+    def validate_jwt_secret(cls):
+        """JWT 보안 키 유효성 검사"""
+        if cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production':
+            if os.getenv('FLASK_ENV') == 'production':
+                raise ValueError("프로덕션 환경에서는 JWT_SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
+            else:
+                print("⚠️ 개발 환경에서 기본 JWT_SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # 1일
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     
