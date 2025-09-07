@@ -7,9 +7,9 @@ from extensions import db
 from datetime import datetime
 from sqlalchemy import Index
 
-class Restaurant(db.Model):
-    """식당 정보 모델"""
-    __tablename__ = 'restaurants'
+class RestaurantV2(db.Model):
+    """식당 정보 모델 v2"""
+    __tablename__ = 'restaurants_v2'
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, index=True)  # 식당명
@@ -76,12 +76,12 @@ class Restaurant(db.Model):
         return f'<Restaurant {self.name}>'
 
 
-class RestaurantReview(db.Model):
-    """식당 리뷰 모델 (향후 확장용)"""
-    __tablename__ = 'restaurant_reviews'
+class RestaurantReviewV2(db.Model):
+    """식당 리뷰 모델 v2 (향후 확장용)"""
+    __tablename__ = 'restaurant_reviews_v2'
     
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants_v2.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
     rating = db.Column(db.Float, nullable=False)  # 평점 (1-5)
     comment = db.Column(db.Text)  # 리뷰 내용
@@ -90,7 +90,7 @@ class RestaurantReview(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # 관계 설정
-    restaurant = db.relationship('Restaurant', backref=db.backref('reviews', lazy=True))
+    restaurant = db.relationship('RestaurantV2', backref=db.backref('reviews', lazy=True))
     
     def to_dict(self):
         return {
@@ -104,12 +104,12 @@ class RestaurantReview(db.Model):
         }
 
 
-class RestaurantVisit(db.Model):
-    """식당 방문 기록 모델"""
-    __tablename__ = 'restaurant_visits'
+class RestaurantVisitV2(db.Model):
+    """식당 방문 기록 모델 v2"""
+    __tablename__ = 'restaurant_visits_v2'
     
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants_v2.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
     visit_date = db.Column(db.Date, nullable=False)  # 방문 날짜
     visit_time = db.Column(db.Time)  # 방문 시간
@@ -119,7 +119,7 @@ class RestaurantVisit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # 관계 설정
-    restaurant = db.relationship('Restaurant', backref=db.backref('visits', lazy=True))
+    restaurant = db.relationship('RestaurantV2', backref=db.backref('visits', lazy=True))
     
     def to_dict(self):
         return {
