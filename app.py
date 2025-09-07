@@ -7505,6 +7505,15 @@ with app.app_context():
     except Exception as e:
         print(f"❌ 식당 관리 Blueprint 등록 실패: {e}")
 
+    # 새로운 식당 API v2 등록
+    try:
+        from api.restaurants_v2 import restaurants_v2_bp
+
+        app.register_blueprint(restaurants_v2_bp)
+        print("✅ 식당 관리 Blueprint v2 등록 성공")
+    except Exception as e:
+        print(f"❌ 식당 관리 Blueprint v2 등록 실패: {e}")
+
     try:
         from routes.parties import parties_bp
 
