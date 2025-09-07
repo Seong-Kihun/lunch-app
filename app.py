@@ -6083,18 +6083,7 @@ def generate_today_recommendations():
         return jsonify({"error": str(e)}), 500
 
 
-# 파티 데이터 삭제 API 추가
-@app.route("/delete-all-parties", methods=["GET"])
-def delete_all_parties():
-    try:
-        # 모든 파티 삭제
-        Party.query.delete()
-        db.session.commit()
-
-        return jsonify({"message": "모든 파티 삭제 완료!"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+# 중복된 delete_all_parties 함수 제거됨 - routes/parties.py의 정의만 유지
 
 
 # 오늘 날짜 확인 API 추가
