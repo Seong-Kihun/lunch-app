@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from extensions import db
-from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
+from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
 import logging
 import math
 
@@ -102,6 +102,11 @@ def get_restaurants():
             restaurant_dict = restaurant.to_dict()
             if lat and lng:
                 restaurant_dict['distance'] = restaurant.distance
+            
+            # 추천 수와 저장 수 추가
+            restaurant_dict['recommend_count'] = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant.id).count()
+            restaurant_dict['saved_count'] = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant.id).count()
+            
             restaurants_data.append(restaurant_dict)
         
         return jsonify({
@@ -448,5 +453,248 @@ def get_restaurant_stats():
         return jsonify({
             'success': False,
             'error': '통계 조회 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
+
+
+@restaurants_v2_bp.route('/<int:restaurant_id>/recommend', methods=['POST'])
+def toggle_restaurant_recommend(restaurant_id):
+    """
+    식당 오찬추천 토글 (추천/취소)
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'user_id' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'user_id가 필요합니다.'
+            }), 400
+        
+        user_id = data['user_id']
+        
+        # 식당 존재 확인
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
+        
+        # 기존 추천 확인
+        existing_recommend = RestaurantRecommendV2.query.filter_by(
+            restaurant_id=restaurant_id,
+            user_id=user_id
+        ).first()
+        
+        if existing_recommend:
+            # 추천 취소
+            db.session.delete(existing_recommend)
+            action = 'cancelled'
+            message = '오찬추천이 취소되었습니다.'
+        else:
+            # 추천 추가
+            recommend = RestaurantRecommendV2(
+                restaurant_id=restaurant_id,
+                user_id=user_id
+            )
+            db.session.add(recommend)
+            action = 'added'
+            message = '오찬추천이 등록되었습니다!'
+        
+        db.session.commit()
+        
+        # 추천 수 계산
+        recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'action': action,
+            'recommend_count': recommend_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in toggle_restaurant_recommend: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': '오찬추천 처리 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
+
+
+@restaurants_v2_bp.route('/<int:restaurant_id>/save', methods=['POST'])
+def toggle_restaurant_save(restaurant_id):
+    """
+    식당 저장 토글 (저장/해제)
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'user_id' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'user_id가 필요합니다.'
+            }), 400
+        
+        user_id = data['user_id']
+        
+        # 식당 존재 확인
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
+        
+        # 기존 저장 확인
+        existing_save = RestaurantSavedV2.query.filter_by(
+            restaurant_id=restaurant_id,
+            user_id=user_id
+        ).first()
+        
+        if existing_save:
+            # 저장 해제
+            db.session.delete(existing_save)
+            action = 'removed'
+            message = '저장이 해제되었습니다.'
+        else:
+            # 저장 추가
+            saved = RestaurantSavedV2(
+                restaurant_id=restaurant_id,
+                user_id=user_id
+            )
+            db.session.add(saved)
+            action = 'saved'
+            message = '식당이 저장되었습니다!'
+        
+        db.session.commit()
+        
+        # 저장 수 계산
+        saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'action': action,
+            'saved_count': saved_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in toggle_restaurant_save: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': '저장 처리 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
+
+
+@restaurants_v2_bp.route('/<int:restaurant_id>/recommend/status', methods=['GET'])
+def get_restaurant_recommend_status(restaurant_id):
+    """
+    식당 오찬추천 상태 조회
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'user_id가 필요합니다.'
+            }), 400
+        
+        # 식당 존재 확인
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
+        
+        # 사용자의 추천 상태 확인
+        is_recommended = RestaurantRecommendV2.query.filter_by(
+            restaurant_id=restaurant_id,
+            user_id=user_id
+        ).first() is not None
+        
+        # 전체 추천 수
+        recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'is_recommended': is_recommended,
+                'recommend_count': recommend_count
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_restaurant_recommend_status: {e}")
+        return jsonify({
+            'success': False,
+            'error': '추천 상태 조회 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
+
+
+@restaurants_v2_bp.route('/<int:restaurant_id>/save/status', methods=['GET'])
+def get_restaurant_save_status(restaurant_id):
+    """
+    식당 저장 상태 조회
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'user_id가 필요합니다.'
+            }), 400
+        
+        # 식당 존재 확인
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
+        
+        # 사용자의 저장 상태 확인
+        is_saved = RestaurantSavedV2.query.filter_by(
+            restaurant_id=restaurant_id,
+            user_id=user_id
+        ).first() is not None
+        
+        # 전체 저장 수
+        saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'is_saved': is_saved,
+                'saved_count': saved_count
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_restaurant_save_status: {e}")
+        return jsonify({
+            'success': False,
+            'error': '저장 상태 조회 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
+
+
+@restaurants_v2_bp.route('/<int:restaurant_id>/reviews', methods=['GET'])
+def get_restaurant_reviews(restaurant_id):
+    """
+    식당 리뷰 목록 조회
+    """
+    try:
+        # 식당 존재 확인
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
+        
+        # 리뷰 조회
+        reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).order_by(
+            RestaurantReviewV2.created_at.desc()
+        ).all()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'restaurant_id': restaurant_id,
+                'restaurant_name': restaurant.name,
+                'reviews': [review.to_dict() for review in reviews],
+                'total_count': len(reviews)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_restaurant_reviews: {e}")
+        return jsonify({
+            'success': False,
+            'error': '리뷰 조회 중 오류가 발생했습니다.',
             'details': str(e)
         }), 500
