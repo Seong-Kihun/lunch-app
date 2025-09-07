@@ -6,10 +6,20 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 from typing import Dict, Any
-from services.schedule_service import ScheduleService
-from models.schedule_models import PersonalSchedule, ScheduleException
-from extensions import db
 import logging
+
+# 지연 import로 순환 참조 방지
+def get_schedule_service():
+    from services.schedule_service import ScheduleService
+    return ScheduleService
+
+def get_schedule_models():
+    from models.schedule_models import PersonalSchedule, ScheduleException
+    return PersonalSchedule, ScheduleException
+
+def get_db():
+    from extensions import db
+    return db
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +55,7 @@ def get_schedules():
             }), 400
         
         # 일정 조회
+        ScheduleService = get_schedule_service()
         schedules = ScheduleService.get_schedules_for_period(
             employee_id=employee_id,
             start_date=start_date,
@@ -125,6 +136,7 @@ def create_schedule():
         }
         
         # 마스터 일정 생성
+        ScheduleService = get_schedule_service()
         schedule = ScheduleService.create_master_schedule(schedule_data)
         
         logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
@@ -174,6 +186,7 @@ def update_schedule(schedule_id):
                 }), 400
         
         # 마스터 일정 수정
+        ScheduleService = get_schedule_service()
         success = ScheduleService.update_master_schedule(schedule_id, data)
         
         if not success:
@@ -200,6 +213,7 @@ def delete_schedule(schedule_id):
     """
     try:
         # 마스터 일정 삭제
+        ScheduleService = get_schedule_service()
         success = ScheduleService.delete_master_schedule(schedule_id)
         
         if not success:
@@ -259,6 +273,7 @@ def create_schedule_exception(schedule_id):
             })
         
         # 예외 생성
+        ScheduleService = get_schedule_service()
         exception = ScheduleService.create_exception(
             master_schedule_id=schedule_id,
             exception_date=exception_date,
@@ -286,6 +301,9 @@ def delete_schedule_exception(schedule_id, exception_id):
     일정 예외 삭제
     """
     try:
+        _, ScheduleException = get_schedule_models()
+        db = get_db()
+        
         exception = ScheduleException.query.get(exception_id)
         if not exception:
             return jsonify({'error': '예외를 찾을 수 없습니다'}), 404
@@ -304,6 +322,7 @@ def delete_schedule_exception(schedule_id, exception_id):
         })
         
     except Exception as e:
+        db = get_db()
         db.session.rollback()
         logger.error(f"일정 예외 삭제 중 오류 발생: {e}")
         return jsonify({
@@ -324,6 +343,7 @@ def delete_personal_schedule(schedule_id):
     """
     try:
         # 기존 schedules API의 delete_schedule 함수와 동일한 로직 사용
+        ScheduleService = get_schedule_service()
         success = ScheduleService.delete_master_schedule(schedule_id)
         
         if not success:
@@ -351,6 +371,7 @@ def cleanup_personal_schedules():
     try:
         # 모든 개인 일정 삭제
         from sqlalchemy import text
+        db = get_db()
         db.session.execute(text("DELETE FROM personal_schedules"))
         db.session.execute(text("DELETE FROM schedule_exceptions"))
         db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='personal_schedules'"))
@@ -365,6 +386,7 @@ def cleanup_personal_schedules():
         })
         
     except Exception as e:
+        db = get_db()
         db.session.rollback()
         logger.error(f"개인 일정 정리 중 오류 발생: {e}")
         return jsonify({
