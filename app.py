@@ -785,24 +785,7 @@ def api_test():
     )
 
 
-# Health check endpoint
-@app.route("/health")
-def health_check():
-    try:
-        # Test database connection
-        db.session.execute(text("SELECT 1"))
-        db_status = "healthy (without auth)"
-    except Exception as e:
-        db_status = f"unhealthy: {str(e)}"
-
-    return jsonify(
-        {
-            "status": "healthy",
-            "database": db_status,
-            "auth_system": AUTH_AVAILABLE,
-            "timestamp": datetime.now().isoformat(),
-        }
-    )
+# Health check endpoint는 위에서 이미 정의됨
 
 
 # 인증 시스템 상태 확인 엔드포인트
