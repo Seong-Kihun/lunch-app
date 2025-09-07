@@ -8,13 +8,13 @@ from sqlalchemy import desc, or_
 from datetime import datetime
 
 # 파티 Blueprint 생성
-parties_bp = Blueprint('parties', __name__)
+parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
 
 # 모델 import
 from flask import current_app
 from sqlalchemy.orm import joinedload
 
-@parties_bp.route('/parties', methods=['POST'])
+@parties_bp.route('/', methods=['POST'])
 def create_party():
     """새로운 파티 생성"""
     try:
@@ -96,7 +96,7 @@ def create_party():
         print(f"Error in create_party: {e}")
         return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@parties_bp.route('/parties', methods=['GET'])
+@parties_bp.route('/', methods=['GET'])
 def get_all_parties():
     """파티 목록 조회"""
     try:
@@ -180,7 +180,7 @@ def get_all_parties():
         print(f"Error in get_all_parties: {e}")
         return jsonify({'error': '파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@parties_bp.route('/parties/<int:party_id>', methods=['GET'])
+@parties_bp.route('/<int:party_id>', methods=['GET'])
 def get_party(party_id):
     """파티 상세 정보 조회"""
     try:
