@@ -42,7 +42,7 @@ class CacheManager:
         
         if REDIS_AVAILABLE:
             try:
-                self.redis_client = redis.from_url(redis_url)
+                self.redis_client = redis.from_url(redis_url, socket_connect_timeout=2, socket_timeout=2)
                 # 연결 테스트
                 self.redis_client.ping()
                 logger.info(f"✅ Redis 연결 성공: {redis_url}")
@@ -54,8 +54,8 @@ class CacheManager:
                 self.redis_client = None
                 self.offline_mode = True
         else:
-            logger.warning("⚠️ Redis 패키지가 설치되지 않았습니다")
-            logger.warning("   pip install redis를 실행하거나 OFFLINE_MODE=true로 설정하세요")
+            logger.info("ℹ️ Redis 패키지가 설치되지 않았습니다")
+            logger.info("   pip install redis를 실행하거나 OFFLINE_MODE=true로 설정하세요")
             self.redis_client = None
             self.offline_mode = True
     
