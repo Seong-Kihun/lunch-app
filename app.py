@@ -11,6 +11,8 @@ from apscheduler.triggers.cron import CronTrigger
 
 # 구조화된 로깅 시스템 import
 from utils.logger import logger, log_startup, log_shutdown, log_api_call
+# 에러 모니터링 시스템 import
+from utils.error_monitor import setup_flask_error_handlers, create_error_monitoring_routes
 
 # 그룹 매칭 공통 로직 모듈 import
 try:
@@ -757,6 +759,14 @@ def health_check():
         }
         logger.error("Health check failed", error=str(e))
         return jsonify(error_response), 500
+
+# 에러 모니터링 시스템 설정
+try:
+    setup_flask_error_handlers(app)
+    create_error_monitoring_routes(app)
+    logger.info("✅ 에러 모니터링 시스템이 설정되었습니다")
+except Exception as e:
+    logger.error(f"❌ 에러 모니터링 시스템 설정 실패: {e}")
 
 
 # API 테스트 엔드포인트
