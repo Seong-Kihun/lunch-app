@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from extensions import db
-from models.restaurant_models import Restaurant, RestaurantReview, RestaurantVisit
+from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
 import logging
 import math
 
@@ -41,22 +41,22 @@ def get_restaurants():
         offset = request.args.get('offset', 0, type=int)
         
         # 기본 쿼리
-        query = Restaurant.query.filter(Restaurant.is_active == True)
+        query = RestaurantV2.query.filter(RestaurantV2.is_active == True)
         
         # 검색 필터
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
                 db.or_(
-                    Restaurant.name.ilike(search_filter),
-                    Restaurant.address.ilike(search_filter),
-                    Restaurant.category.ilike(search_filter)
+                    RestaurantV2.name.ilike(search_filter),
+                    RestaurantV2.address.ilike(search_filter),
+                    RestaurantV2.category.ilike(search_filter)
                 )
             )
         
         # 카테고리 필터
         if category:
-            query = query.filter(Restaurant.category.ilike(f"%{category}%"))
+            query = query.filter(RestaurantV2.category.ilike(f"%{category}%"))
         
         # 위치 기반 필터링 (선택적)
         if lat and lng and radius:
@@ -66,8 +66,8 @@ def get_restaurants():
             
             query = query.filter(
                 db.and_(
-                    Restaurant.latitude.between(lat - lat_delta, lat + lat_delta),
-                    Restaurant.longitude.between(lng - lng_delta, lng + lng_delta)
+                    RestaurantV2.latitude.between(lat - lat_delta, lat + lat_delta),
+                    RestaurantV2.longitude.between(lng - lng_delta, lng + lng_delta)
                 )
             )
         
@@ -81,13 +81,13 @@ def get_restaurants():
             restaurants = [r for r in restaurants if r.distance <= radius]
             restaurants.sort(key=lambda x: x.distance)
         elif sort == 'rating':
-            query = query.order_by(Restaurant.rating.desc(), Restaurant.review_count.desc())
+            query = query.order_by(RestaurantV2.rating.desc(), RestaurantV2.review_count.desc())
             restaurants = query.all()
         elif sort == 'name':
-            query = query.order_by(Restaurant.name.asc())
+            query = query.order_by(RestaurantV2.name.asc())
             restaurants = query.all()
         elif sort == 'created_at':
-            query = query.order_by(Restaurant.created_at.desc())
+            query = query.order_by(RestaurantV2.created_at.desc())
             restaurants = query.all()
         else:
             restaurants = query.all()
@@ -139,7 +139,7 @@ def get_restaurant(restaurant_id):
     특정 식당 상세 정보 조회
     """
     try:
-        restaurant = Restaurant.query.get_or_404(restaurant_id)
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
         
         if not restaurant.is_active:
             return jsonify({
@@ -150,7 +150,7 @@ def get_restaurant(restaurant_id):
         restaurant_data = restaurant.to_dict()
         
         # 리뷰 통계 추가
-        reviews = RestaurantReview.query.filter_by(restaurant_id=restaurant_id).all()
+        reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).all()
         if reviews:
             avg_rating = sum(r.rating for r in reviews) / len(reviews)
             restaurant_data['avg_rating'] = round(avg_rating, 1)
@@ -180,10 +180,10 @@ def get_categories():
     식당 카테고리 목록 조회
     """
     try:
-        categories = db.session.query(Restaurant.category).filter(
-            Restaurant.is_active == True,
-            Restaurant.category.isnot(None),
-            Restaurant.category != ''
+        categories = db.session.query(RestaurantV2.category).filter(
+            RestaurantV2.is_active == True,
+            RestaurantV2.category.isnot(None),
+            RestaurantV2.category != ''
         ).distinct().all()
         
         category_list = [cat[0] for cat in categories if cat[0]]
@@ -232,11 +232,11 @@ def get_nearby_restaurants():
             }), 400
         
         # 기본 쿼리
-        query = Restaurant.query.filter(Restaurant.is_active == True)
+        query = RestaurantV2.query.filter(RestaurantV2.is_active == True)
         
         # 카테고리 필터
         if category:
-            query = query.filter(Restaurant.category.ilike(f"%{category}%"))
+            query = query.filter(RestaurantV2.category.ilike(f"%{category}%"))
         
         # 모든 식당 조회 후 거리 계산
         restaurants = query.all()
@@ -299,10 +299,10 @@ def add_restaurant_visit(restaurant_id):
                 }), 400
         
         # 식당 존재 확인
-        restaurant = Restaurant.query.get_or_404(restaurant_id)
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
         
         # 방문 기록 생성
-        visit = RestaurantVisit(
+        visit = RestaurantVisitV2(
             restaurant_id=restaurant_id,
             user_id=data['user_id'],
             visit_date=datetime.strptime(data['visit_date'], '%Y-%m-%d').date(),
@@ -366,10 +366,10 @@ def add_restaurant_review(restaurant_id):
             }), 400
         
         # 식당 존재 확인
-        restaurant = Restaurant.query.get_or_404(restaurant_id)
+        restaurant = RestaurantV2.query.get_or_404(restaurant_id)
         
         # 리뷰 생성
-        review = RestaurantReview(
+        review = RestaurantReviewV2(
             restaurant_id=restaurant_id,
             user_id=data['user_id'],
             rating=data['rating'],
@@ -380,7 +380,7 @@ def add_restaurant_review(restaurant_id):
         db.session.add(review)
         
         # 식당 평점 업데이트
-        all_reviews = RestaurantReview.query.filter_by(restaurant_id=restaurant_id).all()
+        all_reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).all()
         if all_reviews:
             avg_rating = sum(r.rating for r in all_reviews) / len(all_reviews)
             restaurant.rating = round(avg_rating, 1)
@@ -415,19 +415,19 @@ def get_restaurant_stats():
     식당 통계 정보 조회
     """
     try:
-        total_restaurants = Restaurant.query.filter(Restaurant.is_active == True).count()
-        total_reviews = RestaurantReview.query.count()
-        total_visits = RestaurantVisit.query.count()
+        total_restaurants = RestaurantV2.query.filter(RestaurantV2.is_active == True).count()
+        total_reviews = RestaurantReviewV2.query.count()
+        total_visits = RestaurantVisitV2.query.count()
         
         # 카테고리별 통계
         category_stats = db.session.query(
-            Restaurant.category,
-            db.func.count(Restaurant.id).label('count')
+            RestaurantV2.category,
+            db.func.count(RestaurantV2.id).label('count')
         ).filter(
-            Restaurant.is_active == True,
-            Restaurant.category.isnot(None),
-            Restaurant.category != ''
-        ).group_by(Restaurant.category).all()
+            RestaurantV2.is_active == True,
+            RestaurantV2.category.isnot(None),
+            RestaurantV2.category != ''
+        ).group_by(RestaurantV2.category).all()
         
         categories = [{'name': cat[0], 'count': cat[1]} for cat in category_stats]
         categories.sort(key=lambda x: x['count'], reverse=True)
