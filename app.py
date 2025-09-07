@@ -61,7 +61,14 @@ else:
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
+# 데이터베이스 URI 설정 - Render 환경 고려
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    # Render에서 제공하는 PostgreSQL URL 사용
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    # 로컬 개발 환경에서는 SQLite 사용
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///site.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # 보안 키 설정 - 프로덕션에서는 반드시 환경변수로 설정
 secret_key = os.getenv("SECRET_KEY")
@@ -1354,6 +1361,11 @@ def initialize_database():
     """앱 시작 시 한 번만 실행되는 데이터베이스 초기화"""
     with app.app_context():
         try:
+            # 데이터베이스 연결 테스트
+            if not app.config.get("SQLALCHEMY_DATABASE_URI"):
+                print("❌ 데이터베이스 URI가 설정되지 않았습니다.")
+                return False
+                
             # 데이터베이스 테이블 생성
             db.create_all()
 
@@ -1684,7 +1696,11 @@ def create_initial_data():
 
 # Flask 2.3.3+ 호환성을 위한 초기화
 with app.app_context():
-    initialize_database()
+    try:
+        initialize_database()
+    except Exception as e:
+        print(f"⚠️ 데이터베이스 초기화 실패: {e}")
+        print("   앱은 계속 실행되지만 일부 기능이 제한될 수 있습니다.")
 
 
 # --- API 엔드포인트 ---
