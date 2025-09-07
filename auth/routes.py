@@ -4,7 +4,7 @@ import re
 from config.auth_config import AuthConfig
 
 # 인증 블루프린트 생성
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/magic-link', methods=['POST'])
 def send_magic_link():
