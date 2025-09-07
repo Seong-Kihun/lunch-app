@@ -163,7 +163,7 @@ class DeploymentManager:
         self.log("🧪 배포 전 테스트 실행 중...")
         
         tests = [
-            ("앱 import 테스트", "python -c \"import app; print('✅ 앱 import 성공')\""),
+            ("앱 import 테스트", "python -c \"import app; print('App imported successfully')\""),
             ("API 엔드포인트 테스트", "python test_api_endpoints.py"),
             ("데이터 정합성 테스트", "python data_integrity_check.py"),
             ("성능 테스트", "python test_performance.py")
