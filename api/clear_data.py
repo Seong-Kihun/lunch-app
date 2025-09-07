@@ -5,7 +5,7 @@
 
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models.app_models import Party, PartyMember, ChatRoom, ChatMessage, RandomLunchProposal
+from models.app_models import Party, PartyMember, ChatRoom, ChatMessage
 from auth.models import User, Friendship
 from models.schedule_models import PersonalSchedule as Schedule
 from sqlalchemy import text
