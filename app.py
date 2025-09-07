@@ -7635,7 +7635,7 @@ with app.app_context():
 if __name__ == "__main__":
     if socketio:
         # Socket.IO와 함께 실행
-        socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+        socketio.run(app, host="0.0.0.0", port=5000, debug=os.getenv('DEBUG', 'false').lower() == 'true')
     else:
         # 일반 Flask로 실행
-        app.run(debug=True, host="0.0.0.0", port=5000)
+        app.run(debug=os.getenv('DEBUG', 'false').lower() == 'true', host="0.0.0.0", port=5000)
