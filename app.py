@@ -36,6 +36,7 @@ load_environment_variables()
 try:
     from auth import init_auth
     from auth.utils import require_auth
+    from auth.models import Friendship
     from auth.models import User  # User 모델 import 추가
 
     AUTH_AVAILABLE = True
@@ -90,7 +91,6 @@ from models.app_models import (
     UserAnalytics,
     Restaurant,
     Review,
-    Friendship,
     UserActivity,
     RestaurantVisit,
     OfflineData,
