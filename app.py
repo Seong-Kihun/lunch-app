@@ -6394,6 +6394,68 @@ def get_dev_users_list():
         return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
 
+# 🚀 개발용 일정 조회 API (인증 없이 테스트 가능)
+@app.route("/dev/schedules", methods=["GET"])
+def get_dev_schedules():
+    """개발용 일정 조회 API - 인증 없이 테스트 가능"""
+    try:
+        # 쿼리 파라미터 가져오기
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        employee_id = request.args.get('employee_id')
+        
+        if not all([start_date_str, end_date_str, employee_id]):
+            return jsonify({
+                'error': '필수 파라미터가 누락되었습니다',
+                'required': ['start_date', 'end_date', 'employee_id']
+            }), 400
+        
+        # 개발용 샘플 일정 데이터
+        sample_schedules = [
+            {
+                "id": 1,
+                "title": "점심 약속",
+                "start_date": start_date_str,
+                "end_date": start_date_str,
+                "start_time": "12:00:00",
+                "end_time": "13:00:00",
+                "is_recurring": False,
+                "recurrence_type": None,
+                "description": "팀 점심 모임",
+                "location": "사무실 근처",
+                "status": "confirmed"
+            },
+            {
+                "id": 2,
+                "title": "회의",
+                "start_date": end_date_str,
+                "end_date": end_date_str,
+                "start_time": "14:00:00",
+                "end_time": "15:00:00",
+                "is_recurring": False,
+                "recurrence_type": None,
+                "description": "주간 회의",
+                "location": "회의실",
+                "status": "confirmed"
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'data': sample_schedules,
+            'period': {
+                'start_date': start_date_str,
+                'end_date': end_date_str
+            },
+            'total_dates': len(sample_schedules)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': '개발용 일정 조회 중 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
 # 🚀 개발용 점심 약속 히스토리 API
 @app.route("/dev/users/<employee_id>/lunch-history", methods=["GET"])
 def get_dev_lunch_history(employee_id):
