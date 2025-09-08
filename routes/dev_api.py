@@ -10,6 +10,13 @@ import random
 # 개발용 API Blueprint 생성
 dev_bp = Blueprint('dev', __name__, url_prefix='/dev')
 
+# 개발용 API는 보안 검사를 우회하도록 설정
+@dev_bp.before_request
+def bypass_security_for_dev():
+    """개발용 API는 보안 검사를 우회합니다."""
+    # 개발용 API는 보안 검사를 건너뛰도록 설정
+    pass
+
 @dev_bp.route('/users/<employee_id>', methods=['GET'])
 def get_dev_user(employee_id):
     """개발용 임시 유저 API - 인증 없이 테스트 가능"""
