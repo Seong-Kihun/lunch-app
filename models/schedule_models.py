@@ -1,312 +1,105 @@
 """
-일정 API Blueprint
-일정 관련 모든 API 엔드포인트를 포함합니다.
+일정 모델 정의
+반복 일정과 예외를 관리하는 모델들을 포함합니다.
 """
 
-from flask import Blueprint, request, jsonify
 from datetime import datetime, date
-from typing import Dict, Any
-from services.schedule_service import ScheduleService
-from models.schedule_models import PersonalSchedule, ScheduleException
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
+from sqlalchemy.orm import relationship
 from extensions import db
-import logging
 
-logger = logging.getLogger(__name__)
-
-# Blueprint 생성
-schedules_bp = Blueprint('schedules', __name__, url_prefix='/api/schedules')
-
-@schedules_bp.route('/', methods=['GET'])
-def get_schedules():
-    """
-    특정 기간의 모든 일정을 가져오는 API
-    반복 일정을 확장하고 예외를 적용하여 최종 결과 반환
-    """
-    try:
-        # 필수 파라미터 검증
-        start_date_str = request.args.get('start_date')
-        end_date_str = request.args.get('end_date')
-        employee_id = request.args.get('employee_id')
-        
-        if not all([start_date_str, end_date_str, employee_id]):
-            return jsonify({
-                'error': '필수 파라미터가 누락되었습니다',
-                'required': ['start_date', 'end_date', 'employee_id']
-            }), 400
-        
-        # 날짜 파싱
-        try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({
-                'error': '날짜 형식이 올바르지 않습니다',
-                'format': 'YYYY-MM-DD'
-            }), 400
-        
-        # 일정 조회
-        schedules = ScheduleService.get_schedules_for_period(
-            employee_id=employee_id,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        logger.info(f"일정 조회 성공: {employee_id}, {start_date} ~ {end_date}")
-        
-        return jsonify({
-            'success': True,
-            'data': schedules,
-            'period': {
-                'start_date': start_date_str,
-                'end_date': end_date_str
-            },
-            'total_dates': len(schedules)
-        })
-        
-    except Exception as e:
-        logger.error(f"일정 조회 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
-
-@schedules_bp.route('/', methods=['POST'])
-def create_schedule():
-    """
-    새로운 일정 생성 (반복 일정 포함)
-    반복 규칙만 저장하고, 인스턴스는 필요할 때 계산
-    """
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': '요청 데이터가 없습니다'}), 400
-        
-        # 필수 필드 검증
-        required_fields = ['employee_id', 'title', 'start_date', 'time']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
-        
-        # 날짜 파싱
-        try:
-            start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
-        except ValueError:
-            return jsonify({
-                'error': 'start_date 형식이 올바르지 않습니다',
-                'format': 'YYYY-MM-DD'
-            }), 400
-        
-        # 반복 종료 날짜 파싱 (있는 경우)
-        if data.get('recurrence_end_date'):
-            try:
-                data['recurrence_end_date'] = datetime.strptime(
-                    data['recurrence_end_date'], '%Y-%m-%d'
-                )
-            except ValueError:
-                return jsonify({
-                    'error': 'recurrence_end_date 형식이 올바르지 않습니다',
-                    'format': 'YYYY-MM-DD'
-                }), 400
-        
-        # 일정 데이터 준비
-        schedule_data = {
-            'employee_id': data['employee_id'],
-            'title': data['title'],
-            'start_date': start_date,
-            'time': data['time'],
-            'restaurant': data.get('restaurant'),
-            'location': data.get('location'),
-            'description': data.get('description'),
-            'is_recurring': data.get('is_recurring', False),
-            'recurrence_type': data.get('recurrence_type'),
-            'recurrence_interval': data.get('recurrence_interval', 1),
-            'recurrence_end_date': data.get('recurrence_end_date'),
-            'created_by': data.get('created_by', data['employee_id'])
+class PersonalSchedule(db.Model):
+    """반복 일정의 마스터 규칙을 저장하는 모델"""
+    __tablename__ = 'personal_schedules'
+    
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(String(50), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    start_date = Column(DateTime, nullable=False, index=True)
+    schedule_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD 형식 (기존 코드 호환성)
+    time = Column(String(10), nullable=False)  # HH:MM 형식
+    restaurant = Column(String(200))
+    location = Column(String(500))
+    description = Column(Text)
+    
+    # 반복 설정
+    is_recurring = Column(Boolean, default=False, index=True)
+    recurrence_type = Column(String(20))  # 'daily', 'weekly', 'monthly'
+    recurrence_interval = Column(Integer, default=1)  # 간격 (1, 2, 3...)
+    recurrence_end_date = Column(DateTime)  # 반복 종료 날짜
+    
+    # 시스템 정보
+    created_by = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    exceptions = relationship('ScheduleException', back_populates='original_schedule', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<PersonalSchedule {self.id}: {self.title}>'
+    
+    def to_dict(self):
+        """마스터 일정을 딕셔너리로 변환"""
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'title': self.title,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'schedule_date': self.schedule_date,
+            'time': self.time,
+            'restaurant': self.restaurant,
+            'location': self.location,
+            'description': self.description,
+            'is_recurring': self.is_recurring,
+            'recurrence_type': self.recurrence_type,
+            'recurrence_interval': self.recurrence_interval,
+            'recurrence_end_date': self.recurrence_end_date.isoformat() if self.recurrence_end_date else None,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-        
-        # 마스터 일정 생성
-        schedule = ScheduleService.create_master_schedule(schedule_data)
-        
-        logger.info(f"일정 생성 성공: ID {schedule.id}, 제목: {schedule.title}")
-        
-        return jsonify({
-            'success': True,
-            'message': '일정이 생성되었습니다',
-            'data': schedule.to_dict()
-        }), 201
-        
-    except Exception as e:
-        logger.error(f"일정 생성 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
 
-@schedules_bp.route('/<int:schedule_id>', methods=['PUT'])
-def update_schedule(schedule_id):
-    """
-    마스터 일정 수정 (모든 반복 일정 수정)
-    """
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': '요청 데이터가 없습니다'}), 400
-        
-        # 날짜 필드 파싱
-        if 'start_date' in data:
-            try:
-                data['start_date'] = datetime.strptime(data['start_date'], '%Y-%m-%d')
-            except ValueError:
-                return jsonify({
-                    'error': 'start_date 형식이 올바르지 않습니다',
-                    'format': 'YYYY-MM-DD'
-                }), 400
-        
-        if 'recurrence_end_date' in data:
-            try:
-                data['recurrence_end_date'] = datetime.strptime(
-                    data['recurrence_end_date'], '%Y-%m-%d'
-                )
-            except ValueError:
-                return jsonify({
-                    'error': 'recurrence_end_date 형식이 올바르지 않습니다',
-                    'format': 'YYYY-MM-DD'
-                }), 400
-        
-        # 마스터 일정 수정
-        success = ScheduleService.update_master_schedule(schedule_id, data)
-        
-        if not success:
-            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
-        
-        logger.info(f"일정 수정 성공: ID {schedule_id}")
-        
-        return jsonify({
-            'success': True,
-            'message': '일정이 수정되었습니다'
-        })
-        
-    except Exception as e:
-        logger.error(f"일정 수정 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
-
-@schedules_bp.route('/<int:schedule_id>', methods=['DELETE'])
-def delete_schedule(schedule_id):
-    """
-    마스터 일정 삭제 (모든 반복 일정 삭제)
-    """
-    try:
-        # 마스터 일정 삭제
-        success = ScheduleService.delete_master_schedule(schedule_id)
-        
-        if not success:
-            return jsonify({'error': '일정을 찾을 수 없습니다'}), 404
-        
-        logger.info(f"일정 삭제 성공: ID {schedule_id}")
-        
-        return jsonify({
-            'success': True,
-            'message': '일정이 삭제되었습니다'
-        })
-        
-    except Exception as e:
-        logger.error(f"일정 삭제 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
-
-@schedules_bp.route('/<int:schedule_id>/exceptions', methods=['POST'])
-def create_schedule_exception(schedule_id):
-    """
-    일정 예외 생성 (이 날짜만 수정/삭제)
-    """
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': '요청 데이터가 없습니다'}), 400
-        
-        # 필수 필드 검증
-        if 'exception_date' not in data:
-            return jsonify({'error': 'exception_date가 필요합니다'}), 400
-        
-        # 날짜 파싱
-        try:
-            exception_date = datetime.strptime(data['exception_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({
-                'error': 'exception_date 형식이 올바르지 않습니다',
-                'format': 'YYYY-MM-DD'
-            }), 400
-        
-        # 예외 데이터 준비
-        exception_data = {
-            'is_deleted': data.get('is_deleted', False),
-            'is_modified': data.get('is_modified', False)
+class ScheduleException(db.Model):
+    """반복 일정의 특정 날짜에 대한 예외를 저장하는 모델"""
+    __tablename__ = 'schedule_exceptions'
+    
+    id = Column(Integer, primary_key=True)
+    original_schedule_id = Column(Integer, ForeignKey('personal_schedules.id'), nullable=False, index=True)
+    exception_date = Column(DateTime, nullable=False, index=True)
+    
+    # 예외 유형
+    is_deleted = Column(Boolean, default=False)  # 해당 날짜만 삭제
+    is_modified = Column(Boolean, default=False)  # 해당 날짜만 수정
+    
+    # 수정된 정보 (is_modified가 True일 때만 사용)
+    new_title = Column(String(200))
+    new_time = Column(String(10))
+    new_restaurant = Column(String(200))
+    new_location = Column(String(500))
+    new_description = Column(Text)
+    
+    # 시스템 정보
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계
+    original_schedule = relationship('PersonalSchedule', back_populates='exceptions')
+    
+    def __repr__(self):
+        return f'<ScheduleException {self.id}: {self.exception_date}>'
+    
+    def to_dict(self):
+        """예외를 딕셔너리로 변환"""
+        return {
+            'id': self.id,
+            'original_schedule_id': self.original_schedule_id,
+            'exception_date': self.exception_date.isoformat() if self.exception_date else None,
+            'is_deleted': self.is_deleted,
+            'is_modified': self.is_modified,
+            'new_title': self.new_title,
+            'new_time': self.new_time,
+            'new_restaurant': self.new_restaurant,
+            'new_location': self.new_location,
+            'new_description': self.new_description,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
-        
-        # 수정된 정보가 있는 경우
-        if exception_data['is_modified']:
-            exception_data.update({
-                'new_title': data.get('new_title'),
-                'new_time': data.get('new_time'),
-                'new_restaurant': data.get('new_restaurant'),
-                'new_location': data.get('new_location'),
-                'new_description': data.get('new_description')
-            })
-        
-        # 예외 생성
-        exception = ScheduleService.create_exception(
-            master_schedule_id=schedule_id,
-            exception_date=exception_date,
-            exception_data=exception_data
-        )
-        
-        logger.info(f"일정 예외 생성 성공: 마스터 ID {schedule_id}, 날짜 {exception_date}")
-        
-        return jsonify({
-            'success': True,
-            'message': '일정 예외가 생성되었습니다',
-            'data': exception.to_dict()
-        }), 201
-        
-    except Exception as e:
-        logger.error(f"일정 예외 생성 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
-
-@schedules_bp.route('/<int:schedule_id>/exceptions/<int:exception_id>', methods=['DELETE'])
-def delete_schedule_exception(schedule_id, exception_id):
-    """
-    일정 예외 삭제
-    """
-    try:
-        exception = ScheduleException.query.get(exception_id)
-        if not exception:
-            return jsonify({'error': '예외를 찾을 수 없습니다'}), 404
-        
-        if exception.original_schedule_id != schedule_id:
-            return jsonify({'error': '잘못된 요청입니다'}), 400
-        
-        db.session.delete(exception)
-        db.session.commit()
-        
-        logger.info(f"일정 예외 삭제 성공: 예외 ID {exception_id}")
-        
-        return jsonify({
-            'success': True,
-            'message': '일정 예외가 삭제되었습니다'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"일정 예외 삭제 중 오류 발생: {e}")
-        return jsonify({
-            'error': '서버 내부 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
