@@ -7521,15 +7521,7 @@ with app.app_context():
     except Exception as e:
         print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
 
-    try:
-        from api.restaurants import restaurants_bp
-
-        app.register_blueprint(restaurants_bp)
-        print("✅ 식당 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"❌ 식당 관리 Blueprint 등록 실패: {e}")
-
-    # 새로운 식당 API v2 등록
+    # 식당 API v2 등록 (기존 v1은 제거됨)
     try:
         from api.restaurants_v2 import restaurants_v2_bp
 
