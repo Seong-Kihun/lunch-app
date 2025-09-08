@@ -4,7 +4,7 @@
 
 from app import app
 from extensions import db
-from models.restaurant_models import Restaurant, RestaurantReview, RestaurantVisit
+from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
 
 def init_restaurant_database():
     """
