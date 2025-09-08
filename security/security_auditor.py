@@ -66,7 +66,7 @@ class SecurityAuditor:
             ],
             'command_injection': [
                 r"(\b(cmd|powershell|bash|sh)\b)",
-                r"(\||;|`|\\$)",  # & 문자 제거 - 정상적인 쿼리 파라미터와 충돌
+                r"(\||&|;|`|\\$)",
                 r"(\b(net|ipconfig|whoami|dir|ls)\b)"
             ]
         }
@@ -87,15 +87,17 @@ class SecurityAuditor:
                 })
                 return {'error': '요청 크기가 제한을 초과했습니다.'}, 413
             
-            # 위협 패턴 검사
-            threat_detected = self._scan_request_for_threats(request)
-            if threat_detected:
-                self._log_security_event('threat_detected', {
-                    'threat_type': threat_detected['type'],
-                    'pattern': threat_detected['pattern'],
-                    'ip': request.remote_addr
-                })
-                return {'error': '보안 위협이 감지되었습니다.'}, 403
+            # 개발용 API는 보안 검사 건너뛰기
+            if not request.path.startswith('/dev/'):
+                # 위협 패턴 검사
+                threat_detected = self._scan_request_for_threats(request)
+                if threat_detected:
+                    self._log_security_event('threat_detected', {
+                        'threat_type': threat_detected['type'],
+                        'pattern': threat_detected['pattern'],
+                        'ip': request.remote_addr
+                    })
+                    return {'error': '보안 위협이 감지되었습니다.'}, 403
             
             # Rate limiting 검사
             if not self._check_rate_limit(request):
@@ -133,11 +135,6 @@ class SecurityAuditor:
         """요청에서 위협 패턴 스캔"""
         # 개발 환경에서는 보안 검사 건너뛰기
         if self.app.config.get('DEBUG', False):
-            return None
-        
-        # 특정 API 엔드포인트는 보안 검사에서 제외
-        if request.path.startswith('/api/'):
-            # API 요청의 경우 쿼리 파라미터는 허용
             return None
             
         # 요청 URL 검사
