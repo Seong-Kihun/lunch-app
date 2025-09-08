@@ -7616,6 +7616,14 @@ with app.app_context():
     except Exception as e:
         print(f"❌ 채팅 관리 Blueprint 등록 실패: {e}")
 
+    # 개발용 API 등록
+    try:
+        from routes.dev_api import dev_bp
+        app.register_blueprint(dev_bp)
+        print("✅ 개발용 API Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 개발용 API Blueprint 등록 실패: {e}")
+
     try:
         from routes.voting import voting_bp
 
