@@ -13,7 +13,8 @@ from sqlalchemy.orm import sessionmaker
 # 프로젝트 루트를 Python 경로에 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import app, db
+from app import app
+from extensions import db
 from models.schedule_models import PersonalSchedule, ScheduleException
 
 def migrate_schedule_models():
@@ -169,3 +170,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
