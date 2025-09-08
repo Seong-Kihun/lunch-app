@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 from models.schedule_models import PersonalSchedule, ScheduleException
-from app import db
+from extensions import db
 import logging
 
 logger = logging.getLogger(__name__)
