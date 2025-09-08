@@ -395,11 +395,17 @@ def delete_all_parties():
         
         # 모든 파티 삭제
         Party.query.delete()
-from sqlalchemy import desc, or_
-from datetime import datetime
-
-# 파티 Blueprint 생성
-parties_bp = Blueprint('parties', __name__)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "모든 파티가 삭제되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"전체 파티 삭제 오류: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # 모델 import
 from flask import current_app
