@@ -42,20 +42,20 @@ def migrate_restaurant_data(excel_file_path):
         
         for index, row in df.iterrows():
             try:
-                # 필수 필드 검증
-                if pd.isna(row.get('식당명')) or pd.isna(row.get('위도')) or pd.isna(row.get('경도')):
+                # 필수 필드 검증 (실제 엑셀 컬럼명에 맞춤)
+                if pd.isna(row.get('식당 이름')) or pd.isna(row.get('위도')) or pd.isna(row.get('경도')):
                     print(f"⚠️ 행 {index + 1}: 필수 데이터 누락 - 건너뜀")
                     error_count += 1
                     continue
                 
-                # 식당 객체 생성
+                # 식당 객체 생성 (실제 엑셀 컬럼명에 맞춤)
                 restaurant = RestaurantV2(
-                    name=str(row['식당명']).strip(),
-                    address=str(row['도로명주소']).strip() if not pd.isna(row.get('도로명주소')) else '',
+                    name=str(row['식당 이름']).strip(),
+                    address=str(row['도로명 주소']).strip() if not pd.isna(row.get('도로명 주소')) else '',
                     latitude=float(row['위도']),
                     longitude=float(row['경도']),
                     phone=str(row['전화번호']).strip() if not pd.isna(row.get('전화번호')) else '',
-                    category=str(row['식당분류']).strip() if not pd.isna(row.get('식당분류')) else '기타',
+                    category=str(row['분류']).strip() if not pd.isna(row.get('분류')) else '기타',
                     is_active=True
                 )
                 
