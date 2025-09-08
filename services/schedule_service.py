@@ -1,7 +1,6 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
-from models.schedule_models import PersonalSchedule, ScheduleException
-from extensions import db
+from app import db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ class ScheduleService:
     
     @staticmethod
     def calculate_recurring_instances(
-        master_schedule: PersonalSchedule,
+        master_schedule,
         start_date: date,
         end_date: date
     ) -> List[Dict[str, Any]]:
@@ -74,7 +73,7 @@ class ScheduleService:
             return current_date + timedelta(days=1)  # 기본값
     
     @staticmethod
-    def _create_instance_dict(master_schedule: PersonalSchedule, instance_date: date) -> Dict[str, Any]:
+    def _create_instance_dict(master_schedule, instance_date: date) -> Dict[str, Any]:
         """일정 인스턴스 딕셔너리 생성"""
         return {
             'id': f"instance_{master_schedule.id}_{instance_date.isoformat()}",
@@ -97,7 +96,7 @@ class ScheduleService:
     @staticmethod
     def apply_exceptions(
         instances: List[Dict[str, Any]],
-        exceptions: List[ScheduleException]
+        exceptions
     ) -> List[Dict[str, Any]]:
         """
         일정 인스턴스들에 예외를 적용
@@ -176,6 +175,7 @@ class ScheduleService:
             해당 기간의 모든 일정 (개인일정 + 파티일정)
         """
         try:
+            from models.schedule_models import PersonalSchedule, ScheduleException
             all_instances = []
             
             # 1. 개인일정 조회 및 처리
@@ -264,9 +264,10 @@ class ScheduleService:
         return sorted(grouped.values(), key=lambda x: x['date'])
     
     @staticmethod
-    def create_master_schedule(schedule_data: Dict[str, Any]) -> PersonalSchedule:
+    def create_master_schedule(schedule_data: Dict[str, Any]):
         """마스터 일정 생성"""
         try:
+            from models.schedule_models import PersonalSchedule
             schedule = PersonalSchedule(**schedule_data)
             db.session.add(schedule)
             db.session.commit()
@@ -283,6 +284,7 @@ class ScheduleService:
     def update_master_schedule(schedule_id: int, update_data: Dict[str, Any]) -> bool:
         """마스터 일정 수정 (모든 반복 일정 수정)"""
         try:
+            from models.schedule_models import PersonalSchedule
             schedule = PersonalSchedule.query.get(schedule_id)
             if not schedule:
                 return False
@@ -306,6 +308,7 @@ class ScheduleService:
     def delete_master_schedule(schedule_id: int) -> bool:
         """마스터 일정 삭제 (모든 반복 일정 삭제)"""
         try:
+            from models.schedule_models import PersonalSchedule
             schedule = PersonalSchedule.query.get(schedule_id)
             if not schedule:
                 return False
@@ -326,9 +329,10 @@ class ScheduleService:
         master_schedule_id: int,
         exception_date: date,
         exception_data: Dict[str, Any]
-    ) -> ScheduleException:
+    ):
         """일정 예외 생성 (이 날짜만 수정/삭제)"""
         try:
+            from models.schedule_models import ScheduleException
             exception = ScheduleException(
                 original_schedule_id=master_schedule_id,
                 exception_date=datetime.combine(exception_date, datetime.min.time()),
