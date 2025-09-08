@@ -669,3 +669,189 @@ def get_dev_user_badges():
         
     except Exception as e:
         return jsonify({'error': '배지 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+# ===== 추가 API 엔드포인트들 =====
+
+@dev_bp.route('/api/v2/restaurants', methods=['GET'])
+def get_dev_restaurants_v2():
+    """개발용 식당 목록 v2 API - 인증 없이 테스트 가능"""
+    try:
+        sort = request.args.get('sort', 'distance')
+        limit = int(request.args.get('limit', 1000))
+        
+        restaurants = [
+            {
+                "id": 1,
+                "name": "맛있는 김치찌개",
+                "address": "서울시 강남구 테헤란로 123",
+                "latitude": 37.5665,
+                "longitude": 126.9780,
+                "phone": "02-1234-5678",
+                "category": "한식",
+                "rating": 4.5,
+                "distance": 0.5,
+                "is_active": True,
+                "price_range": "$$",
+                "opening_hours": "11:00-22:00"
+            },
+            {
+                "id": 2,
+                "name": "피자헛",
+                "address": "서울시 강남구 테헤란로 456",
+                "latitude": 37.5666,
+                "longitude": 126.9781,
+                "phone": "02-2345-6789",
+                "category": "양식",
+                "rating": 4.2,
+                "distance": 0.8,
+                "is_active": True,
+                "price_range": "$$",
+                "opening_hours": "11:00-23:00"
+            },
+            {
+                "id": 3,
+                "name": "맥도날드",
+                "address": "서울시 강남구 테헤란로 789",
+                "latitude": 37.5667,
+                "longitude": 126.9782,
+                "phone": "02-3456-7890",
+                "category": "패스트푸드",
+                "rating": 3.8,
+                "distance": 1.2,
+                "is_active": True,
+                "price_range": "$",
+                "opening_hours": "24시간"
+            },
+            {
+                "id": 4,
+                "name": "서브웨이",
+                "address": "서울시 강남구 테헤란로 101",
+                "latitude": 37.5668,
+                "longitude": 126.9783,
+                "phone": "02-4567-8901",
+                "category": "샐러드",
+                "rating": 4.0,
+                "distance": 0.3,
+                "is_active": True,
+                "price_range": "$$",
+                "opening_hours": "07:00-22:00"
+            },
+            {
+                "id": 5,
+                "name": "본죽",
+                "address": "서울시 강남구 테헤란로 202",
+                "latitude": 37.5669,
+                "longitude": 126.9784,
+                "phone": "02-5678-9012",
+                "category": "한식",
+                "rating": 4.3,
+                "distance": 0.7,
+                "is_active": True,
+                "price_range": "$$",
+                "opening_hours": "10:00-21:00"
+            }
+        ]
+        
+        # 정렬 처리
+        if sort == 'distance':
+            restaurants.sort(key=lambda x: x['distance'])
+        elif sort == 'rating':
+            restaurants.sort(key=lambda x: x['rating'], reverse=True)
+        elif sort == 'name':
+            restaurants.sort(key=lambda x: x['name'])
+        
+        # 제한 적용
+        restaurants = restaurants[:limit]
+        
+        return jsonify({
+            "success": True,
+            "restaurants": restaurants,
+            "total": len(restaurants),
+            "sort": sort,
+            "limit": limit
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "식당 목록 조회 중 오류가 발생했습니다.",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route('/api/v2/restaurants/categories', methods=['GET'])
+def get_dev_restaurant_categories():
+    """개발용 식당 카테고리 API - 인증 없이 테스트 가능"""
+    try:
+        categories = [
+            {"id": "korean", "name": "한식", "count": 15},
+            {"id": "western", "name": "양식", "count": 12},
+            {"id": "japanese", "name": "일식", "count": 8},
+            {"id": "chinese", "name": "중식", "count": 6},
+            {"id": "fastfood", "name": "패스트푸드", "count": 10},
+            {"id": "salad", "name": "샐러드", "count": 5},
+            {"id": "cafe", "name": "카페", "count": 20},
+            {"id": "dessert", "name": "디저트", "count": 7}
+        ]
+        
+        return jsonify({
+            "success": True,
+            "categories": categories,
+            "total": len(categories)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "식당 카테고리 조회 중 오류가 발생했습니다.",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route('/friends/<employee_id>', methods=['GET'])
+def get_dev_friends(employee_id):
+    """개발용 친구 목록 API - 인증 없이 테스트 가능"""
+    try:
+        friends = [
+            {
+                "id": 2,
+                "employee_id": "2",
+                "nickname": "이영희",
+                "status": "online",
+                "last_seen": "2025-09-08T13:20:00Z",
+                "mutual_friends": 3
+            },
+            {
+                "id": 3,
+                "employee_id": "3",
+                "nickname": "박민수",
+                "status": "offline",
+                "last_seen": "2025-09-07T18:30:00Z",
+                "mutual_friends": 2
+            },
+            {
+                "id": 4,
+                "employee_id": "4",
+                "nickname": "최지은",
+                "status": "online",
+                "last_seen": "2025-09-08T13:15:00Z",
+                "mutual_friends": 4
+            },
+            {
+                "id": 5,
+                "employee_id": "5",
+                "nickname": "정현우",
+                "status": "away",
+                "last_seen": "2025-09-08T12:45:00Z",
+                "mutual_friends": 1
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "friends": friends,
+            "total": len(friends),
+            "employee_id": employee_id
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "친구 목록 조회 중 오류가 발생했습니다.",
+            "message": str(e)
+        }), 500
