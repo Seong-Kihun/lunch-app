@@ -110,6 +110,9 @@ from models.app_models import (
     UserFavorite,
 )
 
+# 스케줄 모델 import
+from models.schedule_models import PersonalSchedule, ScheduleException
+
 print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
 
 # Flask-Migrate 초기화 (일시적으로 비활성화 - 스키마 불일치 문제 해결 후 활성화)
@@ -992,17 +995,11 @@ def _get_party_participants(date_str):
 
 def _get_scheduled_users(date_str):
     """특정 날짜에 개인 일정이 있는 사용자 ID 목록 조회"""
-    try:
-        from models.schedule_models import PersonalSchedule
-
-        schedule_user_ids = set()
-        schedules = db.session.query(PersonalSchedule).filter_by(schedule_date=date_str).all()
-        for schedule in schedules:
-            schedule_user_ids.add(schedule.employee_id)
-        return schedule_user_ids
-    except ImportError:
-        # PersonalSchedule 모델을 사용할 수 없는 경우 빈 집합 반환
-        return set()
+    schedule_user_ids = set()
+    schedules = db.session.query(PersonalSchedule).filter_by(schedule_date=date_str).all()
+    for schedule in schedules:
+        schedule_user_ids.add(schedule.employee_id)
+    return schedule_user_ids
 
 
 def _get_all_user_ids():
@@ -1794,15 +1791,9 @@ def get_events(employee_id):
         events.update(_process_party_events(parties, employee_id))
 
         # 개인 일정 조회
-        try:
-            from models.schedule_models import PersonalSchedule
-
-            schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
-            print(f"DEBUG: Found {len(schedules)} personal schedules for employee {employee_id}")
-            print(f"DEBUG: Today (Seoul): {today}")
-        except ImportError:
-            schedules = []
-            print("DEBUG: PersonalSchedule 모델을 사용할 수 없어 개인 일정을 건너뜁니다.")
+        schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
+        print(f"DEBUG: Found {len(schedules)} personal schedules for employee {employee_id}")
+        print(f"DEBUG: Today (Seoul): {today}")
 
         for schedule in schedules:
             # 디버그 로그 제거
@@ -3957,14 +3948,9 @@ def get_available_dates():
         )
         has_party = party_query.first() is not None
 
-        try:
-            from models.schedule_models import PersonalSchedule
-
-            has_schedule = (
-                PersonalSchedule.query.filter_by(employee_id=employee_id, schedule_date=date_str).first() is not None
-            )
-        except ImportError:
-            has_schedule = False
+        has_schedule = (
+            PersonalSchedule.query.filter_by(employee_id=employee_id, schedule_date=date_str).first() is not None
+        )
 
         if not has_party and not has_schedule:
             available_dates.append(date_str)
@@ -4029,15 +4015,9 @@ def suggest_groups():
         busy_users.update(member_ids)
 
     # 개인 일정이 있는 유저들
-    try:
-        from models.schedule_models import PersonalSchedule
-
-        schedules = PersonalSchedule.query.filter_by(schedule_date=date).all()
-        for schedule in schedules:
-            busy_users.add(schedule.employee_id)
-    except ImportError:
-        # PersonalSchedule 모델을 사용할 수 없는 경우 건너뛰기
-        pass
+    schedules = PersonalSchedule.query.filter_by(schedule_date=date).all()
+    for schedule in schedules:
+        busy_users.add(schedule.employee_id)
 
     # 요청자도 제외
     busy_users.add(employee_id)
@@ -4261,14 +4241,9 @@ def accept_proposal(proposal_id):
     )
 
     # 개인 일정 확인
-    try:
-        from models.schedule_models import PersonalSchedule
-
-        has_schedule = (
-            PersonalSchedule.query.filter_by(employee_id=user_id, schedule_date=proposed_date).first() is not None
-        )
-    except ImportError:
-        has_schedule = False
+    has_schedule = (
+        PersonalSchedule.query.filter_by(employee_id=user_id, schedule_date=proposed_date).first() is not None
+    )
 
     if has_party or has_schedule:
         return jsonify({"message": "이미 다른 약속이 있어 수락할 수 없습니다."}), 409
@@ -5216,15 +5191,10 @@ def find_available_dates_for_participants(participant_ids, max_days=30):
             )
 
             # 개인 일정 확인
-            try:
-                from models.schedule_models import PersonalSchedule
-
-                has_schedule = (
-                    PersonalSchedule.query.filter_by(employee_id=participant_id, schedule_date=date_str).first()
-                    is not None
-                )
-            except ImportError:
-                has_schedule = False
+            has_schedule = (
+                PersonalSchedule.query.filter_by(employee_id=participant_id, schedule_date=date_str).first()
+                is not None
+            )
 
             if not has_party and not has_schedule:
                 available_participants.append(participant_id)
@@ -5886,10 +5856,7 @@ def save_personal_schedules_from_voting(session):
         description = "\n".join(description_parts)
 
         # 각 참가자의 개인 일정에 저장
-        try:
-            from models.schedule_models import PersonalSchedule
-
-            for participant_id in participant_ids:
+        for participant_id in participant_ids:
                 # 이미 해당 날짜에 동일한 일정이 있는지 확인
                 existing_schedule = PersonalSchedule.query.filter_by(
                     employee_id=participant_id,
@@ -5905,8 +5872,6 @@ def save_personal_schedules_from_voting(session):
                         description=description,
                     )
                     db.session.add(personal_schedule)
-        except ImportError:
-            print("PersonalSchedule 모델을 사용할 수 없어 개인 일정 저장을 건너뜁니다.")
 
         db.session.commit()
         print(f"개인 일정 저장 완료: {len(participant_ids)}명")
@@ -6120,20 +6085,14 @@ def get_today():
 def cleanup_invalid_dates():
     try:
         # 잘못된 날짜가 있는 개인 일정 삭제
-        try:
-            from models.schedule_models import PersonalSchedule
+        invalid_schedules = PersonalSchedule.query.all()
+        deleted_schedules = 0
 
-            invalid_schedules = PersonalSchedule.query.all()
-            deleted_schedules = 0
-
-            for schedule in invalid_schedules:
-                if not schedule.schedule_date or "NaN" in str(schedule.schedule_date):
-                    print(f"Deleting invalid schedule: ID {schedule.id}, date: {schedule.schedule_date}")
-                    db.session.delete(schedule)
-                    deleted_schedules += 1
-        except ImportError:
-            deleted_schedules = 0
-            print("PersonalSchedule 모델을 사용할 수 없어 개인 일정 정리를 건너뜁니다.")
+        for schedule in invalid_schedules:
+            if not schedule.schedule_date or "NaN" in str(schedule.schedule_date):
+                print(f"Deleting invalid schedule: ID {schedule.id}, date: {schedule.schedule_date}")
+                db.session.delete(schedule)
+                deleted_schedules += 1
 
         # 잘못된 날짜가 있는 파티 삭제
         invalid_parties = Party.query.all()
@@ -6164,14 +6123,8 @@ def cleanup_invalid_dates():
 def delete_all_schedules():
     try:
         # 모든 개인 일정 삭제
-        try:
-            from models.schedule_models import PersonalSchedule
-
-            deleted_count = PersonalSchedule.query.delete()
-            db.session.commit()
-        except ImportError:
-            deleted_count = 0
-            print("PersonalSchedule 모델을 사용할 수 없어 개인 일정 삭제를 건너뜁니다.")
+        deleted_count = PersonalSchedule.query.delete()
+        db.session.commit()
 
         return jsonify({"message": "모든 기타 일정 삭제 완료!", "deleted_schedules": deleted_count})
     except Exception as e:
