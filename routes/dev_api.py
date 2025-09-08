@@ -437,3 +437,235 @@ def get_dev_restaurants():
             "error": "개발용 식당 목록 조회 중 오류가 발생했습니다.",
             "message": str(e)
         }), 500
+
+# ===== 실제 API 엔드포인트들을 개발용으로 추가 =====
+
+@dev_bp.route('/api/users/profile', methods=['GET'])
+def get_dev_user_profile():
+    """개발용 사용자 프로필 API - 인증 없이 테스트 가능"""
+    try:
+        # 임시 사용자 프로필 데이터
+        profile_data = {
+            "success": True,
+            "message": "사용자 프로필 조회 성공",
+            "employee_id": "1",
+            "profile": {
+                "employee_id": "1",
+                "nickname": "김철수",
+                "email": "kim@company.com",
+                "main_dish_genre": "한식",
+                "lunch_preference": "맛집 탐방",
+                "allergies": ["없음"],
+                "preferred_time": "12:00",
+                "frequent_areas": ["강남구", "서초구"]
+            }
+        }
+        return jsonify(profile_data)
+        
+    except Exception as e:
+        return jsonify({'error': '사용자 프로필 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@dev_bp.route('/api/users/activity-stats', methods=['GET'])
+def get_dev_user_activity_stats():
+    """개발용 사용자 활동 통계 API - 인증 없이 테스트 가능"""
+    try:
+        period = request.args.get('period', 'month')
+        
+        stats = {
+            'total_activities': 15,
+            'reviews_written': 8,
+            'parties_joined': 5,
+            'random_lunches': 3,
+            'favorite_category': '한식',
+            'appointment_type_breakdown': {
+                '랜덤런치': 3,
+                '파티 참여': 5,
+                '개인 약속': 2,
+                '단골파티': 2,
+                '기타': 3
+            },
+            'category_breakdown': {
+                '한식': 8,
+                '양식': 4,
+                '일식': 2,
+                '중식': 1
+            },
+            'period': period,
+            'start_date': '2025-08-09T00:00:00',
+            'end_date': '2025-09-08T23:59:59'
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': '활동 통계 조회 성공',
+            'stats': stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': '활동 통계 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@dev_bp.route('/api/users/dashboard', methods=['GET'])
+def get_dev_user_dashboard():
+    """개발용 사용자 대시보드 API - 인증 없이 테스트 가능"""
+    try:
+        dashboard_data = {
+            'total_lunches': 25,
+            'total_parties': 12,
+            'total_reviews': 18,
+            'favorite_category': '한식',
+            'weekly_goal': 3,
+            'weekly_progress': 2,
+            'streak': 5,
+            'rank': 3,
+            'total_users': 20,
+            'user_points': 12500
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': '대시보드 데이터 조회 성공',
+            'data': dashboard_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': '대시보드 데이터 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@dev_bp.route('/api/users/appointments', methods=['GET'])
+def get_dev_user_appointments():
+    """개발용 사용자 약속 목록 API - 인증 없이 테스트 가능"""
+    try:
+        status = request.args.get('status', 'all')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 20))
+        
+        appointments = [
+            {
+                'id': 'party_1',
+                'type': 'party',
+                'title': '점심 모임',
+                'restaurant_name': '맛있는 김치찌개',
+                'restaurant_address': '서울시 강남구 테헤란로 123',
+                'date': '2025-09-09',
+                'time': '12:00:00',
+                'meeting_location': '사무실 로비',
+                'status': 'upcoming',
+                'is_host': True,
+                'member_count': 2,
+                'max_members': 4
+            },
+            {
+                'id': 'party_2',
+                'type': 'party',
+                'title': '랜덤런치',
+                'restaurant_name': '피자헛',
+                'restaurant_address': '서울시 강남구 테헤란로 456',
+                'date': '2025-09-10',
+                'time': '12:30:00',
+                'meeting_location': '사무실 앞',
+                'status': 'upcoming',
+                'is_host': False,
+                'member_count': 4,
+                'max_members': 6
+            },
+            {
+                'id': 'schedule_1',
+                'type': 'personal',
+                'title': '개인 약속',
+                'description': '병원 예약',
+                'date': '2025-09-11',
+                'time': '14:00:00',
+                'status': 'upcoming',
+                'is_recurring': False,
+                'recurrence_type': None
+            }
+        ]
+        
+        # 상태별 필터링
+        if status != 'all':
+            appointments = [apt for apt in appointments if apt['status'] == status]
+        
+        # 페이지네이션
+        total_count = len(appointments)
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_appointments = appointments[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'message': '약속 목록 조회 성공',
+            'data': {
+                'appointments': paginated_appointments,
+                'pagination': {
+                    'page': page,
+                    'limit': limit,
+                    'total_count': total_count,
+                    'total_pages': (total_count + limit - 1) // limit
+                }
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': '약속 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@dev_bp.route('/api/users/points', methods=['GET'])
+def get_dev_user_points():
+    """개발용 사용자 포인트 API - 인증 없이 테스트 가능"""
+    try:
+        points_data = {
+            'total_points': 12500,
+            'current_level': 3,
+            'level_title': '점심 마스터',
+            'next_level_points': 7500,
+            'progress_percentage': 67
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': '포인트 정보 조회 성공',
+            'data': points_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': '포인트 정보 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@dev_bp.route('/api/users/badges', methods=['GET'])
+def get_dev_user_badges():
+    """개발용 사용자 배지 API - 인증 없이 테스트 가능"""
+    try:
+        badges = [
+            {
+                'id': 'first_lunch',
+                'name': '첫 점심',
+                'description': '첫 번째 점심 약속을 완료했습니다',
+                'icon': '🍽️',
+                'earned_at': '2025-08-15T12:00:00Z',
+                'is_earned': True
+            },
+            {
+                'id': 'social_butterfly',
+                'name': '사교적인 사람',
+                'description': '10번의 파티에 참여했습니다',
+                'icon': '🦋',
+                'earned_at': '2025-09-01T12:00:00Z',
+                'is_earned': True
+            },
+            {
+                'id': 'food_critic',
+                'name': '음식 평론가',
+                'description': '20개의 리뷰를 작성했습니다',
+                'icon': '⭐',
+                'earned_at': None,
+                'is_earned': False
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'message': '배지 목록 조회 성공',
+            'data': {
+                'badges': badges
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': '배지 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
