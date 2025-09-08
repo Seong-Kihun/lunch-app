@@ -26,7 +26,7 @@ def get_user_profile():
         
         # 데이터베이스에서 사용자 프로필 조회
         from models.schemas import User
-        from app import db
+        from extensions import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
         if not user:
@@ -72,7 +72,7 @@ def update_user_profile():
         
         # 데이터베이스에서 사용자 조회
         from models.schemas import User
-        from app import db
+        from extensions import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
         if not user:
