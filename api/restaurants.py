@@ -186,6 +186,69 @@ def load_restaurants_from_csv():
     CSV 파일에서 식당 데이터를 로드합니다.
     """
     try:
+        # 임시로 하드코딩된 테스트 데이터 반환
+        restaurants = [
+            {
+                'id': 1,
+                'name': '지구마을',
+                'category': '한식',
+                'location': '판교',
+                'address': '경기도 성남시 수정구 시흥동 298 한국국제협력단 본관 1층 일부호',
+                'phone': '031-123-4567',
+                'description': '지구마을 - 판교 지역 맛집',
+                'price_range': 8000,
+                'rating': 4.2,
+                'latitude': 37.41504641,
+                'longitude': 127.0993841,
+                'image_url': '',
+                'tags': ['맛집', '판교', '한식'],
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'distance': 0.1
+            },
+            {
+                'id': 2,
+                'name': '북창동순두부 판교파미어스몰점',
+                'category': '한식',
+                'location': '판교',
+                'address': '경기도 성남시 수정구 시흥동 322 2층 209호',
+                'phone': '031-123-4568',
+                'description': '북창동순두부 판교파미어스몰점 - 판교 지역 맛집',
+                'price_range': 12000,
+                'rating': 4.0,
+                'latitude': 37.41340786,
+                'longitude': 127.0983592,
+                'image_url': '',
+                'tags': ['맛집', '판교', '순두부'],
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'distance': 0.26
+            },
+            {
+                'id': 3,
+                'name': '시먼당 파미어스몰',
+                'category': '중식',
+                'location': '판교',
+                'address': '경기도 성남시 수정구 시흥동 322 판교아이스퀘어 2층 201-3호',
+                'phone': '031-123-4569',
+                'description': '시먼당 파미어스몰 - 판교 지역 맛집',
+                'price_range': 15000,
+                'rating': 4.5,
+                'latitude': 37.41340786,
+                'longitude': 127.0983592,
+                'image_url': '',
+                'tags': ['맛집', '판교', '중식'],
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'distance': 0.26
+            }
+        ]
+        
+        logger.info(f"테스트 식당 데이터 {len(restaurants)}개 로드 완료")
+        return restaurants
+        
+    except Exception as e:
+        logger.error(f"Error loading restaurants: {e}")
         # CSV 파일 경로
         csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'restaurants.csv')
         
