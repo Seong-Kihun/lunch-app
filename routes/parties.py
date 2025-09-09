@@ -4,9 +4,15 @@ from extensions import db
 from models.app_models import Party, PartyMember, Restaurant
 from datetime import datetime, timedelta
 import random
+from auth.utils import require_auth
 
 # Blueprint 생성
 parties_bp = Blueprint('parties', __name__)
+
+# 인증 미들웨어 적용
+@parties_bp.before_request
+def _parties_guard():
+    return require_auth()()
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
