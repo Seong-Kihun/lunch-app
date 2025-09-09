@@ -11,19 +11,23 @@ class AuthUtils:
     """인증 관련 유틸리티 클래스"""
     
     @staticmethod
-    def generate_jwt_token(user_id: int, token_type: str = 'access') -> str:
-        """JWT 토큰 생성"""
+    def generate_jwt_token(user_id: int, token_type: str = 'access', extra_claims: Optional[Dict[str, Any]] = None) -> str:
+        """JWT 토큰 생성
+        extra_claims: 추가로 payload에 포함할 클레임
+        """
         if token_type == 'access':
             expires = datetime.utcnow() + AuthConfig.JWT_ACCESS_TOKEN_EXPIRES
         else:  # refresh
             expires = datetime.utcnow() + AuthConfig.JWT_REFRESH_TOKEN_EXPIRES
         
-        payload = {
+        payload: Dict[str, Any] = {
             'user_id': user_id,
             'token_type': token_type,
             'exp': expires,
             'iat': datetime.utcnow()
         }
+        if extra_claims:
+            payload.update(extra_claims)
         
         return jwt.encode(payload, AuthConfig.JWT_SECRET_KEY, algorithm='HS256')
     
@@ -31,9 +35,7 @@ class AuthUtils:
     def verify_jwt_token(token: str) -> Optional[Dict[str, Any]]:
         """JWT 토큰 검증"""
         try:
-            print(f"DEBUG: Verifying JWT token with secret key: {AuthConfig.JWT_SECRET_KEY[:20]}...")
             payload = jwt.decode(token, AuthConfig.JWT_SECRET_KEY, algorithms=['HS256'])
-            print(f"DEBUG: JWT token verified successfully: {payload}")
             return payload
         except jwt.ExpiredSignatureError as e:
             print(f"DEBUG: JWT token expired: {e}")
@@ -245,15 +247,12 @@ def require_auth(f):
         try:
             # Bearer 토큰 추출
             token = auth_header.split(' ')[1]
-            print(f"DEBUG: Token received: {token[:20]}... for {request.endpoint}")
             
             # JWT 토큰 검증
             payload = AuthUtils.verify_jwt_token(token)
             if not payload:
                 print(f"DEBUG: Token verification failed for {request.endpoint}")
                 return jsonify({'error': 'Invalid or expired token'}), 401
-            
-            print(f"DEBUG: Token verified successfully for {request.endpoint}, user_id: {payload.get('user_id')}")
             
             # 토큰 타입 확인
             if payload.get('token_type') != 'access':
@@ -267,7 +266,8 @@ def require_auth(f):
                 return jsonify({'error': 'User not found or inactive'}), 401
             
             # 토큰 무효화 여부 확인
-            if AuthUtils.is_token_revoked(token):
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            if AuthUtils.is_token_revoked(token_hash):
                 print(f"DEBUG: Token revoked for {request.endpoint}")
                 return jsonify({'error': 'Token has been revoked'}), 401
             
