@@ -19,7 +19,7 @@ bcrypt==4.0.1
 cryptography==41.0.7
 
 # 데이터 검증 (Python 3.13 호환)
-pydantic==2.0.7
+pydantic==2.0.3
 pydantic-settings==2.0.3
 
 # HTTP 요청 및 시스템 모니터링
