@@ -10,7 +10,7 @@ Werkzeug==3.0.1
 # 데이터베이스
 SQLAlchemy==2.0.23
 alembic==1.13.1
-greenlet==1.0.0
+greenlet>=3.0.0,<4.0.0
 psycopg2-binary==2.9.9
 
 # 인증 및 보안 (Python 3.13 호환)
@@ -23,7 +23,7 @@ pydantic>=2.8.0,<3.0.0
 pydantic-settings>=2.2.0,<3.0.0
 
 # HTTP 요청 및 시스템 모니터링
-requests==2.32.0
+requests>=2.32.3,<3.0.0
 psutil==5.9.6
 
 # 백그라운드 작업 (Python 3.13 호환)
