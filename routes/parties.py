@@ -45,28 +45,40 @@ def get_parties():
     # 정렬 (최신순)
     parties_query = parties_query.order_by(desc(Party.created_at))
     
+    # 멤버 수 계산을 서브쿼리로 최적화 (N+1 쿼리 제거)
+    member_counts = db.session.query(
+        PartyMember.party_id, func.count(PartyMember.id).label("member_count")
+    ).group_by(PartyMember.party_id).subquery()
+    
+    # 파티와 멤버 수를 함께 조회
+    parties_with_counts = db.session.query(Party, member_counts.c.member_count).outerjoin(
+        member_counts, Party.id == member_counts.c.party_id
+    ).filter(
+        parties_query.whereclause if parties_query.whereclause is not None else True
+    ).order_by(desc(Party.created_at))
+    
     # 페이지네이션
-    total = parties_query.count()
-    parties = parties_query.offset((page - 1) * per_page).limit(per_page).all()
+    total = parties_with_counts.count()
+    parties_result = parties_with_counts.offset((page - 1) * per_page).limit(per_page).all()
     
     parties_data = []
-    for party in parties:
+    for party, member_count in parties_result:
         # 호스트 정보 (User 모델 없이 간단하게 처리)
         host_name = f"사용자 {party.host_employee_id}"
         
-        # 멤버 수
-        member_count = PartyMember.query.filter_by(party_id=party.id).count()
+        # 멤버 수 (None인 경우 0으로 처리)
+        current_member_count = (member_count or 0) + 1  # 호스트 포함
         
         party_info = {
             "id": party.id,
             "title": party.title,
             "restaurant_name": party.restaurant_name,
             "restaurant_address": party.restaurant_address,
-            "party_date": party.party_date,
-            "party_time": party.party_time,
+            "party_date": party.party_date.isoformat() if hasattr(party.party_date, 'isoformat') else str(party.party_date),
+            "party_time": party.party_time.isoformat() if hasattr(party.party_time, 'isoformat') else str(party.party_time),
             "meeting_location": party.meeting_location,
             "max_members": party.max_members,
-            "current_members": member_count + 1,  # 호스트 포함
+            "current_members": current_member_count,
             "host": {
                 "employee_id": party.host_employee_id,
                 "name": host_name
