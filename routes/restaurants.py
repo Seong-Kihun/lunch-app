@@ -4,6 +4,7 @@ from extensions import db
 from models.app_models import Restaurant, Review, RestaurantRequest, RestaurantFavorite, RestaurantVisit
 from datetime import datetime, timedelta
 import random
+from auth.utils import require_auth
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
@@ -12,6 +13,14 @@ def get_seoul_today():
 
 # Blueprint 생성
 restaurants_bp = Blueprint('restaurants', __name__)
+
+# 인증 미들웨어 적용 (공개 엔드포인트 제외)
+@restaurants_bp.before_request
+def _restaurants_guard():
+    # 공개 엔드포인트는 인증 제외
+    if request.endpoint in ['restaurants.get_restaurants', 'restaurants.get_restaurant']:
+        return None
+    return require_auth()()
 
 def geocode_address(address):
     """주소를 좌표로 변환하는 함수 (가상 구현)"""
