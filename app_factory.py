@@ -17,6 +17,10 @@ def create_app(config_name=None):
     AuthConfig.validate_jwt_secret()
     
     app = Flask(__name__)
+    
+    # 로깅 시스템 초기화
+    from utils.logging import init_app_logging
+    init_app_logging(app)
      
     # CORS 화이트리스트 설정
     allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
@@ -75,15 +79,16 @@ def create_app(config_name=None):
         UserFavorite,
     )
 
-    print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
+    from utils.logging import info, warning
+    info("extensions.py의 데이터베이스 객체를 import했습니다.")
     
     # 인증 모델 import (별도 처리)
     try:
         from auth.models import Friendship
-        print("✅ 인증 모델을 불러왔습니다.")
+        info("인증 모델을 불러왔습니다.")
     except ImportError as e:
-        print(f"⚠️ 인증 모델 import 실패: {e}")
-        print("   Friendship 모델은 비활성화됩니다.")
+        warning(f"인증 모델 import 실패: {e}")
+        warning("Friendship 모델은 비활성화됩니다.")
 
     # Flask-Migrate 초기화
     try:
