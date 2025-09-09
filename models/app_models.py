@@ -62,7 +62,6 @@ class Party(db.Model):
 class PartyMember(db.Model):
     """파티 멤버 연결 테이블"""
     __tablename__ = 'party_member'
-    __table_args__ = {'extend_existing': True}  # 중복 정의 문제 해결
     
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
@@ -73,6 +72,7 @@ class PartyMember(db.Model):
     __table_args__ = (
         db.Index('idx_party_member', 'party_id', 'employee_id'),
         db.Index('idx_member_party', 'employee_id', 'party_id'),
+        {'extend_existing': True},
     )
     
     def __init__(self, party_id, employee_id, is_host=False, joined_at=None):
