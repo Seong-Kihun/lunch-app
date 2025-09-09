@@ -38,7 +38,6 @@ def create_app(config_name=None):
         UserAnalytics,
         Restaurant,
         Review,
-        Friendship,
         UserActivity,
         RestaurantVisit,
         OfflineData,
@@ -52,10 +51,23 @@ def create_app(config_name=None):
     )
 
     print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
+    
+    # 인증 모델 import (별도 처리)
+    try:
+        from auth.models import Friendship
+        print("✅ 인증 모델을 불러왔습니다.")
+    except ImportError as e:
+        print(f"⚠️ 인증 모델 import 실패: {e}")
+        print("   Friendship 모델은 비활성화됩니다.")
 
     # Flask-Migrate 초기화
-    from flask_migrate import Migrate
-    migrate = Migrate(app, db)
+    try:
+        from flask_migrate import Migrate
+        migrate = Migrate(app, db)
+        print("✅ Flask-Migrate가 성공적으로 초기화되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ Flask-Migrate 초기화 실패: {e}")
+        print("   데이터베이스 마이그레이션 기능은 비활성화됩니다.")
 
     # 에러 핸들러 등록
     try:
