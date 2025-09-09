@@ -1603,87 +1603,87 @@ def create_initial_data():
         db.session.commit()
         print("DEBUG: 가상 유저 20명과 친구 관계 초기 데이터 생성 완료")
 
-        # 정확한 722개 맛집 데이터 로드 (CSV 파일에서)
+        # 정확한 722개 맛집 데이터 로드 (CSV 파일에서) - Python 3.13 호환성 문제로 임시 비활성화
         if Restaurant.query.count() == 0:
-            print("DEBUG: Loading 722 curated restaurant data from CSV...")
-            try:
-                import pandas as pd
-                import os
+            print("DEBUG: Loading 722 curated restaurant data from CSV... (DISABLED for Python 3.13 compatibility)")
+            # try:
+            #     # import pandas as pd  # Python 3.13 호환성 문제로 임시 비활성화
+            #     import os
 
-                # CSV 파일 경로
-                csv_path = os.path.join(os.path.dirname(__file__), "data", "restaurants.csv")
+            #     # CSV 파일 경로
+            #     csv_path = os.path.join(os.path.dirname(__file__), "data", "restaurants.csv")
 
-                if os.path.exists(csv_path):
-                    # CSV 파일 읽기 (cp949 인코딩으로 시도)
-                    try:
-                        df = pd.read_csv(csv_path, encoding="cp949")
-                        print(f"DEBUG: Successfully read CSV with cp949 encoding")
-                    except UnicodeDecodeError:
-                        # cp949 실패시 다른 인코딩 시도
-                        df = pd.read_csv(csv_path, encoding="euc-kr")
-                        print(f"DEBUG: Successfully read CSV with euc-kr encoding")
+            #     if os.path.exists(csv_path):
+            #         # CSV 파일 읽기 (cp949 인코딩으로 시도)
+            #         try:
+            #             df = pd.read_csv(csv_path, encoding="cp949")
+            #             print(f"DEBUG: Successfully read CSV with cp949 encoding")
+            #         except UnicodeDecodeError:
+            #             # cp949 실패시 다른 인코딩 시도
+            #             df = pd.read_csv(csv_path, encoding="euc-kr")
+            #             print(f"DEBUG: Successfully read CSV with euc-kr encoding")
 
-                    # 빈 행 제거 (모든 컬럼이 NaN이거나 빈 문자열인 행 제거)
-                    df = df.dropna(how="all")  # 모든 컬럼이 NaN인 행 제거
-                    df = df[
-                        df.iloc[:, 0].notna() & (df.iloc[:, 0].astype(str).str.strip() != "")
-                    ]  # 첫 번째 컬럼이 비어있지 않은 행만 유지
+            #         # 빈 행 제거 (모든 컬럼이 NaN이거나 빈 문자열인 행 제거)
+            #         df = df.dropna(how="all")  # 모든 컬럼이 NaN인 행 제거
+            #         df = df[
+            #             df.iloc[:, 0].notna() & (df.iloc[:, 0].astype(str).str.strip() != "")
+            #         ]  # 첫 번째 컬럼이 비어있지 않은 행만 유지
 
-                    print(f"DEBUG: Found {len(df)} valid restaurants in CSV (removed empty rows)")
+            #         print(f"DEBUG: Found {len(df)} valid restaurants in CSV (removed empty rows)")
 
-                    # 데이터베이스에 로드
-                    for index, row in df.iterrows():
-                        try:
-                            # CSV 컬럼명 확인 및 데이터 추출
-                            name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else "Unknown"
-                            address = str(row.iloc[1]) if pd.notna(row.iloc[1]) else ""
-                            latitude = float(row.iloc[2]) if pd.notna(row.iloc[2]) else 37.4452
-                            longitude = float(row.iloc[3]) if pd.notna(row.iloc[3]) else 127.1023
+            #         # 데이터베이스에 로드
+            #         for index, row in df.iterrows():
+            #             try:
+            #                 # CSV 컬럼명 확인 및 데이터 추출
+            #                 name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else "Unknown"
+            #                 address = str(row.iloc[1]) if pd.notna(row.iloc[1]) else ""
+            #                 latitude = float(row.iloc[2]) if pd.notna(row.iloc[2]) else 37.4452
+            #                 longitude = float(row.iloc[3]) if pd.notna(row.iloc[3]) else 127.1023
 
-                            # 카테고리 추정 (이름에서)
-                            category = "기타"
-                            if any(keyword in name for keyword in ["카페", "커피", "스타벅스", "투썸"]):
-                                category = "카페"
-                            elif any(keyword in name for keyword in ["치킨", "BBQ", "교촌", "네네"]):
-                                category = "치킨"
-                            elif any(keyword in name for keyword in ["피자", "도미노", "피자헛"]):
-                                category = "피자"
-                            elif any(keyword in name for keyword in ["편의점", "씨유", "GS25", "세븐일레븐"]):
-                                category = "편의점"
-                            elif any(keyword in name for keyword in ["베이커리", "파리바게뜨", "뚜레쥬르"]):
-                                category = "베이커리"
-                            elif any(keyword in name for keyword in ["일식", "스시", "라멘"]):
-                                category = "일식"
-                            elif any(keyword in name for keyword in ["중식", "짜장면", "탕수육"]):
-                                category = "중식"
-                            elif any(keyword in name for keyword in ["양식", "파스타", "스테이크"]):
-                                category = "양식"
-                            else:
-                                category = "한식"
+            #                 # 카테고리 추정 (이름에서)
+            #                 category = "기타"
+            #                 if any(keyword in name for keyword in ["카페", "커피", "스타벅스", "투썸"]):
+            #                     category = "카페"
+            #                 elif any(keyword in name for keyword in ["치킨", "BBQ", "교촌", "네네"]):
+            #                     category = "치킨"
+            #                 elif any(keyword in name for keyword in ["피자", "도미노", "피자헛"]):
+            #                     category = "피자"
+            #                 elif any(keyword in name for keyword in ["편의점", "씨유", "GS25", "세븐일레븐"]):
+            #                     category = "편의점"
+            #                 elif any(keyword in name for keyword in ["베이커리", "파리바게뜨", "뚜레쥬르"]):
+            #                     category = "베이커리"
+            #                 elif any(keyword in name for keyword in ["일식", "스시", "라멘"]):
+            #                     category = "일식"
+            #                 elif any(keyword in name for keyword in ["중식", "짜장면", "탕수육"]):
+            #                     category = "중식"
+            #                 elif any(keyword in name for keyword in ["양식", "파스타", "스테이크"]):
+            #                     category = "양식"
+            #                 else:
+            #                     category = "한식"
 
-                            restaurant = Restaurant(
-                                name=name,
-                                category=category,
-                                address=address,
-                                latitude=latitude,
-                                longitude=longitude,
-                            )
-                            db.session.add(restaurant)
+            #                 restaurant = Restaurant(
+            #                     name=name,
+            #                     category=category,
+            #                     address=address,
+            #                     latitude=latitude,
+            #                     longitude=longitude,
+            #                 )
+            #                 db.session.add(restaurant)
 
-                        except (AttributeError, KeyError, ValueError) as e:
-                            print(f"DEBUG: Error processing restaurant {index}: {e}")
-                            continue
+            #             except (AttributeError, KeyError, ValueError) as e:
+            #                 print(f"DEBUG: Error processing restaurant {index}: {e}")
+            #                 continue
 
-                    db.session.commit()
-                    final_count = Restaurant.query.count()
-                    print(f"DEBUG: Successfully loaded {final_count} restaurants from CSV")
+            #         db.session.commit()
+            #         final_count = Restaurant.query.count()
+            #         print(f"DEBUG: Successfully loaded {final_count} restaurants from CSV")
 
-                else:
-                    print(f"DEBUG: CSV file not found at {csv_path}")
+            #     else:
+            #         print(f"DEBUG: CSV file not found at {csv_path}")
 
-            except (FileNotFoundError, ValueError, AttributeError) as e:
-                print(f"DEBUG: Error loading restaurants from CSV: {e}")
-                db.session.rollback()
+            # except (FileNotFoundError, ValueError, AttributeError) as e:
+            #     print(f"DEBUG: Error loading restaurants from CSV: {e}")
+            #     db.session.rollback()
 
     except (AttributeError, KeyError, ValueError, RuntimeError) as e:
         db.session.rollback()
