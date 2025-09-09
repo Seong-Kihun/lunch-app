@@ -33,11 +33,7 @@ redis==5.0.1
 # 스케줄러
 APScheduler==3.10.0
 
-# 데이터 처리 (Python 3.11 호환)
-pandas>=1.5.0,<2.1.0
-numpy>=1.21.0,<1.25.0
-
-# Excel 파일 처리
+# Excel 파일 처리 (pandas 대신 직접 처리)
 openpyxl==3.1.0
 xlrd==2.0.0
 
