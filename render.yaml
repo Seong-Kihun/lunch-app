@@ -1,12 +1,10 @@
 services:
   - type: web
     name: lunch-app
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
-    pythonVersion: "3.12.7"
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PYTHON_VERSION
-        value: "3.12.7"
+        value: 3.12.7
       - key: PYTHONPATH
-        value: "/opt/render/project/src"
+        value: /app
