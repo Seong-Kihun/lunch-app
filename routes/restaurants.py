@@ -13,6 +13,13 @@ def get_seoul_today():
 # Blueprint 생성
 restaurants_bp = Blueprint('restaurants', __name__)
 
+# 인증 미들웨어 적용
+@restaurants_bp.before_request
+def require_auth():
+    """식당 API 인증 검사"""
+    from auth.middleware import check_authentication
+    return check_authentication()
+
 def geocode_address(address):
     """주소를 좌표로 변환하는 함수 (가상 구현)"""
     lat = 37.4452 + (random.random() - 0.5) * 0.01

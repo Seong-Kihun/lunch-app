@@ -8,6 +8,13 @@ import random
 # Blueprint 생성
 users_bp = Blueprint('users', __name__)
 
+# 인증 미들웨어 적용
+@users_bp.before_request
+def require_auth():
+    """사용자 API 인증 검사"""
+    from auth.middleware import check_authentication
+    return check_authentication()
+
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
     korean_time = datetime.now() + timedelta(hours=9)
@@ -119,22 +126,32 @@ def update_user_preferences(employee_id):
         return jsonify({"error": "선호도 데이터가 없습니다."}), 400
     
     try:
-        for preference_type, preference_value in data.items():
-            # 기존 선호도가 있는지 확인
-            existing_pref = UserPreference.query.filter_by(
-                employee_id=employee_id,
-                preference_type=preference_type
-            ).first()
-            
-            if existing_pref:
-                existing_pref.preference_value = preference_value
-            else:
-                new_pref = UserPreference(
-                    employee_id=employee_id,
-                    preference_type=preference_type,
-                    preference_value=preference_value
-                )
-                db.session.add(new_pref)
+        # 기존 선호도가 있는지 확인
+        existing_pref = UserPreference.query.filter_by(user_id=employee_id).first()
+        
+        if existing_pref:
+            # 기존 선호도 업데이트
+            if 'food_preferences' in data:
+                existing_pref.food_preferences = data['food_preferences']
+            if 'lunch_style' in data:
+                existing_pref.lunch_style = data['lunch_style']
+            if 'max_distance' in data:
+                existing_pref.max_distance = data['max_distance']
+            if 'budget_range' in data:
+                existing_pref.budget_range = data['budget_range']
+            if 'preferred_time' in data:
+                existing_pref.preferred_time = data['preferred_time']
+        else:
+            # 새로운 선호도 생성
+            new_pref = UserPreference(
+                user_id=employee_id,
+                food_preferences=data.get('food_preferences'),
+                lunch_style=data.get('lunch_style'),
+                max_distance=data.get('max_distance', 1000),
+                budget_range=data.get('budget_range'),
+                preferred_time=data.get('preferred_time')
+            )
+            db.session.add(new_pref)
         
         db.session.commit()
         
@@ -155,10 +172,28 @@ def get_user_preferences(employee_id):
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
     
-    preferences = UserPreference.query.filter_by(employee_id=employee_id).all()
-    preference_data = {}
-    for pref in preferences:
-        preference_data[pref.preference_type] = pref.preference_value
+    preference = UserPreference.query.filter_by(user_id=employee_id).first()
+    
+    if preference:
+        preference_data = {
+            "food_preferences": preference.food_preferences,
+            "lunch_style": preference.lunch_style,
+            "max_distance": preference.max_distance,
+            "budget_range": preference.budget_range,
+            "preferred_time": preference.preferred_time,
+            "created_at": preference.created_at.isoformat() if preference.created_at else None,
+            "updated_at": preference.updated_at.isoformat() if preference.updated_at else None
+        }
+    else:
+        preference_data = {
+            "food_preferences": None,
+            "lunch_style": None,
+            "max_distance": 1000,
+            "budget_range": None,
+            "preferred_time": None,
+            "created_at": None,
+            "updated_at": None
+        }
     
     return jsonify({
         "employee_id": employee_id,

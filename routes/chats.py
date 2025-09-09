@@ -8,6 +8,13 @@ import random
 # Blueprint 생성
 chats_bp = Blueprint('chats', __name__)
 
+# 인증 미들웨어 적용
+@chats_bp.before_request
+def require_auth():
+    """채팅 API 인증 검사"""
+    from auth.middleware import check_authentication
+    return check_authentication()
+
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
     korean_time = datetime.now() + timedelta(hours=9)

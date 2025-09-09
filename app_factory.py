@@ -8,8 +8,30 @@ from flask_cors import CORS
 
 def create_app(config_name=None):
     """Application Factory 패턴으로 Flask 앱 생성"""
+    # 환경변수 로드
+    from config.env_loader import load_environment_variables
+    load_environment_variables()
+    
+    # 보안 키 검증 (프로덕션에서 기본 키 사용 시 부팅 차단)
+    from config.auth_config import AuthConfig
+    AuthConfig.validate_jwt_secret()
+    
     app = Flask(__name__)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    # CORS 화이트리스트 설정
+    allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+    if not allowed_origins:
+        # 개발 환경 기본값
+        allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    
+    cors_config = {
+        "origins": allowed_origins,
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Accept"],
+        "supports_credentials": True,
+        "max_age": 86400  # 24시간 프리플라이트 캐시
+    }
+    CORS(app, resources={r"/api/*": cors_config})
 
     # 기본 설정
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
@@ -23,6 +45,9 @@ def create_app(config_name=None):
 
     # 데이터베이스 객체 import (extensions.py에서)
     from extensions import db
+    
+    # 데이터베이스 초기화 - Factory 패턴에서 필수
+    db.init_app(app)
 
     # 모델 import
     from models.app_models import (
@@ -209,42 +234,42 @@ def create_app(config_name=None):
 
     try:
         from routes.restaurants import restaurants_bp
-        app.register_blueprint(restaurants_bp)
+        app.register_blueprint(restaurants_bp, url_prefix='/api')
         print("✅ 식당 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 식당 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.parties import parties_bp
-        app.register_blueprint(parties_bp)
+        app.register_blueprint(parties_bp, url_prefix='/api')
         print("✅ 파티 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 파티 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.users import users_bp
-        app.register_blueprint(users_bp)
+        app.register_blueprint(users_bp, url_prefix='/api')
         print("✅ 사용자 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 사용자 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.chats import chats_bp
-        app.register_blueprint(chats_bp)
+        app.register_blueprint(chats_bp, url_prefix='/api')
         print("✅ 채팅 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 채팅 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.voting import voting_bp
-        app.register_blueprint(voting_bp)
+        app.register_blueprint(voting_bp, url_prefix='/api')
         print("✅ 투표 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 투표 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.matching import matching_bp
-        app.register_blueprint(matching_bp)
+        app.register_blueprint(matching_bp, url_prefix='/api')
         print("✅ 매칭 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"❌ 매칭 관리 Blueprint 등록 실패: {e}")

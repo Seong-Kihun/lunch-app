@@ -226,6 +226,11 @@ class AuthUtils:
         from .models import RevokedToken
         return RevokedToken.query.filter_by(token_hash=token_hash).first() is not None
 
+def allow_anonymous(f):
+    """인증이 필요하지 않은 API를 위한 마커 데코레이터"""
+    f._allow_anonymous = True
+    return f
+
 def require_auth(f):
     """인증이 필요한 API를 위한 데코레이터"""
     from functools import wraps

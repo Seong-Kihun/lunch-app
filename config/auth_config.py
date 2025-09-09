@@ -11,11 +11,21 @@ class AuthConfig:
     @classmethod
     def validate_jwt_secret(cls):
         """JWT 보안 키 유효성 검사"""
+        is_production = os.getenv('FLASK_ENV') == 'production'
+        
         if cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production':
-            if os.getenv('FLASK_ENV') == 'production':
+            if is_production:
                 raise ValueError("프로덕션 환경에서는 JWT_SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
             else:
                 print("⚠️ 개발 환경에서 기본 JWT_SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
+        
+        # Flask SECRET_KEY도 검증
+        flask_secret = os.getenv('SECRET_KEY', 'dev-flask-secret-key-change-in-production')
+        if flask_secret == 'dev-flask-secret-key-change-in-production':
+            if is_production:
+                raise ValueError("프로덕션 환경에서는 SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
+            else:
+                print("⚠️ 개발 환경에서 기본 SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # 1일
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     
