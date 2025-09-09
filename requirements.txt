@@ -33,9 +33,9 @@ redis==5.0.1
 # 스케줄러
 APScheduler==3.10.0
 
-# 데이터 처리 (Python 3.12 호환)
-pandas>=2.0.0,<2.1.0
-numpy>=1.24.0,<1.26.0
+# 데이터 처리 (Python 3.13 호환 - pandas 제거)
+# pandas>=2.0.0,<2.1.0  # Python 3.13 호환성 문제로 임시 제거
+# numpy>=1.24.0,<1.26.0  # pandas 의존성으로 임시 제거
 
 # Excel 파일 처리
 openpyxl==3.1.0
