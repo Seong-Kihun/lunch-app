@@ -674,99 +674,74 @@ def get_dev_user_badges():
 
 @dev_bp.route('/api/v2/restaurants', methods=['GET'])
 def get_dev_restaurants_v2():
-    """개발용 식당 목록 v2 API - 인증 없이 테스트 가능"""
+    """개발용 식당 목록 v2 API - 실제 데이터베이스에서 조회"""
     try:
-        sort = request.args.get('sort', 'distance')
+        from models.restaurant_models import RestaurantV2
+        
+        # 쿼리 파라미터 처리
+        page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 1000))
+        lat = request.args.get('lat')
+        lng = request.args.get('lng')
+        radius = request.args.get('radius')
+        sort = request.args.get('sort', 'name')
         
-        restaurants = [
-            {
-                "id": 1,
-                "name": "맛있는 김치찌개",
-                "address": "서울시 강남구 테헤란로 123",
-                "latitude": 37.5665,
-                "longitude": 126.9780,
-                "phone": "02-1234-5678",
-                "category": "한식",
-                "rating": 4.5,
-                "distance": 0.5,
-                "is_active": True,
-                "price_range": "$$",
-                "opening_hours": "11:00-22:00"
-            },
-            {
-                "id": 2,
-                "name": "피자헛",
-                "address": "서울시 강남구 테헤란로 456",
-                "latitude": 37.5666,
-                "longitude": 126.9781,
-                "phone": "02-2345-6789",
-                "category": "양식",
-                "rating": 4.2,
-                "distance": 0.8,
-                "is_active": True,
-                "price_range": "$$",
-                "opening_hours": "11:00-23:00"
-            },
-            {
-                "id": 3,
-                "name": "맥도날드",
-                "address": "서울시 강남구 테헤란로 789",
-                "latitude": 37.5667,
-                "longitude": 126.9782,
-                "phone": "02-3456-7890",
-                "category": "패스트푸드",
-                "rating": 3.8,
-                "distance": 1.2,
-                "is_active": True,
-                "price_range": "$",
-                "opening_hours": "24시간"
-            },
-            {
-                "id": 4,
-                "name": "서브웨이",
-                "address": "서울시 강남구 테헤란로 101",
-                "latitude": 37.5668,
-                "longitude": 126.9783,
-                "phone": "02-4567-8901",
-                "category": "샐러드",
-                "rating": 4.0,
-                "distance": 0.3,
-                "is_active": True,
-                "price_range": "$$",
-                "opening_hours": "07:00-22:00"
-            },
-            {
-                "id": 5,
-                "name": "본죽",
-                "address": "서울시 강남구 테헤란로 202",
-                "latitude": 37.5669,
-                "longitude": 126.9784,
-                "phone": "02-5678-9012",
-                "category": "한식",
-                "rating": 4.3,
-                "distance": 0.7,
-                "is_active": True,
-                "price_range": "$$",
-                "opening_hours": "10:00-21:00"
-            }
-        ]
+        # 기본 쿼리
+        query = RestaurantV2.query.filter_by(is_active=True)
         
-        # 정렬 처리
-        if sort == 'distance':
-            restaurants.sort(key=lambda x: x['distance'])
-        elif sort == 'rating':
-            restaurants.sort(key=lambda x: x['rating'], reverse=True)
-        elif sort == 'name':
-            restaurants.sort(key=lambda x: x['name'])
+        # 위치 기반 필터링 (간단한 구현)
+        if lat and lng and radius:
+            try:
+                lat_float = float(lat)
+                lng_float = float(lng)
+                radius_float = float(radius)
+                
+                # 간단한 거리 계산을 위한 위도/경도 범위 계산
+                lat_range = radius_float / 111.0  # 대략적인 위도 1도 = 111km
+                lng_range = radius_float / (111.0 * abs(lat_float))  # 경도는 위도에 따라 다름
+                
+                query = query.filter(
+                    RestaurantV2.latitude.between(lat_float - lat_range, lat_float + lat_range),
+                    RestaurantV2.longitude.between(lng_float - lng_range, lng_float + lng_range)
+                )
+            except ValueError:
+                pass  # 잘못된 좌표값이면 무시
         
-        # 제한 적용
-        restaurants = restaurants[:limit]
+        # 정렬
+        if sort == 'name':
+            query = query.order_by(RestaurantV2.name)
+        elif sort == 'distance' and lat and lng:
+            # 거리순 정렬은 간단히 위도 기준으로
+            query = query.order_by(RestaurantV2.latitude)
+        else:
+            query = query.order_by(RestaurantV2.name)
+        
+        # 페이지네이션
+        offset = (page - 1) * limit
+        restaurants = query.offset(offset).limit(limit).all()
+        
+        # 데이터 변환
+        restaurant_list = []
+        for restaurant in restaurants:
+            restaurant_list.append({
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "address": restaurant.address,
+                "latitude": restaurant.latitude,
+                "longitude": restaurant.longitude,
+                "phone": restaurant.phone or "",
+                "category": restaurant.category or "기타",
+                "rating": 4.0,  # 기본값
+                "distance": 0.5,  # 기본값
+                "is_active": restaurant.is_active,
+                "price_range": "$$",  # 기본값
+                "opening_hours": "11:00-22:00"  # 기본값
+            })
         
         return jsonify({
             "success": True,
-            "restaurants": restaurants,
-            "total": len(restaurants),
+            "restaurants": restaurant_list,
+            "total": len(restaurant_list),
             "sort": sort,
             "limit": limit
         })
