@@ -188,9 +188,9 @@ def create_app(config_name=None):
 
     # 인증 시스템 초기화
     try:
-        from auth.auth_system import init_auth_system
-        init_auth_system(app)
-        print("✅ 인증 시스템을 불러왔습니다.")
+        from auth import init_auth
+        init_auth(app)
+        print("✅ 인증 시스템이 초기화되었습니다.")
     except ImportError as e:
         print(f"⚠️ 인증 시스템 초기화 실패: {e}")
         print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
@@ -229,7 +229,7 @@ def create_app(config_name=None):
 
     # Blueprint 등록
     try:
-        from routes.auth import auth_bp
+        from auth.routes import auth_bp
         app.register_blueprint(auth_bp)
         print("✅ 인증 Blueprint 등록 성공")
     except Exception as e:
