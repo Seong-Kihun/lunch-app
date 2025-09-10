@@ -777,6 +777,148 @@ def get_dev_restaurants_v2():
             "message": str(e)
         }), 500
 
+@dev_bp.route('/api/restaurants/search', methods=['GET'])
+def get_dev_restaurants_search():
+    """개발용 식당 검색 API - 인증 없이 테스트 가능"""
+    try:
+        query = request.args.get('q', '').strip()
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        sort = request.args.get('sort', 'name')
+        
+        # 개발용 샘플 식당 데이터
+        sample_restaurants = [
+            {
+                "id": 1,
+                "name": "맛있는 김치찌개",
+                "address": "서울시 강남구 테헤란로 123",
+                "latitude": 37.5665,
+                "longitude": 126.9780,
+                "phone": "02-1234-5678",
+                "category": "한식",
+                "rating": 4.5,
+                "is_active": True
+            },
+            {
+                "id": 2,
+                "name": "피자헛",
+                "address": "서울시 강남구 테헤란로 456",
+                "latitude": 37.5666,
+                "longitude": 126.9781,
+                "phone": "02-2345-6789",
+                "category": "양식",
+                "rating": 4.2,
+                "is_active": True
+            },
+            {
+                "id": 3,
+                "name": "맥도날드",
+                "address": "서울시 강남구 테헤란로 789",
+                "latitude": 37.5667,
+                "longitude": 126.9782,
+                "phone": "02-3456-7890",
+                "category": "패스트푸드",
+                "rating": 3.8,
+                "is_active": True
+            },
+            {
+                "id": 4,
+                "name": "서브웨이",
+                "address": "서울시 강남구 테헤란로 101",
+                "latitude": 37.5668,
+                "longitude": 126.9783,
+                "phone": "02-4567-8901",
+                "category": "샐러드",
+                "rating": 4.0,
+                "is_active": True
+            },
+            {
+                "id": 5,
+                "name": "본죽",
+                "address": "서울시 강남구 테헤란로 202",
+                "latitude": 37.5669,
+                "longitude": 126.9784,
+                "phone": "02-5678-9012",
+                "category": "한식",
+                "rating": 4.3,
+                "is_active": True
+            }
+        ]
+        
+        # 검색어가 있으면 필터링
+        if query:
+            filtered_restaurants = [
+                r for r in sample_restaurants 
+                if query.lower() in r['name'].lower() or 
+                   query.lower() in r['category'].lower() or
+                   query.lower() in r['address'].lower()
+            ]
+        else:
+            filtered_restaurants = sample_restaurants
+        
+        # 정렬
+        if sort == 'rating':
+            filtered_restaurants.sort(key=lambda x: x['rating'], reverse=True)
+        elif sort == 'name':
+            filtered_restaurants.sort(key=lambda x: x['name'])
+        else:
+            filtered_restaurants.sort(key=lambda x: x['name'])
+        
+        # 페이지네이션
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_restaurants = filtered_restaurants[start_idx:end_idx]
+        
+        return jsonify({
+            "success": True,
+            "restaurants": paginated_restaurants,
+            "total": len(filtered_restaurants),
+            "page": page,
+            "limit": limit,
+            "has_more": end_idx < len(filtered_restaurants)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "식당 검색 중 오류가 발생했습니다.",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route('/api/restaurants/frequent', methods=['GET'])
+def get_dev_frequent_restaurants():
+    """개발용 자주 가는 식당 API - 인증 없이 테스트 가능"""
+    try:
+        # 개발용 자주 가는 식당 데이터
+        frequent_restaurants = [
+            {
+                "id": 1,
+                "name": "맛있는 김치찌개",
+                "address": "서울시 강남구 테헤란로 123",
+                "category": "한식",
+                "rating": 4.5,
+                "visit_count": 15
+            },
+            {
+                "id": 2,
+                "name": "피자헛",
+                "address": "서울시 강남구 테헤란로 456",
+                "category": "양식",
+                "rating": 4.2,
+                "visit_count": 8
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "restaurants": frequent_restaurants
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "자주 가는 식당 조회 중 오류가 발생했습니다.",
+            "message": str(e)
+        }), 500
+
 @dev_bp.route('/api/v2/restaurants/categories', methods=['GET'])
 def get_dev_restaurant_categories():
     """개발용 식당 카테고리 API - 인증 없이 테스트 가능"""
