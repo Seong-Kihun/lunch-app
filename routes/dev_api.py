@@ -226,66 +226,120 @@ def get_dev_users_list():
     except Exception as e:
         return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
-@dev_bp.route('/schedules', methods=['GET'])
-def get_dev_schedules():
-    """개발용 일정 조회 API - 인증 없이 테스트 가능"""
-    try:
-        # 쿼리 파라미터 가져오기
-        start_date_str = request.args.get('start_date')
-        end_date_str = request.args.get('end_date')
-        employee_id = request.args.get('employee_id')
-        
-        if not all([start_date_str, end_date_str, employee_id]):
+@dev_bp.route('/schedules', methods=['GET', 'POST'])
+def dev_schedules():
+    """개발용 일정 조회/생성 API - 인증 없이 테스트 가능"""
+    if request.method == 'GET':
+        # GET: 일정 조회
+        try:
+            # 쿼리 파라미터 가져오기
+            start_date_str = request.args.get('start_date')
+            end_date_str = request.args.get('end_date')
+            employee_id = request.args.get('employee_id')
+            
+            if not all([start_date_str, end_date_str, employee_id]):
+                return jsonify({
+                    'error': '필수 파라미터가 누락되었습니다',
+                    'required': ['start_date', 'end_date', 'employee_id']
+                }), 400
+            
+            # 개발용 샘플 일정 데이터
+            sample_schedules = [
+                {
+                    "id": 1,
+                    "title": "점심 약속",
+                    "start_date": start_date_str,
+                    "end_date": start_date_str,
+                    "start_time": "12:00:00",
+                    "end_time": "13:00:00",
+                    "is_recurring": False,
+                    "recurrence_type": None,
+                    "description": "팀 점심 모임",
+                    "location": "사무실 근처",
+                    "status": "confirmed"
+                },
+                {
+                    "id": 2,
+                    "title": "회의",
+                    "start_date": end_date_str,
+                    "end_date": end_date_str,
+                    "start_time": "14:00:00",
+                    "end_time": "15:00:00",
+                    "is_recurring": False,
+                    "recurrence_type": None,
+                    "description": "주간 회의",
+                    "location": "회의실",
+                    "status": "confirmed"
+                }
+            ]
+            
             return jsonify({
-                'error': '필수 파라미터가 누락되었습니다',
-                'required': ['start_date', 'end_date', 'employee_id']
-            }), 400
-        
-        # 개발용 샘플 일정 데이터
-        sample_schedules = [
-            {
-                "id": 1,
-                "title": "점심 약속",
-                "start_date": start_date_str,
-                "end_date": start_date_str,
-                "start_time": "12:00:00",
-                "end_time": "13:00:00",
-                "is_recurring": False,
-                "recurrence_type": None,
-                "description": "팀 점심 모임",
-                "location": "사무실 근처",
-                "status": "confirmed"
-            },
-            {
-                "id": 2,
-                "title": "회의",
-                "start_date": end_date_str,
-                "end_date": end_date_str,
-                "start_time": "14:00:00",
-                "end_time": "15:00:00",
-                "is_recurring": False,
-                "recurrence_type": None,
-                "description": "주간 회의",
-                "location": "회의실",
-                "status": "confirmed"
+                'success': True,
+                'data': sample_schedules,
+                'period': {
+                    'start_date': start_date_str,
+                    'end_date': end_date_str
+                },
+                'total_dates': len(sample_schedules)
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'error': '개발용 일정 조회 중 오류가 발생했습니다',
+                'message': str(e)
+            }), 500
+    
+    elif request.method == 'POST':
+        # POST: 일정 생성
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': '요청 데이터가 없습니다'}), 400
+            
+            print(f"🔍 [개발용] 일정 생성 요청 데이터: {data}")
+            
+            # 필수 필드 검증
+            required_fields = ['employee_id', 'title', 'start_date', 'time']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
+            
+            # 개발용 일정 ID 생성 (실제로는 데이터베이스에 저장)
+            import time
+            schedule_id = int(time.time()) % 10000  # 간단한 ID 생성
+            
+            # 성공 응답
+            response_data = {
+                'success': True,
+                'data': {
+                    'id': schedule_id,
+                    'employee_id': data['employee_id'],
+                    'title': data['title'],
+                    'start_date': data['start_date'],
+                    'time': data['time'],
+                    'restaurant': data.get('restaurant', ''),
+                    'location': data.get('location', ''),
+                    'description': data.get('description', ''),
+                    'is_recurring': data.get('is_recurring', False),
+                    'recurrence_type': data.get('recurrence_type'),
+                    'recurrence_interval': data.get('recurrence_interval', 1),
+                    'recurrence_end_date': data.get('recurrence_end_date'),
+                    'created_by': data.get('created_by', data['employee_id']),
+                    'created_at': datetime.now().isoformat(),
+                    'status': 'created'
+                },
+                'message': '일정이 성공적으로 생성되었습니다'
             }
-        ]
-        
-        return jsonify({
-            'success': True,
-            'data': sample_schedules,
-            'period': {
-                'start_date': start_date_str,
-                'end_date': end_date_str
-            },
-            'total_dates': len(sample_schedules)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'error': '개발용 일정 조회 중 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
+            
+            print(f"✅ [개발용] 일정 생성 성공: {response_data}")
+            return jsonify(response_data), 201
+            
+        except Exception as e:
+            print(f"❌ [개발용] 일정 생성 오류: {e}")
+            return jsonify({
+                'error': '개발용 일정 생성 중 오류가 발생했습니다',
+                'message': str(e)
+            }), 500
 
 @dev_bp.route('/users/<employee_id>/lunch-history', methods=['GET'])
 def get_dev_lunch_history(employee_id):
