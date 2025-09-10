@@ -761,96 +761,60 @@ def get_dev_restaurants_search():
         limit = int(request.args.get('limit', 50))
         sort = request.args.get('sort', 'name')
         
-        # 개발용 샘플 식당 데이터
-        sample_restaurants = [
-            {
-                "id": 1,
-                "name": "맛있는 김치찌개",
-                "address": "서울시 강남구 테헤란로 123",
-                "latitude": 37.5665,
-                "longitude": 126.9780,
-                "phone": "02-1234-5678",
-                "category": "한식",
-                "rating": 4.5,
-                "is_active": True
-            },
-            {
-                "id": 2,
-                "name": "피자헛",
-                "address": "서울시 강남구 테헤란로 456",
-                "latitude": 37.5666,
-                "longitude": 126.9781,
-                "phone": "02-2345-6789",
-                "category": "양식",
-                "rating": 4.2,
-                "is_active": True
-            },
-            {
-                "id": 3,
-                "name": "맥도날드",
-                "address": "서울시 강남구 테헤란로 789",
-                "latitude": 37.5667,
-                "longitude": 126.9782,
-                "phone": "02-3456-7890",
-                "category": "패스트푸드",
-                "rating": 3.8,
-                "is_active": True
-            },
-            {
-                "id": 4,
-                "name": "서브웨이",
-                "address": "서울시 강남구 테헤란로 101",
-                "latitude": 37.5668,
-                "longitude": 126.9783,
-                "phone": "02-4567-8901",
-                "category": "샐러드",
-                "rating": 4.0,
-                "is_active": True
-            },
-            {
-                "id": 5,
-                "name": "본죽",
-                "address": "서울시 강남구 테헤란로 202",
-                "latitude": 37.5669,
-                "longitude": 126.9784,
-                "phone": "02-5678-9012",
-                "category": "한식",
-                "rating": 4.3,
-                "is_active": True
-            }
-        ]
+        # 실제 데이터베이스에서 검색
+        from models.restaurant_models import RestaurantV2
+        from extensions import db
+        
+        # 데이터베이스에서 검색
+        db_query = RestaurantV2.query.filter_by(is_active=True)
         
         # 검색어가 있으면 필터링
         if query:
-            filtered_restaurants = [
-                r for r in sample_restaurants 
-                if query.lower() in r['name'].lower() or 
-                   query.lower() in r['category'].lower() or
-                   query.lower() in r['address'].lower()
-            ]
-        else:
-            filtered_restaurants = sample_restaurants
+            db_query = db_query.filter(
+                db.or_(
+                    RestaurantV2.name.contains(query),
+                    RestaurantV2.address.contains(query),
+                    RestaurantV2.category.contains(query)
+                )
+            )
         
         # 정렬
         if sort == 'rating':
-            filtered_restaurants.sort(key=lambda x: x['rating'], reverse=True)
+            db_query = db_query.order_by(RestaurantV2.rating.desc())
         elif sort == 'name':
-            filtered_restaurants.sort(key=lambda x: x['name'])
+            db_query = db_query.order_by(RestaurantV2.name)
         else:
-            filtered_restaurants.sort(key=lambda x: x['name'])
+            db_query = db_query.order_by(RestaurantV2.name)
         
         # 페이지네이션
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_restaurants = filtered_restaurants[start_idx:end_idx]
+        offset = (page - 1) * limit
+        restaurants = db_query.offset(offset).limit(limit).all()
+        
+        # 응답 형식으로 변환
+        restaurant_list = []
+        for restaurant in restaurants:
+            restaurant_list.append({
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "address": restaurant.address,
+                "latitude": restaurant.latitude,
+                "longitude": restaurant.longitude,
+                "phone": restaurant.phone or "",
+                "category": restaurant.category or "기타",
+                "rating": 4.0,  # 기본값
+                "distance": 0.5,  # 기본값
+                "is_active": restaurant.is_active,
+                "price_range": "$$",
+                "opening_hours": "11:00-22:00"
+            })
         
         return jsonify({
             "success": True,
-            "restaurants": paginated_restaurants,
-            "total": len(filtered_restaurants),
+            "restaurants": restaurant_list,
+            "total": len(restaurant_list),
             "page": page,
             "limit": limit,
-            "has_more": end_idx < len(filtered_restaurants)
+            "sort": sort
         })
         
     except Exception as e:
