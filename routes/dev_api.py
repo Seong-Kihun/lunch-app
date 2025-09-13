@@ -427,6 +427,84 @@ def dev_schedules():
                 'message': str(e)
             }), 500
 
+@dev_bp.route('/schedules/<int:schedule_id>', methods=['PUT'])
+def update_dev_schedule(schedule_id):
+    """개발용 일정 수정 API - 인증 없이 테스트 가능"""
+    try:
+        from models.schedule_models import PersonalSchedule
+        from extensions import db
+        from datetime import datetime
+        
+        # 일정 조회
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({
+                'error': '일정을 찾을 수 없습니다',
+                'schedule_id': schedule_id
+            }), 404
+        
+        # 요청 데이터 가져오기
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'error': '요청 데이터가 없습니다'
+            }), 400
+        
+        # 일정 수정
+        if 'title' in data:
+            schedule.title = data['title']
+        if 'start_date' in data:
+            schedule.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+        if 'time' in data:
+            schedule.time = data['time']
+        if 'restaurant' in data:
+            schedule.restaurant = data.get('restaurant', '')
+        if 'location' in data:
+            schedule.location = data.get('location', '')
+        if 'description' in data:
+            schedule.description = data.get('description', '')
+        if 'is_recurring' in data:
+            schedule.is_recurring = data.get('is_recurring', False)
+        if 'recurrence_type' in data:
+            schedule.recurrence_type = data.get('recurrence_type')
+        if 'recurrence_interval' in data:
+            schedule.recurrence_interval = data.get('recurrence_interval', 1)
+        if 'recurrence_end_date' in data:
+            schedule.recurrence_end_date = datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None
+        
+        # 데이터베이스에 저장
+        db.session.commit()
+        
+        print(f"✅ [개발용] 일정 수정 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 성공적으로 수정되었습니다',
+            'data': {
+                'id': schedule.id,
+                'employee_id': schedule.employee_id,
+                'title': schedule.title,
+                'start_date': schedule.start_date.isoformat(),
+                'time': schedule.time,
+                'restaurant': schedule.restaurant or '',
+                'location': schedule.location or '',
+                'description': schedule.description or '',
+                'is_recurring': schedule.is_recurring or False,
+                'recurrence_type': schedule.recurrence_type,
+                'recurrence_interval': schedule.recurrence_interval or 1,
+                'recurrence_end_date': schedule.recurrence_end_date.isoformat() if schedule.recurrence_end_date else None,
+                'created_by': schedule.created_by,
+                'created_at': schedule.created_at.isoformat() if schedule.created_at else None
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ [개발용] 일정 수정 실패: {str(e)}")
+        return jsonify({
+            'error': '일정 수정 중 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
 @dev_bp.route('/schedules/<int:schedule_id>', methods=['DELETE'])
 def delete_dev_schedule(schedule_id):
     """개발용 일정 삭제 API - 인증 없이 테스트 가능"""
