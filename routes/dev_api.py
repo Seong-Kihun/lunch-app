@@ -315,30 +315,51 @@ def dev_schedules():
                 if field not in data:
                     return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
             
-            # 개발용 일정 ID 생성 (실제로는 데이터베이스에 저장)
-            import time
+            # 실제 데이터베이스에 일정 저장
+            from models.schedule_models import PersonalSchedule
+            from extensions import db
             from datetime import datetime
-            schedule_id = int(time.time()) % 10000  # 간단한 ID 생성
+            
+            # PersonalSchedule 객체 생성
+            new_schedule = PersonalSchedule(
+                employee_id=data['employee_id'],
+                title=data['title'],
+                start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+                time=data['time'],
+                restaurant=data.get('restaurant', ''),
+                location=data.get('location', ''),
+                description=data.get('description', ''),
+                is_recurring=data.get('is_recurring', False),
+                recurrence_type=data.get('recurrence_type'),
+                recurrence_interval=data.get('recurrence_interval', 1),
+                recurrence_end_date=datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None,
+                created_by=data.get('created_by', data['employee_id']),
+                status='created'
+            )
+            
+            # 데이터베이스에 저장
+            db.session.add(new_schedule)
+            db.session.commit()
             
             # 성공 응답
             response_data = {
                 'success': True,
                 'data': {
-                    'id': schedule_id,
-                    'employee_id': data['employee_id'],
-                    'title': data['title'],
-                    'start_date': data['start_date'],
-                    'time': data['time'],
-                    'restaurant': data.get('restaurant', ''),
-                    'location': data.get('location', ''),
-                    'description': data.get('description', ''),
-                    'is_recurring': data.get('is_recurring', False),
-                    'recurrence_type': data.get('recurrence_type'),
-                    'recurrence_interval': data.get('recurrence_interval', 1),
-                    'recurrence_end_date': data.get('recurrence_end_date'),
-                    'created_by': data.get('created_by', data['employee_id']),
-                    'created_at': datetime.now().isoformat(),
-                    'status': 'created'
+                    'id': new_schedule.id,
+                    'employee_id': new_schedule.employee_id,
+                    'title': new_schedule.title,
+                    'start_date': new_schedule.start_date.isoformat(),
+                    'time': new_schedule.time,
+                    'restaurant': new_schedule.restaurant or '',
+                    'location': new_schedule.location or '',
+                    'description': new_schedule.description or '',
+                    'is_recurring': new_schedule.is_recurring or False,
+                    'recurrence_type': new_schedule.recurrence_type,
+                    'recurrence_interval': new_schedule.recurrence_interval or 1,
+                    'recurrence_end_date': new_schedule.recurrence_end_date.isoformat() if new_schedule.recurrence_end_date else None,
+                    'created_by': new_schedule.created_by,
+                    'created_at': new_schedule.created_at.isoformat() if new_schedule.created_at else None,
+                    'status': new_schedule.status or 'created'
                 },
                 'message': '일정이 성공적으로 생성되었습니다'
             }
