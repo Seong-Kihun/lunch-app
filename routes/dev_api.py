@@ -333,8 +333,7 @@ def dev_schedules():
                 recurrence_type=data.get('recurrence_type'),
                 recurrence_interval=data.get('recurrence_interval', 1),
                 recurrence_end_date=datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None,
-                created_by=data.get('created_by', data['employee_id']),
-                status='created'
+                created_by=data.get('created_by', data['employee_id'])
             )
             
             # 데이터베이스에 저장
