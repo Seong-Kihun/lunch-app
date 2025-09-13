@@ -58,9 +58,12 @@ def clear_all_data():
             logger.info("🗑️ [전체정리] 채팅방 데이터 삭제 중...")
             db.session.execute(text("DELETE FROM chat_room"))
             
-            # 5. 랜덤런치 데이터 정리
-            logger.info("🗑️ [전체정리] 랜덤런치 제안 데이터 삭제 중...")
-            db.session.execute(text("DELETE FROM random_lunch_proposal"))
+            # 5. 랜덤런치 데이터 정리 (테이블이 존재하는 경우에만)
+            try:
+                logger.info("🗑️ [전체정리] 랜덤런치 제안 데이터 삭제 중...")
+                db.session.execute(text("DELETE FROM random_lunch_proposal"))
+            except Exception as e:
+                logger.warning(f"⚠️ [전체정리] 랜덤런치 제안 테이블이 존재하지 않음: {e}")
             
             
             # 6. 사용자 데이터 정리 (선택적)
@@ -72,12 +75,15 @@ def clear_all_data():
             logger.info("🔄 [전체정리] 시퀀스 리셋 중...")
             try:
                 # SQLite에서 자동 증가 ID 리셋
-                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friendship', 'chat_room', 'chat_message', 'random_lunch_proposal']
+                tables = ['party', 'personal_schedules', 'schedule_exceptions', 'friendship', 'chat_room', 'chat_message']
                 if clear_users:
                     tables.append('user')
                 
                 for table in tables:
-                    db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+                    try:
+                        db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+                    except Exception as e:
+                        logger.warning(f"⚠️ [전체정리] {table} 시퀀스 리셋 실패: {e}")
             except Exception as e:
                 logger.warning(f"⚠️ [전체정리] 시퀀스 리셋 실패 (무시 가능): {e}")
         
