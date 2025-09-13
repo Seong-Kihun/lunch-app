@@ -331,9 +331,9 @@ def dev_schedules():
                 recurrence_interval = data.get('recurrence_interval', 1)
                 recurrence_end_date = datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None
                 
-                # 기본 종료일 설정 (3개월 후)
+                # 기본 종료일 설정 (10년 후)
                 if not recurrence_end_date:
-                    recurrence_end_date = start_date + timedelta(days=90)
+                    recurrence_end_date = start_date + timedelta(days=3650)  # 10년 = 3650일
                 
                 created_schedules = []
                 current_date = start_date
