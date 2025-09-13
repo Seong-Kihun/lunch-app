@@ -427,6 +427,40 @@ def dev_schedules():
                 'message': str(e)
             }), 500
 
+@dev_bp.route('/schedules/<int:schedule_id>', methods=['DELETE'])
+def delete_dev_schedule(schedule_id):
+    """개발용 일정 삭제 API - 인증 없이 테스트 가능"""
+    try:
+        from models.schedule_models import PersonalSchedule
+        from extensions import db
+        
+        # 일정 조회
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({
+                'error': '일정을 찾을 수 없습니다',
+                'schedule_id': schedule_id
+            }), 404
+        
+        # 일정 삭제
+        db.session.delete(schedule)
+        db.session.commit()
+        
+        print(f"✅ [개발용] 일정 삭제 성공: ID {schedule_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '일정이 성공적으로 삭제되었습니다',
+            'deleted_id': schedule_id
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ [개발용] 일정 삭제 오류: {e}")
+        return jsonify({
+            'error': '개발용 일정 삭제 중 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
 @dev_bp.route('/users/<employee_id>/lunch-history', methods=['GET'])
 def get_dev_lunch_history(employee_id):
     """개발용 점심 약속 히스토리 API - 인증 없이 테스트 가능"""
