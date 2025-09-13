@@ -6440,6 +6440,7 @@ def get_dev_schedules():
                 "location": schedule.location or "",
                 "status": "confirmed",
                 "restaurant": schedule.restaurant or "",
+                "created_by": schedule.created_by or schedule.employee_id,
                 "created_at": schedule.created_at.isoformat() if schedule.created_at else None
             })
         
