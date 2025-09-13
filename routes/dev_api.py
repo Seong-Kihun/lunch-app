@@ -991,67 +991,6 @@ def get_dev_friends(employee_id):
             "message": str(e)
         }), 500
 
-@dev_bp.route('/parties', methods=['GET'])
-def get_dev_parties():
-    """개발용 파티 목록 API - 인증 없이 접근 가능"""
-    try:
-        employee_id = request.args.get('employee_id', '1')
-        is_from_match = request.args.get('is_from_match', 'false')
-        
-        # 더미 파티 데이터
-        parties = [
-            {
-                "id": 1,
-                "title": "점심 모임",
-                "description": "오늘 점심 같이 먹어요!",
-                "date": "2025-09-10",
-                "time": "12:00",
-                "location": "사무실 근처",
-                "restaurant": "맛있는 식당",
-                "organizer_id": employee_id,
-                "attendees": [
-                    {"id": 1, "employee_id": employee_id, "nickname": "사용자"},
-                    {"id": 2, "employee_id": "2", "nickname": "김철수"}
-                ],
-                "max_attendees": 6,
-                "current_attendees": 2,
-                "status": "active",
-                "created_at": "2025-09-10T09:00:00Z",
-                "is_from_match": is_from_match == 'true'
-            },
-            {
-                "id": 2,
-                "title": "저녁 회식",
-                "description": "프로젝트 완료 기념 회식",
-                "date": "2025-09-12",
-                "time": "18:30",
-                "location": "강남역",
-                "restaurant": "고기집",
-                "organizer_id": "2",
-                "attendees": [
-                    {"id": 2, "employee_id": "2", "nickname": "김철수"},
-                    {"id": 3, "employee_id": "3", "nickname": "이영희"}
-                ],
-                "max_attendees": 8,
-                "current_attendees": 2,
-                "status": "active",
-                "created_at": "2025-09-09T14:30:00Z",
-                "is_from_match": False
-            }
-        ]
-        
-        return jsonify({
-            "success": True,
-            "parties": parties,
-            "total": len(parties),
-            "employee_id": employee_id
-        })
-        
-    except Exception as e:
-        return jsonify({
-            "error": "파티 목록 조회 중 오류가 발생했습니다.",
-            "message": str(e)
-        }), 500
 
 @dev_bp.route('/my_dangolpots/<employee_id>', methods=['GET'])
 def get_dev_my_dangolpots(employee_id):
