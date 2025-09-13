@@ -243,35 +243,43 @@ def dev_schedules():
                     'required': ['start_date', 'end_date', 'employee_id']
                 }), 400
             
-            # 개발용 샘플 일정 데이터
-            sample_schedules = [
-                {
-                    "id": 1,
-                    "title": "점심 약속",
-                    "start_date": start_date_str,
-                    "end_date": start_date_str,
-                    "start_time": "12:00:00",
-                    "end_time": "13:00:00",
-                    "is_recurring": False,
-                    "recurrence_type": None,
-                    "description": "팀 점심 모임",
-                    "location": "사무실 근처",
-                    "status": "confirmed"
-                },
-                {
-                    "id": 2,
-                    "title": "회의",
-                    "start_date": end_date_str,
-                    "end_date": end_date_str,
-                    "start_time": "14:00:00",
-                    "end_time": "15:00:00",
-                    "is_recurring": False,
-                    "recurrence_type": None,
-                    "description": "주간 회의",
-                    "location": "회의실",
-                    "status": "confirmed"
-                }
-            ]
+            # 실제 데이터베이스에서 일정 조회
+            from models.schedule_models import PersonalSchedule
+            from extensions import db
+            from datetime import datetime
+            
+            # 날짜 범위로 일정 조회
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            
+            schedules = PersonalSchedule.query.filter(
+                PersonalSchedule.employee_id == employee_id,
+                PersonalSchedule.start_date >= start_date,
+                PersonalSchedule.start_date <= end_date
+            ).all()
+            
+            # 일정 데이터를 API 형식으로 변환
+            sample_schedules = []
+            for schedule in schedules:
+                sample_schedules.append({
+                    "id": schedule.id,
+                    "title": schedule.title,
+                    "start_date": schedule.start_date.isoformat(),
+                    "end_date": schedule.start_date.isoformat(),
+                    "start_time": schedule.time + ":00" if schedule.time else "12:00:00",
+                    "end_time": (schedule.time + ":00" if schedule.time else "12:00:00"),
+                    "is_recurring": schedule.is_recurring or False,
+                    "recurrence_type": schedule.recurrence_type,
+                    "description": schedule.description or "",
+                    "location": schedule.location or "",
+                    "status": "confirmed",
+                    "restaurant": schedule.restaurant or "",
+                    "created_at": schedule.created_at.isoformat() if schedule.created_at else None
+                })
+            
+            print(f"🔍 [개발용] 일정 조회 결과: {len(sample_schedules)}개 일정")
+            for schedule in sample_schedules:
+                print(f"  - {schedule['title']} ({schedule['start_date']})")
             
             return jsonify({
                 'success': True,
