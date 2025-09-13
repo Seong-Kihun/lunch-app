@@ -321,25 +321,79 @@ def dev_schedules():
             from extensions import db
             from datetime import datetime
             
-            # PersonalSchedule 객체 생성
-            new_schedule = PersonalSchedule(
-                employee_id=data['employee_id'],
-                title=data['title'],
-                start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
-                time=data['time'],
-                restaurant=data.get('restaurant', ''),
-                location=data.get('location', ''),
-                description=data.get('description', ''),
-                is_recurring=data.get('is_recurring', False),
-                recurrence_type=data.get('recurrence_type'),
-                recurrence_interval=data.get('recurrence_interval', 1),
-                recurrence_end_date=datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None,
-                created_by=data.get('created_by', data['employee_id'])
-            )
-            
-            # 데이터베이스에 저장
-            db.session.add(new_schedule)
-            db.session.commit()
+            # 반복일정 처리
+            if data.get('is_recurring', False) and data.get('recurrence_type'):
+                # 반복일정의 경우 모든 반복 인스턴스 생성
+                from datetime import timedelta
+                
+                start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+                recurrence_type = data.get('recurrence_type')
+                recurrence_interval = data.get('recurrence_interval', 1)
+                recurrence_end_date = datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None
+                
+                # 기본 종료일 설정 (3개월 후)
+                if not recurrence_end_date:
+                    recurrence_end_date = start_date + timedelta(days=90)
+                
+                created_schedules = []
+                current_date = start_date
+                
+                while current_date <= recurrence_end_date:
+                    # PersonalSchedule 객체 생성
+                    new_schedule = PersonalSchedule(
+                        employee_id=data['employee_id'],
+                        title=data['title'],
+                        start_date=current_date,
+                        time=data['time'],
+                        restaurant=data.get('restaurant', ''),
+                        location=data.get('location', ''),
+                        description=data.get('description', ''),
+                        is_recurring=False,  # 개별 인스턴스는 반복이 아님
+                        recurrence_type=None,
+                        recurrence_interval=1,
+                        recurrence_end_date=None,
+                        created_by=data.get('created_by', data['employee_id'])
+                    )
+                    
+                    db.session.add(new_schedule)
+                    created_schedules.append(new_schedule)
+                    
+                    # 다음 반복일 계산
+                    if recurrence_type == 'daily':
+                        current_date += timedelta(days=recurrence_interval)
+                    elif recurrence_type == 'weekly':
+                        current_date += timedelta(weeks=recurrence_interval)
+                    elif recurrence_type == 'monthly':
+                        # 간단한 월별 계산 (30일)
+                        current_date += timedelta(days=30 * recurrence_interval)
+                    else:
+                        break
+                
+                db.session.commit()
+                
+                # 첫 번째 생성된 일정을 응답으로 사용
+                new_schedule = created_schedules[0] if created_schedules else None
+                
+            else:
+                # 일반 일정 생성
+                new_schedule = PersonalSchedule(
+                    employee_id=data['employee_id'],
+                    title=data['title'],
+                    start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+                    time=data['time'],
+                    restaurant=data.get('restaurant', ''),
+                    location=data.get('location', ''),
+                    description=data.get('description', ''),
+                    is_recurring=data.get('is_recurring', False),
+                    recurrence_type=data.get('recurrence_type'),
+                    recurrence_interval=data.get('recurrence_interval', 1),
+                    recurrence_end_date=datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None,
+                    created_by=data.get('created_by', data['employee_id'])
+                )
+                
+                # 데이터베이스에 저장
+                db.session.add(new_schedule)
+                db.session.commit()
             
             # 성공 응답
             response_data = {
