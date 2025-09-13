@@ -232,10 +232,12 @@ def dev_schedules():
     if request.method == 'GET':
         # GET: 일정 조회
         try:
+            print("🚨 [DEBUG] dev_schedules GET 메서드 실행됨!")
             # 쿼리 파라미터 가져오기
             start_date_str = request.args.get('start_date')
             end_date_str = request.args.get('end_date')
             employee_id = request.args.get('employee_id')
+            print(f"🚨 [DEBUG] 파라미터: start_date={start_date_str}, end_date={end_date_str}, employee_id={employee_id}")
             
             if not all([start_date_str, end_date_str, employee_id]):
                 return jsonify({
@@ -244,6 +246,7 @@ def dev_schedules():
                 }), 400
             
             # 실제 데이터베이스에서 일정 조회
+            print("🚨 [DEBUG] 데이터베이스에서 일정 조회 시작...")
             from models.schedule_models import PersonalSchedule
             from extensions import db
             from datetime import datetime
