@@ -357,8 +357,7 @@ def dev_schedules():
                     'recurrence_interval': new_schedule.recurrence_interval or 1,
                     'recurrence_end_date': new_schedule.recurrence_end_date.isoformat() if new_schedule.recurrence_end_date else None,
                     'created_by': new_schedule.created_by,
-                    'created_at': new_schedule.created_at.isoformat() if new_schedule.created_at else None,
-                    'status': new_schedule.status or 'created'
+                    'created_at': new_schedule.created_at.isoformat() if new_schedule.created_at else None
                 },
                 'message': '일정이 성공적으로 생성되었습니다'
             }
