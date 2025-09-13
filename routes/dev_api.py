@@ -317,6 +317,7 @@ def dev_schedules():
             
             # 개발용 일정 ID 생성 (실제로는 데이터베이스에 저장)
             import time
+            from datetime import datetime
             schedule_id = int(time.time()) % 10000  # 간단한 ID 생성
             
             # 성공 응답
