@@ -7675,6 +7675,14 @@ with app.app_context():
     except Exception as e:
         print(f"❌ 알림 관리 Blueprint 등록 실패: {e}")
 
+    # 최적화된 채팅 Blueprint 등록
+    try:
+        from routes.optimized_chat import optimized_chat_bp
+        app.register_blueprint(optimized_chat_bp)
+        print("✅ 최적화된 채팅 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 최적화된 채팅 Blueprint 등록 실패: {e}")
+
     print("✅ 모든 Blueprint 등록 완료")
 
 # === 고급 실시간 채팅 시스템 ===
