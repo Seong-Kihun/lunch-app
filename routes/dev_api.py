@@ -1562,3 +1562,142 @@ def dev_cleanup_files():
         
     except Exception as e:
         return jsonify({"error": f"파일 정리 중 오류가 발생했습니다: {str(e)}"}), 500
+
+# === 개발용 알림 API들 ===
+
+@dev_bp.route("/dev/notifications/send", methods=["POST"])
+def dev_send_notification():
+    """개발용: 알림 전송"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        data = request.get_json()
+        user_id = data.get('user_id', '1')
+        notification_type = data.get('notification_type', 'system')
+        title = data.get('title', '개발용 테스트 알림')
+        message = data.get('message', '이것은 개발용 테스트 알림입니다.')
+        
+        notification, result_message = notification_manager.create_notification(
+            user_id=user_id,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            chat_type=data.get('chat_type'),
+            chat_id=data.get('chat_id'),
+            message_id=data.get('message_id')
+        )
+        
+        if not notification:
+            return jsonify({"error": result_message}), 400
+        
+        return jsonify({
+            "success": True,
+            "message": result_message,
+            "notification_id": notification.id
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"알림 전송 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/notifications/user/<user_id>", methods=["GET"])
+def dev_get_user_notifications(user_id):
+    """개발용: 사용자 알림 목록 조회"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+        unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        
+        notifications, message = notification_manager.get_user_notifications(
+            user_id, limit, offset, unread_only
+        )
+        
+        return jsonify({
+            "success": True,
+            "notifications": notifications,
+            "total": len(notifications),
+            "message": message
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"알림 목록 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/notifications/user/<user_id>/unread-count", methods=["GET"])
+def dev_get_unread_count(user_id):
+    """개발용: 읽지 않은 알림 수 조회"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        chat_type = request.args.get('chat_type')
+        chat_id = request.args.get('chat_id')
+        
+        count, message = notification_manager.get_unread_count(user_id, chat_type, chat_id)
+        
+        return jsonify({
+            "success": True,
+            "unread_count": count,
+            "message": message
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"읽지 않은 알림 수 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/notifications/settings/<user_id>", methods=["GET"])
+def dev_get_notification_settings(user_id):
+    """개발용: 알림 설정 조회"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        settings, message = notification_manager.get_notification_settings(user_id)
+        
+        if not settings:
+            return jsonify({"error": message}), 400
+        
+        return jsonify({
+            "success": True,
+            "settings": settings,
+            "message": message
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"알림 설정 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/notifications/settings/<user_id>", methods=["PUT"])
+def dev_update_notification_settings(user_id):
+    """개발용: 알림 설정 업데이트"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "설정 데이터가 필요합니다."}), 400
+        
+        success, message = notification_manager.update_notification_settings(user_id, data)
+        
+        if not success:
+            return jsonify({"error": message}), 400
+        
+        return jsonify({
+            "success": True,
+            "message": message
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"알림 설정 업데이트 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/notifications/types", methods=["GET"])
+def dev_get_notification_types():
+    """개발용: 알림 타입 목록 조회"""
+    try:
+        from utils.notification_manager import notification_manager
+        
+        types = notification_manager.notification_types
+        
+        return jsonify({
+            "success": True,
+            "notification_types": types
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"알림 타입 조회 중 오류가 발생했습니다: {str(e)}"}), 500
