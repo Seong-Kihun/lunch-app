@@ -11,7 +11,11 @@ from datetime import datetime
 from PIL import Image
 from werkzeug.utils import secure_filename
 from flask import current_app
-import magic
+try:
+    import magic
+except ImportError:
+    # Windows에서 python-magic-bin이 설치되지 않은 경우 대체
+    magic = None
 
 class FileManager:
     """파일 관리 클래스"""
@@ -81,7 +85,14 @@ class FileManager:
         
         # MIME 타입 검증
         try:
-            mime_type = magic.from_buffer(file.read(1024), mime=True)
+            if magic:
+                mime_type = magic.from_buffer(file.read(1024), mime=True)
+            else:
+                # magic 모듈이 없는 경우 mimetypes 사용
+                file.seek(0)
+                mime_type, _ = mimetypes.guess_type(file.filename)
+                if not mime_type:
+                    mime_type = 'application/octet-stream'
             file.seek(0)
             
             if file_type == 'image' and mime_type not in self.allowed_mime_types['image']:
