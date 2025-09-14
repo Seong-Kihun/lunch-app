@@ -7667,6 +7667,14 @@ with app.app_context():
     except Exception as e:
         print(f"❌ 파일 업로드 Blueprint 등록 실패: {e}")
 
+    # 알림 관리 Blueprint 등록
+    try:
+        from routes.notifications import notifications_bp
+        app.register_blueprint(notifications_bp)
+        print("✅ 알림 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 알림 관리 Blueprint 등록 실패: {e}")
+
     print("✅ 모든 Blueprint 등록 완료")
 
 # === 고급 실시간 채팅 시스템 ===
