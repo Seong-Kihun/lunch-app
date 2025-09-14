@@ -173,7 +173,8 @@ class ChatCacheManager(CacheManager):
     """채팅 전용 캐시 매니저"""
     
     def __init__(self):
-        super().__init__(namespace='chat')
+        super().__init__()
+        self.namespace = 'chat'
     
     def cache_messages(self, chat_type: str, chat_id: int, messages: list, ttl: int = 1800):
         """메시지 목록 캐시"""
