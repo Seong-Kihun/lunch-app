@@ -6,6 +6,15 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import random
+from sqlalchemy import desc
+from extensions import db
+from models.app_models import (
+    User, Party, PartyMember, DangolPot, DangolPotMember, 
+    ChatRoom, ChatParticipant, ChatMessage, LunchProposal, 
+    ProposalAcceptance, Notification, Restaurant, RestaurantReviews,
+    MessageStatus, MessageReaction, MessageAttachment, ChatRoomMember,
+    ChatRoomSettings, NotificationSettings, ChatNotification, MessageSearchIndex
+)
 
 # 개발용 API Blueprint 생성
 dev_bp = Blueprint('dev', __name__, url_prefix='/dev')
