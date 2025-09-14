@@ -177,15 +177,182 @@ class ProposalAcceptance(db.Model):
 class ChatMessage(db.Model):
     """채팅 메시지 모델"""
     id = db.Column(db.Integer, primary_key=True)
-    chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot'
-    chat_id = db.Column(db.Integer, nullable=False)  # party_id or dangolpot_id
+    chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot', 'custom'
+    chat_id = db.Column(db.Integer, nullable=False)  # party_id or dangolpot_id or custom_chat_id
     sender_employee_id = db.Column(db.String(50), nullable=False)
     sender_nickname = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(20), default='text')  # 'text', 'image', 'file', 'system'
+    is_edited = db.Column(db.Boolean, default=False)
+    edited_at = db.Column(db.DateTime, nullable=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    reply_to_message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_chat_message_chat', 'chat_type', 'chat_id'),
+        db.Index('idx_chat_message_sender', 'sender_employee_id'),
+        db.Index('idx_chat_message_created', 'created_at'),
+    )
+
+# === 채팅 관련 확장 테이블들 ===
+
+class MessageStatus(db.Model):
+    """메시지 읽음 상태 모델"""
+    __tablename__ = 'message_status'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_message_status_message', 'message_id'),
+        db.Index('idx_message_status_user', 'user_id'),
+        db.UniqueConstraint('message_id', 'user_id', name='unique_message_user_status'),
+    )
+
+class MessageReaction(db.Model):
+    """메시지 반응(이모지) 모델"""
+    __tablename__ = 'message_reaction'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    reaction_type = db.Column(db.String(20), nullable=False)  # 'like', 'heart', 'laugh', etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_message_reaction_message', 'message_id'),
+        db.Index('idx_message_reaction_user', 'user_id'),
+        db.UniqueConstraint('message_id', 'user_id', 'reaction_type', name='unique_message_user_reaction'),
+    )
+
+class MessageAttachment(db.Model):
+    """메시지 첨부파일 모델"""
+    __tablename__ = 'message_attachment'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    file_type = db.Column(db.String(50), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    thumbnail_path = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_message_attachment_message', 'message_id'),
+        db.Index('idx_message_attachment_type', 'file_type'),
+    )
+
+class ChatRoomMember(db.Model):
+    """채팅방 멤버 관리 모델"""
+    __tablename__ = 'chat_room_member'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot', 'custom'
+    chat_id = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(20), default='member')  # 'admin', 'member'
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_read_message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
+    is_muted = db.Column(db.Boolean, default=False)
+    is_left = db.Column(db.Boolean, default=False)
+    left_at = db.Column(db.DateTime, nullable=True)
+    
+    __table_args__ = (
+        db.Index('idx_chat_room_member_chat', 'chat_type', 'chat_id'),
+        db.Index('idx_chat_room_member_user', 'user_id'),
+        db.UniqueConstraint('chat_type', 'chat_id', 'user_id', name='unique_chat_member'),
+    )
+
+class ChatRoomSettings(db.Model):
+    """채팅방 설정 모델"""
+    __tablename__ = 'chat_room_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    chat_type = db.Column(db.String(20), nullable=False)
+    chat_id = db.Column(db.Integer, nullable=False)
+    room_name = db.Column(db.String(100), nullable=True)
+    room_description = db.Column(db.Text, nullable=True)
+    room_image = db.Column(db.String(500), nullable=True)
+    is_public = db.Column(db.Boolean, default=False)
+    allow_member_invite = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_chat_room_settings_chat', 'chat_type', 'chat_id'),
+        db.UniqueConstraint('chat_type', 'chat_id', name='unique_chat_settings'),
+    )
+
+class NotificationSettings(db.Model):
+    """사용자별 알림 설정 모델"""
+    __tablename__ = 'notification_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    chat_notifications = db.Column(db.Boolean, default=True)
+    message_notifications = db.Column(db.Boolean, default=True)
+    mention_notifications = db.Column(db.Boolean, default=True)
+    sound_enabled = db.Column(db.Boolean, default=True)
+    vibration_enabled = db.Column(db.Boolean, default=True)
+    quiet_hours_start = db.Column(db.Time, nullable=True)
+    quiet_hours_end = db.Column(db.Time, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_notification_settings_user', 'user_id'),
+        db.UniqueConstraint('user_id', name='unique_user_notification_settings'),
+    )
+
+class ChatNotification(db.Model):
+    """채팅 알림 모델"""
+    __tablename__ = 'chat_notification'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    chat_type = db.Column(db.String(20), nullable=False)
+    chat_id = db.Column(db.Integer, nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
+    notification_type = db.Column(db.String(50), nullable=False)  # 'new_message', 'mention', 'reaction'
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_chat_notification_user', 'user_id'),
+        db.Index('idx_chat_notification_chat', 'chat_type', 'chat_id'),
+        db.Index('idx_chat_notification_created', 'created_at'),
+    )
+
+class MessageSearchIndex(db.Model):
+    """메시지 검색 인덱스 모델"""
+    __tablename__ = 'message_search_index'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
+    chat_type = db.Column(db.String(20), nullable=False)
+    chat_id = db.Column(db.Integer, nullable=False)
+    search_text = db.Column(db.Text, nullable=False)  # 검색용 텍스트 (한글, 영문 모두 포함)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_message_search_text', 'search_text'),
+        db.Index('idx_message_search_chat', 'chat_type', 'chat_id'),
+        db.Index('idx_message_search_created', 'created_at'),
+    )
 
 class Notification(db.Model):
-    """알림 모델"""
+    """알림 모델 (기존 유지)"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(50), nullable=False)
     type = db.Column(db.String(50), nullable=False)
