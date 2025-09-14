@@ -1223,3 +1223,265 @@ def get_dev_my_dangolpots(employee_id):
             "error": "단골파티 목록 조회 중 오류가 발생했습니다.",
             "message": str(e)
         }), 500
+
+# === 개발용 고급 채팅 API들 ===
+
+@dev_bp.route("/dev/chat/messages/<int:message_id>/read", methods=["POST"])
+def dev_mark_message_read(message_id):
+    """개발용: 메시지를 읽음으로 표시"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', '1')  # 개발용 기본값
+        
+        # 기존 읽음 상태 확인
+        message_status = MessageStatus.query.filter_by(
+            message_id=message_id,
+            user_id=user_id
+        ).first()
+        
+        if message_status:
+            message_status.is_read = True
+            message_status.read_at = datetime.utcnow()
+        else:
+            message_status = MessageStatus(
+                message_id=message_id,
+                user_id=user_id,
+                is_read=True,
+                read_at=datetime.utcnow()
+            )
+            db.session.add(message_status)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "메시지가 읽음으로 표시되었습니다."
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/messages/<int:message_id>/reaction", methods=["POST"])
+def dev_add_message_reaction(message_id):
+    """개발용: 메시지에 반응 추가"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', '1')
+        reaction_type = data.get('reaction_type', 'like')
+        
+        # 기존 반응 확인
+        existing_reaction = MessageReaction.query.filter_by(
+            message_id=message_id,
+            user_id=user_id,
+            reaction_type=reaction_type
+        ).first()
+        
+        if existing_reaction:
+            db.session.delete(existing_reaction)
+            action = "removed"
+        else:
+            reaction = MessageReaction(
+                message_id=message_id,
+                user_id=user_id,
+                reaction_type=reaction_type
+            )
+            db.session.add(reaction)
+            action = "added"
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "action": action,
+            "message": f"반응이 {action}되었습니다."
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["PUT"])
+def dev_edit_message(message_id):
+    """개발용: 메시지 수정"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', '1')
+        new_content = data.get('content')
+        
+        if not new_content:
+            return jsonify({"error": "수정할 내용이 필요합니다."}), 400
+        
+        message = ChatMessage.query.get(message_id)
+        if not message:
+            return jsonify({"error": "메시지를 찾을 수 없습니다."}), 404
+        
+        # 메시지 수정
+        message.message = new_content
+        message.is_edited = True
+        message.edited_at = datetime.utcnow()
+        
+        # 검색 인덱스 업데이트
+        search_index = MessageSearchIndex.query.filter_by(message_id=message_id).first()
+        if search_index:
+            search_index.search_text = new_content
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "메시지가 수정되었습니다.",
+            "edited_at": message.edited_at.isoformat()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["DELETE"])
+def dev_delete_message(message_id):
+    """개발용: 메시지 삭제"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', '1')
+        
+        message = ChatMessage.query.get(message_id)
+        if not message:
+            return jsonify({"error": "메시지를 찾을 수 없습니다."}), 404
+        
+        # 소프트 삭제
+        message.is_deleted = True
+        message.deleted_at = datetime.utcnow()
+        message.message = "[삭제된 메시지입니다]"
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "메시지가 삭제되었습니다."
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/search", methods=["GET"])
+def dev_search_messages():
+    """개발용: 메시지 검색"""
+    try:
+        chat_type = request.args.get('chat_type')
+        chat_id = request.args.get('chat_id')
+        query = request.args.get('q')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        if not query:
+            return jsonify({"error": "검색어가 필요합니다."}), 400
+        
+        # 검색 쿼리
+        search_query = MessageSearchIndex.query.filter(
+            MessageSearchIndex.search_text.contains(query)
+        )
+        
+        if chat_type and chat_id:
+            search_query = search_query.filter(
+                MessageSearchIndex.chat_type == chat_type,
+                MessageSearchIndex.chat_id == int(chat_id)
+            )
+        
+        # 페이징
+        search_results = search_query.order_by(
+            desc(MessageSearchIndex.created_at)
+        ).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # 결과 포맷팅
+        results = []
+        for search_result in search_results.items:
+            message = ChatMessage.query.get(search_result.message_id)
+            if message and not message.is_deleted:
+                results.append({
+                    "message_id": message.id,
+                    "chat_type": message.chat_type,
+                    "chat_id": message.chat_id,
+                    "sender_nickname": message.sender_nickname,
+                    "message": message.message,
+                    "created_at": message.created_at.isoformat(),
+                    "is_edited": message.is_edited
+                })
+        
+        return jsonify({
+            "success": True,
+            "results": results,
+            "total": search_results.total,
+            "page": page,
+            "per_page": per_page,
+            "pages": search_results.pages
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/members", methods=["GET"])
+def dev_get_chat_room_members(chat_type, chat_id):
+    """개발용: 채팅방 멤버 목록 조회"""
+    try:
+        members = ChatRoomMember.query.filter_by(
+            chat_type=chat_type,
+            chat_id=chat_id,
+            is_left=False
+        ).all()
+        
+        members_data = []
+        for member in members:
+            user = User.query.filter_by(employee_id=member.user_id).first()
+            members_data.append({
+                "user_id": member.user_id,
+                "nickname": user.nickname if user else "알 수 없음",
+                "role": member.role,
+                "joined_at": member.joined_at.isoformat(),
+                "is_muted": member.is_muted
+            })
+        
+        return jsonify({
+            "success": True,
+            "members": members_data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/settings", methods=["GET"])
+def dev_get_chat_room_settings(chat_type, chat_id):
+    """개발용: 채팅방 설정 조회"""
+    try:
+        settings = ChatRoomSettings.query.filter_by(
+            chat_type=chat_type,
+            chat_id=chat_id
+        ).first()
+        
+        if not settings:
+            # 기본 설정 생성
+            settings = ChatRoomSettings(
+                chat_type=chat_type,
+                chat_id=chat_id
+            )
+            db.session.add(settings)
+            db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "settings": {
+                "room_name": settings.room_name,
+                "room_description": settings.room_description,
+                "room_image": settings.room_image,
+                "is_public": settings.is_public,
+                "allow_member_invite": settings.allow_member_invite,
+                "created_at": settings.created_at.isoformat(),
+                "updated_at": settings.updated_at.isoformat()
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
