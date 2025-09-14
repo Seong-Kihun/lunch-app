@@ -7664,6 +7664,12 @@ with app.app_context():
         from routes.file_upload import file_upload_bp
         app.register_blueprint(file_upload_bp)
         print("✅ 파일 업로드 Blueprint 등록 성공")
+    except ImportError as e:
+        if "PIL" in str(e):
+            print("❌ 파일 업로드 Blueprint 등록 실패: Pillow 패키지가 설치되지 않았습니다.")
+            print("   requirements.txt에 Pillow>=10.0.0을 추가하고 재배포하세요.")
+        else:
+            print(f"❌ 파일 업로드 Blueprint 등록 실패: {e}")
     except Exception as e:
         print(f"❌ 파일 업로드 Blueprint 등록 실패: {e}")
 
