@@ -781,8 +781,8 @@ def search_messages():
         return jsonify({"error": str(e)}), 500
 
 @chats_bp.route("/chat/rooms/<chat_type>/<int:chat_id>/members", methods=["GET"])
-def get_chat_room_members(chat_type, chat_id):
-    """채팅방 멤버 목록 조회"""
+def get_chat_room_members_v2(chat_type, chat_id):
+    """채팅방 멤버 목록 조회 (v2)"""
     try:
         members = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
