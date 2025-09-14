@@ -1494,3 +1494,71 @@ def dev_get_chat_room_settings(chat_type, chat_id):
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# === 개발용 파일 업로드 API들 ===
+
+@dev_bp.route("/dev/files/upload", methods=["POST"])
+def dev_upload_file():
+    """개발용: 파일 업로드"""
+    try:
+        from utils.file_manager import file_manager
+        
+        if 'file' not in request.files:
+            return jsonify({"error": "파일이 선택되지 않았습니다."}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "파일이 선택되지 않았습니다."}), 400
+        
+        file_type = request.form.get('file_type', 'image')
+        user_id = request.form.get('user_id', '1')  # 개발용 기본값
+        
+        # 파일 업로드
+        file_metadata, message = file_manager.upload_file(file, file_type, user_id)
+        
+        if not file_metadata:
+            return jsonify({"error": message}), 400
+        
+        return jsonify({
+            "success": True,
+            "message": message,
+            "file_metadata": file_metadata
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"파일 업로드 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/files/storage/info", methods=["GET"])
+def dev_get_storage_info():
+    """개발용: 저장소 정보 조회"""
+    try:
+        from utils.file_manager import file_manager
+        
+        storage_info = file_manager.get_storage_info()
+        if not storage_info:
+            return jsonify({"error": "저장소 정보를 가져올 수 없습니다."}), 500
+        
+        return jsonify({
+            "success": True,
+            "storage_info": storage_info
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"저장소 정보 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@dev_bp.route("/dev/files/cleanup", methods=["POST"])
+def dev_cleanup_files():
+    """개발용: 임시 파일 정리"""
+    try:
+        from utils.file_manager import file_manager
+        
+        max_age_hours = request.json.get('max_age_hours', 24) if request.json else 24
+        file_manager.cleanup_temp_files(max_age_hours)
+        
+        return jsonify({
+            "success": True,
+            "message": f"{max_age_hours}시간 이상 된 임시 파일이 정리되었습니다."
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"파일 정리 중 오류가 발생했습니다: {str(e)}"}), 500
