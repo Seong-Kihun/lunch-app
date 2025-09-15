@@ -7077,6 +7077,67 @@ def get_dev_parties():
         print(f"개발용 파티 목록 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 일정 생성 API
+@app.route("/dev/schedules", methods=["POST"])
+def create_dev_schedule():
+    """개발용 일정 생성 API - 실제 데이터베이스에 저장"""
+    try:
+        data = request.get_json()
+        print(f"개발용 일정 생성 요청: {data}")
+        
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        
+        # 새 일정 생성
+        new_schedule = PersonalSchedule(
+            employee_id=data.get('employee_id'),
+            title=data.get('title'),
+            start_date=data.get('start_date'),
+            time=data.get('time'),
+            restaurant=data.get('restaurant'),
+            location=data.get('location'),
+            description=data.get('description'),
+            is_recurring=data.get('is_recurring', False),
+            recurrence_type=data.get('recurrence_type'),
+            recurrence_interval=data.get('recurrence_interval', 1),
+            recurrence_end_date=data.get('recurrence_end_date'),
+            created_by=data.get('created_by')
+        )
+        
+        db.session.add(new_schedule)
+        db.session.flush()
+        
+        # 참석자 추가
+        if data.get('attendees'):
+            for attendee_id in data['attendees']:
+                attendee = ScheduleAttendee(
+                    schedule_id=new_schedule.id,
+                    employee_id=attendee_id
+                )
+                db.session.add(attendee)
+        
+        db.session.commit()
+        
+        print(f"✅ 일정 생성 완료: ID={new_schedule.id}, 제목={new_schedule.title}")
+        
+        return jsonify({
+            "success": True,
+            "message": "일정이 생성되었습니다.",
+            "data": {
+                "id": new_schedule.id,
+                "title": new_schedule.title,
+                "start_date": new_schedule.start_date.isoformat() if new_schedule.start_date else None,
+                "time": new_schedule.time,
+                "restaurant": new_schedule.restaurant,
+                "location": new_schedule.location,
+                "description": new_schedule.description
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"개발용 일정 생성 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
