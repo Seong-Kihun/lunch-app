@@ -545,8 +545,8 @@ def delete_dev_schedule(schedule_id):
         print(f"❌ [개발용] 일정 삭제 오류: {e}")
         return jsonify({
             'error': '개발용 일정 삭제 중 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
+                'message': str(e)
+            }), 500
 
 @dev_bp.route('/users/<employee_id>/lunch-history', methods=['GET'])
 def get_dev_lunch_history(employee_id):
@@ -648,54 +648,89 @@ def get_dev_parties():
 
 @dev_bp.route('/restaurants', methods=['GET'])
 def get_dev_restaurants():
-    """개발용 식당 목록 API - 인증 없이 테스트 가능"""
+    """개발용 식당 목록 API - 실제 데이터베이스에서 조회"""
     try:
-        # 개발용 샘플 식당 데이터
-        sample_restaurants = [
-            {
-                "id": 1,
-                "name": "맛있는 김치찌개",
-                "address": "서울시 강남구 테헤란로 123",
-                "latitude": 37.5665,
-                "longitude": 126.9780,
-                "phone": "02-1234-5678",
-                "category": "한식",
-                "rating": 4.5,
-                "is_active": True
-            },
-            {
-                "id": 2,
-                "name": "피자헛",
-                "address": "서울시 강남구 테헤란로 456",
-                "latitude": 37.5666,
-                "longitude": 126.9781,
-                "phone": "02-2345-6789",
-                "category": "양식",
-                "rating": 4.2,
-                "is_active": True
-            },
-            {
-                "id": 3,
-                "name": "맥도날드",
-                "address": "서울시 강남구 테헤란로 789",
-                "latitude": 37.5667,
-                "longitude": 126.9782,
-                "phone": "02-3456-7890",
-                "category": "패스트푸드",
-                "rating": 3.8,
-                "is_active": True
-            }
-        ]
+        from models.restaurant_models import RestaurantV2
+        
+        # 쿼리 파라미터 처리
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 100))
+        search = request.args.get('search', '').strip()
+        category = request.args.get('category', '').strip()
+        lat = request.args.get('lat')
+        lng = request.args.get('lng')
+        radius = request.args.get('radius')
+        
+        # 기본 쿼리
+        query = RestaurantV2.query.filter_by(is_active=True)
+        
+        # 검색어 필터링
+        if search:
+            query = query.filter(
+                db.or_(
+                    RestaurantV2.name.contains(search),
+                    RestaurantV2.address.contains(search),
+                    RestaurantV2.category.contains(search)
+                )
+            )
+        
+        # 카테고리 필터링
+        if category:
+            query = query.filter(RestaurantV2.category == category)
+        
+        # 위치 기반 필터링
+        if lat and lng and radius:
+            try:
+                lat_float = float(lat)
+                lng_float = float(lng)
+                radius_float = float(radius)
+                
+                # 간단한 거리 계산을 위한 위도/경도 범위 계산
+                lat_range = radius_float / 111.0  # 대략적인 위도 1도 = 111km
+                lng_range = radius_float / (111.0 * abs(lat_float))
+                
+                query = query.filter(
+                    RestaurantV2.latitude.between(lat_float - lat_range, lat_float + lat_range),
+                    RestaurantV2.longitude.between(lng_float - lng_range, lng_float + lng_range)
+                )
+            except ValueError:
+                pass  # 잘못된 좌표값이면 무시
+        
+        # 정렬
+        query = query.order_by(RestaurantV2.name)
+        
+        # 페이지네이션
+        offset = (page - 1) * limit
+        restaurants = query.offset(offset).limit(limit).all()
+        
+        # 데이터 변환
+        restaurant_list = []
+        for restaurant in restaurants:
+            restaurant_list.append({
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "address": restaurant.address,
+                "latitude": restaurant.latitude,
+                "longitude": restaurant.longitude,
+                "phone": restaurant.phone or "",
+                "category": restaurant.category or "기타",
+                "rating": 4.0,  # 기본값
+                "is_active": restaurant.is_active,
+                "price_range": "$$",  # 기본값
+                "opening_hours": "11:00-22:00"  # 기본값
+            })
         
         return jsonify({
             "success": True,
-            "restaurants": sample_restaurants,
-            "total": len(sample_restaurants)
+            "restaurants": restaurant_list,
+            "total": len(restaurant_list),
+            "page": page,
+            "limit": limit
         })
         
     except Exception as e:
         return jsonify({
-            "error": "개발용 식당 목록 조회 중 오류가 발생했습니다.",
+            "error": "식당 목록 조회 중 오류가 발생했습니다.",
             "message": str(e)
         }), 500
 
