@@ -125,13 +125,15 @@ class ChatRoom(db.Model):
     """채팅방 모델"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=True)
+    title = db.Column(db.String(100), nullable=True)  # 채팅방 제목
     type = db.Column(db.String(20), nullable=False)  # 'friend', 'group', 'dangolpot'
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=True)
     dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    def __init__(self, name, type, party_id=None, dangolpot_id=None):
+    def __init__(self, name=None, title=None, type=None, party_id=None, dangolpot_id=None):
         self.name = name
+        self.title = title
         self.type = type
         self.party_id = party_id
         self.dangolpot_id = dangolpot_id
@@ -139,13 +141,15 @@ class ChatRoom(db.Model):
 class ChatParticipant(db.Model):
     """채팅 참여자 모델"""
     id = db.Column(db.Integer, primary_key=True)
-    room_id = db.Column(db.Integer, db.ForeignKey('chat_room.id'), nullable=False)
-    user_id = db.Column(db.String(50), nullable=False)
+    chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot', 'custom'
+    chat_id = db.Column(db.Integer, nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    def __init__(self, room_id, user_id):
-        self.room_id = room_id
-        self.user_id = user_id
+    def __init__(self, chat_type, chat_id, employee_id):
+        self.chat_type = chat_type
+        self.chat_id = chat_id
+        self.employee_id = employee_id
 
 class LunchProposal(db.Model):
     """점심 제안 모델"""
