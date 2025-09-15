@@ -6579,40 +6579,50 @@ def get_nickname_by_id(employee_id):
 # 🚀 개발용 채팅 API
 @app.route("/dev/chats/<employee_id>", methods=["GET"])
 def get_dev_chats(employee_id):
-    """개발용 채팅 목록 API - 인증 없이 테스트 가능"""
+    """개발용 채팅 목록 API - 실제 데이터베이스에서 조회"""
     try:
-        # 가상 채팅 데이터 생성
-        mock_chats = [
-            {
-                "id": 1,
-                "type": "party",
-                "title": "점심파티 - 맛있는 김치찌개",
-                "last_message": "오늘 정말 맛있었어요!",
-                "last_message_time": "2025-09-05T12:30:00Z",
-                "unread_count": 2,
-                "created_at": "2025-09-05T11:00:00Z"
-            },
-            {
-                "id": 2,
-                "type": "dangolpot",
-                "title": "단골파티 - 한식러버",
-                "last_message": "다음주에도 여기 올까요?",
-                "last_message_time": "2025-09-04T18:20:00Z",
-                "unread_count": 0,
-                "created_at": "2025-09-01T09:00:00Z"
-            },
-            {
-                "id": 3,
-                "type": "custom",
-                "title": "김철수님과의 채팅",
-                "last_message": "고마워요!",
-                "last_message_time": "2025-09-03T14:15:00Z",
-                "unread_count": 1,
-                "created_at": "2025-09-02T10:30:00Z"
-            }
-        ]
+        from models.app_models import ChatRoom, ChatParticipant
+        from sqlalchemy import and_
         
-        return jsonify(mock_chats)
+        # 사용자가 참여한 채팅방 조회
+        user_chats = db.session.query(ChatRoom).join(
+            ChatParticipant, 
+            and_(
+                ChatRoom.id == ChatParticipant.chat_id,
+                ChatParticipant.employee_id == employee_id
+            )
+        ).all()
+        
+        # 채팅방 목록을 프론트엔드 형식으로 변환
+        chats_data = []
+        for chat in user_chats:
+            chat_data = {
+                "id": chat.id,
+                "type": chat.type or "group",
+                "title": chat.title or "채팅방",
+                "last_message": "메시지가 없습니다",
+                "last_message_time": chat.created_at.isoformat() if chat.created_at else None,
+                "unread_count": 0,
+                "created_at": chat.created_at.isoformat() if chat.created_at else None,
+                "members": []
+            }
+            
+            # 참여자 목록 조회
+            participants = ChatParticipant.query.filter_by(
+                chat_type=chat.type,
+                chat_id=chat.id
+            ).all()
+            
+            for participant in participants:
+                chat_data["members"].append({
+                    "employee_id": participant.employee_id,
+                    "nickname": f"사용자{participant.employee_id}"
+                })
+            
+            chats_data.append(chat_data)
+        
+        print(f"✅ 사용자 {employee_id}의 채팅방 {len(chats_data)}개 조회 완료")
+        return jsonify(chats_data)
     except Exception as e:
         print(f"개발용 채팅 목록 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -6747,22 +6757,49 @@ def send_dev_chat_message():
 # 🚀 개발용 채팅방 생성 API
 @app.route("/dev/chat/create", methods=["POST"])
 def create_dev_chat_room():
-    """개발용 채팅방 생성 API - 인증 없이 테스트 가능"""
+    """개발용 채팅방 생성 API - 실제 데이터베이스에 저장"""
     try:
-        import time
         data = request.get_json()
         print(f"개발용 채팅방 생성 요청: {data}")
         
-        # 가상 채팅방 ID 생성
-        chat_id = int(time.time() * 1000) % 10000
+        title = data.get("title")
+        employee_ids = data.get("employee_ids", [])
+        
+        if not title or not employee_ids:
+            return jsonify({"error": "제목과 참여자 목록이 필요합니다."}), 400
+        
+        # 실제 데이터베이스에 채팅방 생성
+        from models.app_models import ChatRoom, ChatParticipant
+        
+        # 새 그룹 채팅방 생성
+        new_chat = ChatRoom(
+            type="group",
+            title=title
+        )
+        db.session.add(new_chat)
+        db.session.flush()
+        
+        # 참여자들 추가
+        for employee_id in employee_ids:
+            participant = ChatParticipant(
+                chat_type="group",
+                chat_id=new_chat.id,
+                employee_id=employee_id
+            )
+            db.session.add(participant)
+        
+        db.session.commit()
+        
+        print(f"✅ 채팅방 생성 완료: ID={new_chat.id}, 제목={title}")
         
         return jsonify({
             "message": "채팅방이 생성되었습니다!",
-            "chat_id": chat_id,
-            "title": data.get("title", "새로운 채팅방"),
+            "chat_id": new_chat.id,
+            "title": title,
             "success": True
         })
     except Exception as e:
+        db.session.rollback()
         print(f"개발용 채팅방 생성 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
