@@ -7138,6 +7138,99 @@ def create_dev_schedule():
         print(f"개발용 일정 생성 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 일정 수정 API
+@app.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
+def update_dev_schedule(schedule_id):
+    """개발용 일정 수정 API - 실제 데이터베이스에서 수정"""
+    try:
+        data = request.get_json()
+        print(f"개발용 일정 수정 요청: ID={schedule_id}, 데이터={data}")
+        
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        
+        # 기존 일정 조회
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
+        
+        # 일정 정보 수정
+        schedule.title = data.get('title', schedule.title)
+        schedule.start_date = data.get('start_date', schedule.start_date)
+        schedule.time = data.get('time', schedule.time)
+        schedule.restaurant = data.get('restaurant', schedule.restaurant)
+        schedule.location = data.get('location', schedule.location)
+        schedule.description = data.get('description', schedule.description)
+        schedule.is_recurring = data.get('is_recurring', schedule.is_recurring)
+        schedule.recurrence_type = data.get('recurrence_type', schedule.recurrence_type)
+        schedule.recurrence_interval = data.get('recurrence_interval', schedule.recurrence_interval)
+        schedule.recurrence_end_date = data.get('recurrence_end_date', schedule.recurrence_end_date)
+        
+        # 기존 참석자 삭제
+        ScheduleAttendee.query.filter_by(schedule_id=schedule_id).delete()
+        
+        # 새 참석자 추가
+        if data.get('attendees'):
+            for attendee_id in data['attendees']:
+                attendee = ScheduleAttendee(
+                    schedule_id=schedule_id,
+                    employee_id=attendee_id
+                )
+                db.session.add(attendee)
+        
+        db.session.commit()
+        
+        print(f"✅ 일정 수정 완료: ID={schedule_id}, 제목={schedule.title}")
+        
+        return jsonify({
+            "success": True,
+            "message": "일정이 수정되었습니다.",
+            "data": {
+                "id": schedule.id,
+                "title": schedule.title,
+                "start_date": schedule.start_date.isoformat() if schedule.start_date else None,
+                "time": schedule.time,
+                "restaurant": schedule.restaurant,
+                "location": schedule.location,
+                "description": schedule.description
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"개발용 일정 수정 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 🚀 개발용 일정 삭제 API
+@app.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
+def delete_dev_schedule(schedule_id):
+    """개발용 일정 삭제 API - 실제 데이터베이스에서 삭제"""
+    try:
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        
+        # 기존 일정 조회
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
+        
+        # 참석자 삭제
+        ScheduleAttendee.query.filter_by(schedule_id=schedule_id).delete()
+        
+        # 일정 삭제
+        db.session.delete(schedule)
+        db.session.commit()
+        
+        print(f"✅ 일정 삭제 완료: ID={schedule_id}")
+        
+        return jsonify({
+            "success": True,
+            "message": "일정이 삭제되었습니다."
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"개발용 일정 삭제 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
