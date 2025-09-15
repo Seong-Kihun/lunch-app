@@ -6803,6 +6803,96 @@ def create_dev_chat_room():
         print(f"개발용 채팅방 생성 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 식당 데이터 자동 로드 API
+@app.route("/dev/restaurants/load-excel", methods=["POST"])
+def load_restaurant_excel():
+    """엑셀 파일에서 식당 데이터를 자동으로 로드"""
+    try:
+        import pandas as pd
+        import os
+        from models.restaurant_models import RestaurantV2
+        
+        excel_file_path = "data/restaurants_707.xlsx"
+        
+        if not os.path.exists(excel_file_path):
+            return jsonify({"error": "엑셀 파일을 찾을 수 없습니다."}), 404
+        
+        # 기존 데이터 확인
+        existing_count = RestaurantV2.query.count()
+        if existing_count > 0:
+            return jsonify({
+                "message": f"이미 {existing_count}개의 식당 데이터가 있습니다.",
+                "count": existing_count
+            }), 200
+        
+        # 엑셀 파일 읽기
+        print(f"📖 엑셀 파일 읽는 중: {excel_file_path}")
+        df = pd.read_excel(excel_file_path)
+        
+        print(f"📊 데이터 정보: 총 {len(df)}개 행")
+        
+        # 데이터 변환 및 저장
+        success_count = 0
+        error_count = 0
+        
+        for index, row in df.iterrows():
+            try:
+                # 엑셀 컬럼명에 맞게 데이터 추출
+                name = str(row.get('name', '')).strip()
+                address = str(row.get('address', '')).strip()
+                category = str(row.get('category', '기타')).strip()
+                latitude = row.get('latitude')
+                longitude = row.get('longitude')
+                phone = str(row.get('phone', '')).strip()
+                
+                if not name or name == 'nan':
+                    continue
+                
+                # 위도/경도 변환
+                try:
+                    lat = float(latitude) if latitude and str(latitude) != 'nan' else None
+                    lng = float(longitude) if longitude and str(longitude) != 'nan' else None
+                except (ValueError, TypeError):
+                    lat, lng = None, None
+                
+                # 식당 데이터 생성
+                restaurant = RestaurantV2(
+                    name=name,
+                    address=address,
+                    category=category,
+                    latitude=lat,
+                    longitude=lng,
+                    phone=phone if phone != 'nan' else None,
+                    is_active=True
+                )
+                
+                db.session.add(restaurant)
+                success_count += 1
+                
+                if success_count % 100 == 0:
+                    print(f"진행률: {success_count}/{len(df)}")
+                    
+            except Exception as e:
+                error_count += 1
+                print(f"행 {index} 처리 오류: {e}")
+                continue
+        
+        db.session.commit()
+        
+        print(f"✅ 식당 데이터 로드 완료: 성공 {success_count}개, 실패 {error_count}개")
+        
+        return jsonify({
+            "message": "식당 데이터가 성공적으로 로드되었습니다.",
+            "success_count": success_count,
+            "error_count": error_count,
+            "total": success_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"식당 데이터 로드 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
