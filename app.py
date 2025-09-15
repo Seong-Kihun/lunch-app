@@ -6975,10 +6975,10 @@ def load_restaurant_excel():
         print(f"식당 데이터 로드 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
-# 🚀 개발용 일정 조회 API
-@app.route("/dev/schedules", methods=["GET"])
-def get_dev_schedules():
-    """개발용 일정 조회 API - 특정 날짜의 일정 조회"""
+# 🚀 개발용 특정 날짜 일정 조회 API
+@app.route("/dev/schedules/date", methods=["GET"])
+def get_dev_schedules_by_date():
+    """개발용 특정 날짜 일정 조회 API - 참석자 정보 포함"""
     try:
         date = request.args.get('date')
         if not date:
