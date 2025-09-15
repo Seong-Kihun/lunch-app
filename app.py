@@ -6975,6 +6975,52 @@ def load_restaurant_excel():
         print(f"식당 데이터 로드 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 일정 조회 API
+@app.route("/dev/schedules", methods=["GET"])
+def get_dev_schedules():
+    """개발용 일정 조회 API - 특정 날짜의 일정 조회"""
+    try:
+        date = request.args.get('date')
+        if not date:
+            return jsonify({"error": "날짜가 필요합니다."}), 400
+        
+        from models.app_models import Schedule, ScheduleAttendee
+        
+        # 해당 날짜의 일정 조회
+        schedules = Schedule.query.filter(
+            db.func.date(Schedule.scheduled_date) == date
+        ).all()
+        
+        # 일정 데이터 변환
+        schedules_data = []
+        for schedule in schedules:
+            # 참석자 목록 조회
+            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
+            
+            schedule_data = {
+                "id": schedule.id,
+                "title": schedule.title,
+                "scheduled_date": schedule.scheduled_date.isoformat() if schedule.scheduled_date else None,
+                "scheduled_time": schedule.scheduled_time,
+                "location": schedule.location,
+                "description": schedule.description,
+                "attendees": [
+                    {
+                        "employee_id": attendee.employee_id,
+                        "nickname": f"사용자{attendee.employee_id}"
+                    }
+                    for attendee in attendees
+                ]
+            }
+            schedules_data.append(schedule_data)
+        
+        print(f"✅ {date} 일정 조회 완료: {len(schedules_data)}개")
+        return jsonify(schedules_data)
+        
+    except Exception as e:
+        print(f"개발용 일정 조회 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
