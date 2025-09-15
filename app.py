@@ -7021,6 +7021,62 @@ def get_dev_schedules_by_date():
         print(f"개발용 일정 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
+# 🚀 개발용 파티 API
+@app.route("/dev/parties", methods=["GET"])
+def get_dev_parties():
+    """개발용 파티 목록 API - 실제 데이터베이스에서 조회"""
+    try:
+        from models.app_models import Party, PartyMember
+        
+        # 쿼리 파라미터 처리
+        employee_id = request.args.get('employee_id', '1')
+        is_from_match = request.args.get('is_from_match')
+        
+        # 파티 조회
+        if is_from_match:
+            # 랜덤런치 그룹 조회
+            parties = Party.query.join(PartyMember).filter(
+                Party.is_from_match == True,
+                PartyMember.employee_id == employee_id
+            ).order_by(Party.id.desc()).all()
+        else:
+            # 일반 파티 조회
+            parties = Party.query.filter_by(is_from_match=False).order_by(Party.id.desc()).all()
+        
+        # 파티 데이터 변환
+        parties_data = []
+        for party in parties:
+            # 멤버 수 조회
+            member_count = PartyMember.query.filter_by(party_id=party.id).count()
+            
+            party_data = {
+                "id": party.id,
+                "title": party.title,
+                "restaurant_name": party.restaurant_name,
+                "restaurant_address": party.restaurant_address,
+                "party_date": party.party_date.isoformat() if party.party_date else None,
+                "party_time": party.party_time,
+                "meeting_location": party.meeting_location,
+                "max_members": party.max_members,
+                "current_members": member_count,
+                "is_from_match": party.is_from_match,
+                "description": party.description or "",
+                "host_employee_id": party.host_employee_id,
+                "created_at": party.created_at.isoformat() if party.created_at else None
+            }
+            parties_data.append(party_data)
+        
+        print(f"✅ 파티 목록 조회 완료: {len(parties_data)}개")
+        return jsonify({
+            "success": True,
+            "parties": parties_data,
+            "total": len(parties_data)
+        })
+        
+    except Exception as e:
+        print(f"개발용 파티 목록 조회 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # 🚀 개발용 친구 관계 API
 @app.route("/dev/friends/<employee_id>", methods=["GET"])
 def get_dev_friends(employee_id):
