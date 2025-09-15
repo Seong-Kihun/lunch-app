@@ -744,3 +744,18 @@ class Match(db.Model):
         self.user2_id = user2_id
         self.matched_date = matched_date
         self.matched_time = matched_time
+
+class RestaurantReviews(db.Model):
+    """식당 리뷰 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    rating = db.Column(db.Float, nullable=False)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __init__(self, restaurant_id, user_id, rating, comment=None):
+        self.restaurant_id = restaurant_id
+        self.user_id = user_id
+        self.rating = rating
+        self.comment = comment
