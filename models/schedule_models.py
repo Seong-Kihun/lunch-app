@@ -27,6 +27,7 @@ class PersonalSchedule(db.Model):
     recurrence_type = Column(String(20))  # 'daily', 'weekly', 'monthly'
     recurrence_interval = Column(Integer, default=1)  # 간격 (1, 2, 3...)
     recurrence_end_date = Column(DateTime)  # 반복 종료 날짜
+    master_schedule_id = Column(Integer, ForeignKey('personal_schedules.id'), nullable=True, index=True)  # 마스터 일정 ID
     
     # 시스템 정보
     created_by = Column(String(50), nullable=False)
