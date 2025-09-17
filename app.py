@@ -6978,39 +6978,35 @@ def load_restaurant_excel():
 # 🚀 개발용 특정 날짜 일정 조회 API
 @app.route("/dev/schedules/date", methods=["GET"])
 def get_dev_schedules_by_date():
-    """개발용 특정 날짜 일정 조회 API - 참석자 정보 포함"""
+    """개발용 특정 날짜 일정 조회 API - PersonalSchedule 모델 사용"""
     try:
         date = request.args.get('date')
         if not date:
             return jsonify({"error": "날짜가 필요합니다."}), 400
         
-        from models.app_models import Schedule, ScheduleAttendee
+        from models.schedule_models import PersonalSchedule
         
-        # 해당 날짜의 일정 조회
-        schedules = Schedule.query.filter(
-            db.func.date(Schedule.scheduled_date) == date
+        # 해당 날짜의 일정 조회 (schedule_date 필드 사용)
+        schedules = PersonalSchedule.query.filter(
+            PersonalSchedule.schedule_date == date
         ).all()
         
         # 일정 데이터 변환
         schedules_data = []
         for schedule in schedules:
-            # 참석자 목록 조회
-            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
-            
             schedule_data = {
                 "id": schedule.id,
                 "title": schedule.title,
-                "scheduled_date": schedule.scheduled_date.isoformat() if schedule.scheduled_date else None,
-                "scheduled_time": schedule.scheduled_time,
+                "scheduled_date": schedule.start_date.isoformat() if schedule.start_date else None,
+                "scheduled_time": schedule.time,
                 "location": schedule.location,
                 "description": schedule.description,
                 "attendees": [
                     {
-                        "employee_id": attendee.employee_id,
-                        "nickname": f"사용자{attendee.employee_id}"
+                        "employee_id": schedule.employee_id,
+                        "nickname": f"사용자{schedule.employee_id}"
                     }
-                    for attendee in attendees
-                ]
+                ]  # PersonalSchedule은 개인 일정이므로 참석자는 일정 소유자만
             }
             schedules_data.append(schedule_data)
         
