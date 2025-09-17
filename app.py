@@ -7130,6 +7130,72 @@ def get_dev_schedules_by_date():
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 파티 API
+@app.route("/parties", methods=["POST"])
+def create_party_main():
+    """파티 생성 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 create_party 함수를 호출
+        from api.parties import create_party
+        return create_party()
+    except Exception as e:
+        print(f"❌ [create_party_main] 오류: {e}")
+        return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@app.route("/parties", methods=["GET"])
+def get_parties_main():
+    """파티 목록 조회 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 get_all_parties 함수를 호출
+        from api.parties import get_all_parties
+        return get_all_parties()
+    except Exception as e:
+        print(f"❌ [get_parties_main] 오류: {e}")
+        return jsonify({'error': '파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@app.route("/parties/<int:party_id>", methods=["GET"])
+def get_party_main(party_id):
+    """파티 상세 조회 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 get_party 함수를 호출
+        from api.parties import get_party
+        return get_party(party_id)
+    except Exception as e:
+        print(f"❌ [get_party_main] 오류: {e}")
+        return jsonify({'error': '파티 상세 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@app.route("/parties/<int:party_id>/join", methods=["POST"])
+def join_party_main(party_id):
+    """파티 참여 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 join_party 함수를 호출
+        from api.parties import join_party
+        return join_party(party_id)
+    except Exception as e:
+        print(f"❌ [join_party_main] 오류: {e}")
+        return jsonify({'error': '파티 참여 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@app.route("/parties/<int:party_id>/leave", methods=["POST"])
+def leave_party_main(party_id):
+    """파티 나가기 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 leave_party 함수를 호출
+        from api.parties import leave_party
+        return leave_party(party_id)
+    except Exception as e:
+        print(f"❌ [leave_party_main] 오류: {e}")
+        return jsonify({'error': '파티 나가기 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
+@app.route("/parties/<int:party_id>", methods=["DELETE"])
+def delete_party_main(party_id):
+    """파티 삭제 API - 메인 엔드포인트"""
+    try:
+        # 파티 Blueprint의 delete_party 함수를 호출
+        from api.parties import delete_party
+        return delete_party(party_id)
+    except Exception as e:
+        print(f"❌ [delete_party_main] 오류: {e}")
+        return jsonify({'error': '파티 삭제 중 오류가 발생했습니다.', 'details': str(e)}), 500
+
 @app.route("/dev/parties", methods=["GET"])
 def get_dev_parties():
     """개발용 파티 목록 API - 실제 데이터베이스에서 조회"""
