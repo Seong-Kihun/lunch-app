@@ -6565,7 +6565,7 @@ def get_dev_schedules():
             }), 400
         
         # 실제 데이터베이스에서 일정 조회
-        from models.schedule_models import PersonalSchedule
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
         from datetime import datetime
         
         # 날짜 범위로 일정 조회
@@ -6581,6 +6581,17 @@ def get_dev_schedules():
         # 일정 데이터를 API 형식으로 변환
         sample_schedules = []
         for schedule in schedules:
+            # 참석자 정보 조회
+            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
+            attendees_data = []
+            for attendee in attendees:
+                attendees_data.append({
+                    "employee_id": attendee.employee_id,
+                    "id": attendee.employee_id,
+                    "name": f"사용자{attendee.employee_id}",
+                    "nickname": f"사용자{attendee.employee_id}"
+                })
+            
             sample_schedules.append({
                 "id": schedule.id,
                 "title": schedule.title,
@@ -6595,7 +6606,8 @@ def get_dev_schedules():
                 "status": "confirmed",
                 "restaurant": schedule.restaurant or "",
                 "created_by": schedule.created_by or schedule.employee_id,
-                "created_at": schedule.created_at.isoformat() if schedule.created_at else None
+                "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
+                "attendees": attendees_data
             })
         
         print(f"🔍 [개발용] 일정 조회 결과: {len(sample_schedules)}개 일정")
