@@ -6475,6 +6475,78 @@ def get_dev_users_list():
 
         return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
+def create_recurring_instances(master_schedule):
+    """반복일정의 각 인스턴스를 생성하는 함수"""
+    try:
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        from datetime import datetime, timedelta
+        
+        if not master_schedule.is_recurring or not master_schedule.recurrence_type:
+            return
+        
+        print(f"🔄 반복일정 인스턴스 생성 시작: {master_schedule.title}")
+        
+        # 시작 날짜와 종료 날짜 설정
+        start_date = master_schedule.start_date
+        end_date = master_schedule.recurrence_end_date or (start_date + timedelta(days=365))  # 기본 1년
+        
+        current_date = start_date
+        instance_count = 0
+        max_instances = 100  # 무한 루프 방지
+        
+        while current_date <= end_date and instance_count < max_instances:
+            # 반복 규칙에 따라 다음 날짜 계산
+            if master_schedule.recurrence_type == 'daily':
+                next_date = current_date + timedelta(days=master_schedule.recurrence_interval)
+            elif master_schedule.recurrence_type == 'weekly':
+                next_date = current_date + timedelta(weeks=master_schedule.recurrence_interval)
+            elif master_schedule.recurrence_type == 'monthly':
+                # 월별 반복은 간단하게 30일로 처리
+                next_date = current_date + timedelta(days=30 * master_schedule.recurrence_interval)
+            else:
+                break
+            
+            # 현재 날짜가 시작 날짜가 아닌 경우에만 인스턴스 생성
+            if current_date != start_date:
+                # 인스턴스 일정 생성
+                instance_schedule = PersonalSchedule(
+                    employee_id=master_schedule.employee_id,
+                    title=master_schedule.title,
+                    start_date=current_date,
+                    schedule_date=current_date.strftime('%Y-%m-%d'),
+                    time=master_schedule.time,
+                    restaurant=master_schedule.restaurant,
+                    location=master_schedule.location,
+                    description=master_schedule.description,
+                    is_recurring=False,  # 인스턴스는 반복일정이 아님
+                    recurrence_type=None,
+                    recurrence_interval=None,
+                    recurrence_end_date=None,
+                    created_by=master_schedule.created_by
+                )
+                
+                db.session.add(instance_schedule)
+                db.session.flush()
+                
+                # 참석자 복사
+                original_attendees = ScheduleAttendee.query.filter_by(schedule_id=master_schedule.id).all()
+                for attendee in original_attendees:
+                    instance_attendee = ScheduleAttendee(
+                        schedule_id=instance_schedule.id,
+                        employee_id=attendee.employee_id
+                    )
+                    db.session.add(instance_attendee)
+                
+                instance_count += 1
+                print(f"  📅 인스턴스 생성: {current_date.strftime('%Y-%m-%d')} - {master_schedule.title}")
+            
+            current_date = next_date
+        
+        print(f"✅ 반복일정 인스턴스 생성 완료: {instance_count}개")
+        
+    except Exception as e:
+        print(f"❌ 반복일정 인스턴스 생성 실패: {e}")
+        raise
 
 # 🚀 개발용 일정 조회 API (인증 없이 테스트 가능)
 @app.route("/dev/schedules", methods=["GET"])
@@ -7126,6 +7198,10 @@ def create_dev_schedule():
                     employee_id=attendee_id
                 )
                 db.session.add(attendee)
+        
+        # 반복일정인 경우 각 인스턴스 생성
+        if new_schedule.is_recurring and new_schedule.recurrence_type:
+            create_recurring_instances(new_schedule)
         
         db.session.commit()
         
