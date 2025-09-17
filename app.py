@@ -6586,11 +6586,13 @@ def get_dev_schedules():
             attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
             attendees_data = []
             for attendee in attendees:
+                # 실제 사용자 정보 조회
+                nickname = get_nickname_by_id(attendee.employee_id)
                 attendees_data.append({
                     "employee_id": attendee.employee_id,
                     "id": attendee.employee_id,
-                    "name": f"사용자{attendee.employee_id}",
-                    "nickname": f"사용자{attendee.employee_id}"
+                    "name": nickname,
+                    "nickname": nickname
                 })
             
             # 반복일정 그룹 인식 로직
@@ -7096,8 +7098,19 @@ def get_dev_schedules_by_date():
         ).all()
         
         # 일정 데이터 변환
+        from models.schedule_models import ScheduleAttendee
         schedules_data = []
         for schedule in schedules:
+            # 참석자 정보 조회
+            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
+            attendees_data = []
+            for attendee in attendees:
+                nickname = get_nickname_by_id(attendee.employee_id)
+                attendees_data.append({
+                    "employee_id": attendee.employee_id,
+                    "nickname": nickname
+                })
+            
             schedule_data = {
                 "id": schedule.id,
                 "title": schedule.title,
@@ -7105,12 +7118,7 @@ def get_dev_schedules_by_date():
                 "scheduled_time": schedule.time,
                 "location": schedule.location,
                 "description": schedule.description,
-                "attendees": [
-                    {
-                        "employee_id": schedule.employee_id,
-                        "nickname": f"사용자{schedule.employee_id}"
-                    }
-                ]  # PersonalSchedule은 개인 일정이므로 참석자는 일정 소유자만
+                "attendees": attendees_data
             }
             schedules_data.append(schedule_data)
         
