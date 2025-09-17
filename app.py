@@ -7082,12 +7082,28 @@ def create_dev_schedule():
         print(f"개발용 일정 생성 요청: {data}")
         
         from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        from datetime import datetime, date
+        
+        # 날짜 문자열을 datetime 객체로 변환
+        start_date = data.get('start_date')
+        if start_date and isinstance(start_date, str):
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').date()
+        
+        recurrence_end_date = data.get('recurrence_end_date')
+        if recurrence_end_date and isinstance(recurrence_end_date, str):
+            try:
+                recurrence_end_date = datetime.strptime(recurrence_end_date, '%Y-%m-%d').date()
+            except ValueError:
+                recurrence_end_date = datetime.strptime(recurrence_end_date, '%Y-%m-%d %H:%M:%S').date()
         
         # 새 일정 생성
         new_schedule = PersonalSchedule(
             employee_id=data.get('employee_id'),
             title=data.get('title'),
-            start_date=data.get('start_date'),
+            start_date=start_date,
             time=data.get('time'),
             restaurant=data.get('restaurant'),
             location=data.get('location'),
@@ -7095,7 +7111,7 @@ def create_dev_schedule():
             is_recurring=data.get('is_recurring', False),
             recurrence_type=data.get('recurrence_type'),
             recurrence_interval=data.get('recurrence_interval', 1),
-            recurrence_end_date=data.get('recurrence_end_date'),
+            recurrence_end_date=recurrence_end_date,
             created_by=data.get('created_by')
         )
         
@@ -7143,15 +7159,31 @@ def update_dev_schedule(schedule_id):
         print(f"개발용 일정 수정 요청: ID={schedule_id}, 데이터={data}")
         
         from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        from datetime import datetime, date
         
         # 기존 일정 조회
         schedule = PersonalSchedule.query.get(schedule_id)
         if not schedule:
             return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
         
+        # 날짜 문자열을 datetime 객체로 변환
+        start_date = data.get('start_date')
+        if start_date and isinstance(start_date, str):
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').date()
+        
+        recurrence_end_date = data.get('recurrence_end_date')
+        if recurrence_end_date and isinstance(recurrence_end_date, str):
+            try:
+                recurrence_end_date = datetime.strptime(recurrence_end_date, '%Y-%m-%d').date()
+            except ValueError:
+                recurrence_end_date = datetime.strptime(recurrence_end_date, '%Y-%m-%d %H:%M:%S').date()
+        
         # 일정 정보 수정
         schedule.title = data.get('title', schedule.title)
-        schedule.start_date = data.get('start_date', schedule.start_date)
+        schedule.start_date = start_date if start_date else schedule.start_date
         schedule.time = data.get('time', schedule.time)
         schedule.restaurant = data.get('restaurant', schedule.restaurant)
         schedule.location = data.get('location', schedule.location)
@@ -7159,7 +7191,7 @@ def update_dev_schedule(schedule_id):
         schedule.is_recurring = data.get('is_recurring', schedule.is_recurring)
         schedule.recurrence_type = data.get('recurrence_type', schedule.recurrence_type)
         schedule.recurrence_interval = data.get('recurrence_interval', schedule.recurrence_interval)
-        schedule.recurrence_end_date = data.get('recurrence_end_date', schedule.recurrence_end_date)
+        schedule.recurrence_end_date = recurrence_end_date if recurrence_end_date else schedule.recurrence_end_date
         
         # 기존 참석자 삭제
         ScheduleAttendee.query.filter_by(schedule_id=schedule_id).delete()
