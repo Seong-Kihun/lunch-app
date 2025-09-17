@@ -103,3 +103,27 @@ class ScheduleException(db.Model):
             'new_description': self.new_description,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class ScheduleAttendee(db.Model):
+    """일정 참석자 모델"""
+    __tablename__ = 'schedule_attendees'
+    
+    id = Column(Integer, primary_key=True)
+    schedule_id = Column(Integer, ForeignKey('personal_schedules.id'), nullable=False, index=True)
+    employee_id = Column(String(50), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계
+    schedule = relationship('PersonalSchedule', backref='attendees')
+    
+    def __repr__(self):
+        return f'<ScheduleAttendee {self.id}: {self.employee_id}>'
+    
+    def to_dict(self):
+        """참석자를 딕셔너리로 변환"""
+        return {
+            'id': self.id,
+            'schedule_id': self.schedule_id,
+            'employee_id': self.employee_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
