@@ -79,6 +79,10 @@ class SecurityAuditor:
             """요청 전 보안 검사"""
             g.security_start_time = datetime.now()
             
+            # 개발 환경에서는 보안 검사 완전히 건너뛰기
+            if current_app.config.get('ENV') == 'development' or current_app.debug:
+                return None
+            
             # 요청 크기 검사
             if request.content_length and request.content_length > self.security_config['max_request_size']:
                 self._log_security_event('request_size_limit_exceeded', {
