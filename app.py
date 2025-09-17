@@ -6522,6 +6522,7 @@ def create_recurring_instances(master_schedule):
                     recurrence_type=None,
                     recurrence_interval=None,
                     recurrence_end_date=None,
+                    master_schedule_id=master_schedule.id,  # 마스터 일정 ID 설정
                     created_by=master_schedule.created_by
                 )
                 
@@ -6592,6 +6593,24 @@ def get_dev_schedules():
                     "nickname": f"사용자{attendee.employee_id}"
                 })
             
+            # 반복일정 그룹 인식 로직
+            is_recurring_group = False
+            recurrence_type = None
+            master_schedule_id = None
+            
+            if schedule.is_recurring:
+                # 마스터 일정인 경우
+                is_recurring_group = True
+                recurrence_type = schedule.recurrence_type
+                master_schedule_id = schedule.id
+            elif schedule.master_schedule_id:
+                # 인스턴스 일정인 경우 - 마스터 일정 정보 조회
+                master_schedule = PersonalSchedule.query.get(schedule.master_schedule_id)
+                if master_schedule and master_schedule.is_recurring:
+                    is_recurring_group = True
+                    recurrence_type = master_schedule.recurrence_type
+                    master_schedule_id = schedule.master_schedule_id
+            
             sample_schedules.append({
                 "id": schedule.id,
                 "title": schedule.title,
@@ -6599,8 +6618,9 @@ def get_dev_schedules():
                 "end_date": schedule.start_date.isoformat(),
                 "start_time": schedule.time + ":00" if schedule.time else "12:00:00",
                 "end_time": (schedule.time + ":00" if schedule.time else "12:00:00"),
-                "is_recurring": schedule.is_recurring or False,
-                "recurrence_type": schedule.recurrence_type,
+                "is_recurring": is_recurring_group,
+                "recurrence_type": recurrence_type,
+                "master_schedule_id": master_schedule_id,
                 "description": schedule.description or "",
                 "location": schedule.location or "",
                 "status": "confirmed",
