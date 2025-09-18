@@ -114,13 +114,26 @@ def create_party():
     print(f"✅ [create_party] 필수 필드 검증 통과")
     
     try:
+        # 날짜와 시간 변환
+        from datetime import datetime, date, time
+        
+        try:
+            party_date = datetime.strptime(data["date"], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"error": "잘못된 날짜 형식입니다. YYYY-MM-DD 형식을 사용하세요."}), 400
+        
+        try:
+            party_time = datetime.strptime(data["time"], '%H:%M').time()
+        except ValueError:
+            return jsonify({"error": "잘못된 시간 형식입니다. HH:MM 형식을 사용하세요."}), 400
+        
         new_party = Party(
             host_employee_id=data.get("created_by"),
             title=data["title"],
             restaurant_name=data["restaurant"],
             restaurant_address=data.get("location", ""),
-            party_date=data["date"],
-            party_time=data["time"],
+            party_date=party_date,
+            party_time=party_time,
             meeting_location=data.get("location", ""),
             max_members=data.get("maxMembers", 4),
             is_from_match=data.get("is_from_match", False)
