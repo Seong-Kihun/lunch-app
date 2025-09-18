@@ -7138,11 +7138,85 @@ def get_dev_schedules_by_date():
 def create_party_main():
     """파티 생성 API - 메인 엔드포인트"""
     try:
-        # 파티 Blueprint의 create_party 함수를 호출
-        from api.parties import create_party
-        return create_party()
+        data = request.get_json()
+        print(f"🔍 [create_party_main] 받은 데이터: {data}")
+        
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        # 필수 필드 검증
+        required_fields = ['title', 'date', 'time', 'created_by', 'restaurant']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                print(f"❌ [create_party_main] 필수 필드 누락: {field}, 값: {data.get(field)}")
+                return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
+        
+        print(f"✅ [create_party_main] 필수 필드 검증 통과")
+        
+        # 데이터베이스에서 파티 생성
+        from models.app_models import Party, PartyMember
+        
+        # 새 파티 생성
+        new_party = Party(
+            title=data['title'],
+            restaurant_name=data.get('restaurant', ''),
+            restaurant_address=data.get('location', ''),
+            party_date=data['date'],
+            party_time=data['time'],
+            meeting_location=data.get('location', ''),
+            max_members=data.get('maxMembers', 4),
+            is_from_match=False,  # 일반 파티
+            host_employee_id=data['created_by'],
+            description=data.get('description', '')  # 설명 필드 추가
+        )
+        
+        db.session.add(new_party)
+        db.session.flush()
+        
+        # 파티 생성자를 멤버로 추가
+        party_member = PartyMember(
+            party_id=new_party.id,
+            employee_id=data['created_by']
+        )
+        db.session.add(party_member)
+        
+        # 참여자들 추가 (있는 경우)
+        attendees = data.get('attendees', [])
+        for attendee in attendees:
+            if attendee.get('employee_id') and attendee['employee_id'] != data['created_by']:
+                member = PartyMember(
+                    party_id=new_party.id,
+                    employee_id=attendee['employee_id']
+                )
+                db.session.add(member)
+                new_party.current_members += 1
+        
+        db.session.commit()
+        
+        print(f"✅ [create_party_main] 파티 생성 성공: ID {new_party.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '파티가 생성되었습니다',
+            'data': {
+                'id': new_party.id,
+                'title': new_party.title,
+                'restaurant_name': new_party.restaurant_name,
+                'restaurant_address': new_party.restaurant_address,
+                'party_date': new_party.party_date,
+                'party_time': new_party.party_time,
+                'meeting_location': new_party.meeting_location,
+                'max_members': new_party.max_members,
+                'current_members': new_party.current_members,
+                'is_from_match': new_party.is_from_match,
+                'host_employee_id': new_party.host_employee_id,
+                'description': new_party.description
+            }
+        }), 201
+        
     except Exception as e:
-        print(f"❌ [create_party_main] 오류: {e}")
+        db.session.rollback()
+        print(f"❌ [create_party_main] 파티 생성 오류: {e}")
         return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 @app.route("/parties", methods=["GET"])
