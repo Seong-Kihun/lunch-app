@@ -37,8 +37,18 @@ class Party(db.Model):
         self.title = title
         self.restaurant_name = restaurant_name
         self.restaurant_address = restaurant_address
-        self.party_date = party_date
-        self.party_time = party_time
+        
+        # 날짜와 시간 변환 처리
+        if isinstance(party_date, str):
+            self.party_date = datetime.strptime(party_date, '%Y-%m-%d').date()
+        else:
+            self.party_date = party_date
+            
+        if isinstance(party_time, str):
+            self.party_time = datetime.strptime(party_time, '%H:%M').time()
+        else:
+            self.party_time = party_time
+            
         self.meeting_location = meeting_location
         self.max_members = max_members
         self.is_from_match = is_from_match
