@@ -37,18 +37,30 @@ def create_party():
         # 데이터베이스에서 파티 생성
         from models.app_models import Party, PartyMember
         from extensions import db
+        from datetime import datetime, date, time
+        
+        # 날짜와 시간 변환
+        try:
+            party_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': '잘못된 날짜 형식입니다. YYYY-MM-DD 형식을 사용하세요.'}), 400
+        
+        try:
+            party_time = datetime.strptime(data['time'], '%H:%M').time()
+        except ValueError:
+            return jsonify({'error': '잘못된 시간 형식입니다. HH:MM 형식을 사용하세요.'}), 400
         
         # 새 파티 생성
         new_party = Party(
+            host_employee_id=data['created_by'],
             title=data['title'],
             restaurant_name=data.get('restaurant', ''),
             restaurant_address=data.get('location', ''),
-            party_date=data['date'],
-            party_time=data['time'],
+            party_date=party_date,
+            party_time=party_time,
             meeting_location=data.get('location', ''),
             max_members=data.get('maxMembers', 4),
             is_from_match=False,  # 일반 파티
-            host_employee_id=data['created_by'],
             description=data.get('description', '')  # 설명 필드 추가
         )
         
