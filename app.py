@@ -6791,12 +6791,12 @@ def get_dev_chats(employee_id):
         from models.app_models import ChatRoom, ChatParticipant
         from sqlalchemy import and_
         
-        # 사용자가 참여한 채팅방 조회
+        # 사용자가 참여한 채팅방 조회 (실제 데이터베이스 스키마에 맞게 수정)
         user_chats = db.session.query(ChatRoom).join(
             ChatParticipant, 
             and_(
-                ChatRoom.id == ChatParticipant.chat_id,
-                ChatParticipant.employee_id == employee_id
+                ChatRoom.id == ChatParticipant.room_id,  # chat_id -> room_id
+                ChatParticipant.user_id == employee_id   # employee_id -> user_id
             )
         ).all()
         
@@ -6814,16 +6814,15 @@ def get_dev_chats(employee_id):
                 "members": []
             }
             
-            # 참여자 목록 조회
+            # 참여자 목록 조회 (실제 데이터베이스 스키마에 맞게 수정)
             participants = ChatParticipant.query.filter_by(
-                chat_type=chat.type,
-                chat_id=chat.id
+                room_id=chat.id
             ).all()
             
             for participant in participants:
                 chat_data["members"].append({
-                    "employee_id": participant.employee_id,
-                    "nickname": f"사용자{participant.employee_id}"
+                    "employee_id": participant.user_id,  # employee_id -> user_id
+                    "nickname": f"사용자{participant.user_id}"
                 })
             
             chats_data.append(chat_data)
