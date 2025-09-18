@@ -19,6 +19,9 @@ def get_my_proposals():
     내가 보낸 제안과 받은 제안을 조회하는 API
     """
     try:
+        from app import app
+        from models.app_models import db, LunchProposal, ProposalAcceptance
+        
         employee_id = request.args.get('employee_id')
         
         if not employee_id:
@@ -27,29 +30,46 @@ def get_my_proposals():
                 'required': ['employee_id']
             }), 400
         
-        # 🚨 임시: 실제 데이터베이스 연동 전까지 가상 데이터 반환
-        # TODO: 실제 데이터베이스에서 제안 데이터 조회하도록 수정
+        with app.app_context():
+            # 내가 보낸 제안들
+            sent_proposals = LunchProposal.query.filter_by(proposer_id=employee_id).all()
+            
+            # 내가 받은 제안들 (recipient_ids에 내 ID가 포함된 것들)
+            received_proposals = []
+            all_proposals = LunchProposal.query.filter(LunchProposal.recipient_ids.contains(employee_id)).all()
+            
+            for proposal in all_proposals:
+                if proposal.proposer_id != employee_id:  # 내가 보낸 것이 아닌 것만
+                    received_proposals.append(proposal)
+            
+            # 데이터 포맷팅
+            sent_data = []
+            for proposal in sent_proposals:
+                sent_data.append({
+                    'id': proposal.id,
+                    'proposer_id': proposal.proposer_id,
+                    'recipient_ids': proposal.recipient_ids.split(',') if proposal.recipient_ids else [],
+                    'proposed_date': proposal.proposed_date.strftime('%Y-%m-%d') if proposal.proposed_date else None,
+                    'status': proposal.status,
+                    'created_at': proposal.created_at.isoformat() if proposal.created_at else None
+                })
+            
+            received_data = []
+            for proposal in received_proposals:
+                received_data.append({
+                    'id': proposal.id,
+                    'proposer_id': proposal.proposer_id,
+                    'recipient_ids': proposal.recipient_ids.split(',') if proposal.recipient_ids else [],
+                    'proposed_date': proposal.proposed_date.strftime('%Y-%m-%d') if proposal.proposed_date else None,
+                    'status': proposal.status,
+                    'created_at': proposal.created_at.isoformat() if proposal.created_at else None
+                })
         
-        # 가상 제안 데이터 생성
-        virtual_proposals = {
-            'sent_proposals': [
-                {
-                    'id': 1,
-                    'proposer_id': employee_id,
-                    'recipient_ids': ['2', '3'],
-                    'proposed_date': '2025-08-28',
-                    'status': 'pending',
-                    'created_at': datetime.now().isoformat()
-                }
-            ],
-            'received_proposals': []
-        }
-        
-        logger.info(f"제안 조회 성공: {employee_id}")
+        logger.info(f"제안 조회 성공: {employee_id} - 보낸 제안: {len(sent_data)}개, 받은 제안: {len(received_data)}개")
         
         return jsonify({
-            'success': True,
-            'data': virtual_proposals
+            'sent_proposals': sent_data,
+            'received_proposals': received_data
         })
         
     except Exception as e:
@@ -65,6 +85,10 @@ def create_proposal():
     새로운 제안을 생성하는 API
     """
     try:
+        from app import app
+        from models.app_models import db, LunchProposal
+        from datetime import datetime, timedelta
+        
         data = request.get_json()
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다'}), 400
@@ -75,10 +99,29 @@ def create_proposal():
             if field not in data:
                 return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
         
-        # 🚨 임시: 실제 데이터베이스 저장 전까지 가상 응답
-        # TODO: 실제 데이터베이스에 제안 데이터 저장하도록 수정
-        
-        proposal_id = int(datetime.now().timestamp())
+        with app.app_context():
+            # recipient_ids를 문자열로 변환
+            recipient_ids_str = ','.join(data['recipient_ids']) if isinstance(data['recipient_ids'], list) else data['recipient_ids']
+            
+            # proposed_date를 date 객체로 변환
+            proposed_date = datetime.strptime(data['proposed_date'], '%Y-%m-%d').date()
+            
+            # 만료 시간 설정 (24시간 후)
+            expires_at = datetime.utcnow() + timedelta(hours=24)
+            
+            # 새 제안 생성
+            new_proposal = LunchProposal(
+                proposer_id=data['proposer_id'],
+                recipient_ids=recipient_ids_str,
+                proposed_date=proposed_date,
+                status='pending',
+                expires_at=expires_at
+            )
+            
+            db.session.add(new_proposal)
+            db.session.commit()
+            
+            proposal_id = new_proposal.id
         
         logger.info(f"제안 생성 성공: {proposal_id}, {data['proposer_id']}")
         
@@ -107,6 +150,9 @@ def cancel_proposal(proposal_id):
     제안을 취소하는 API
     """
     try:
+        from app import app
+        from models.app_models import db, LunchProposal
+        
         data = request.get_json()
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다'}), 400
@@ -115,8 +161,23 @@ def cancel_proposal(proposal_id):
         if not employee_id:
             return jsonify({'error': '사용자 ID가 필요합니다'}), 400
         
-        # 🚨 임시: 실제 데이터베이스 업데이트 전까지 가상 응답
-        # TODO: 실제 데이터베이스에서 제안 상태를 'cancelled'로 업데이트하도록 수정
+        with app.app_context():
+            # 제안 조회
+            proposal = LunchProposal.query.get(proposal_id)
+            if not proposal:
+                return jsonify({'error': '제안을 찾을 수 없습니다'}), 404
+            
+            # 권한 확인 (제안한 사람만 취소 가능)
+            if proposal.proposer_id != employee_id:
+                return jsonify({'error': '제안을 취소할 권한이 없습니다'}), 403
+            
+            # 상태 확인
+            if proposal.status != 'pending':
+                return jsonify({'error': '이미 처리된 제안입니다'}), 400
+            
+            # 제안 상태를 'cancelled'로 변경
+            proposal.status = 'cancelled'
+            db.session.commit()
         
         logger.info(f"제안 취소 성공: {proposal_id}, {employee_id}")
         
