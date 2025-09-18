@@ -20,7 +20,7 @@ def load_environment_variables():
             print(f"✅ 환경변수 파일 로드됨: {env_path}")
             break
     else:
-        print("⚠️ .env 파일을 찾을 수 없습니다. 시스템 환경변수를 사용합니다.")
+        print("[WARNING] .env 파일을 찾을 수 없습니다. 시스템 환경변수를 사용합니다.")
 
     # 환경 확인
     is_development = (
