@@ -36,7 +36,7 @@ def get_my_proposals():
             
             # 내가 받은 제안들 (recipient_ids에 내 ID가 포함된 것들)
             received_proposals = []
-            all_proposals = LunchProposal.query.filter(LunchProposal.recipient_ids.contains(employee_id)).all()
+            all_proposals = LunchProposal.query.filter(LunchProposal.recipient_ids.like(f'%{employee_id}%')).all()
             
             for proposal in all_proposals:
                 if proposal.proposer_id != employee_id:  # 내가 보낸 것이 아닌 것만
