@@ -32,7 +32,7 @@ def get_user_chats(employee_id):
     try:
         # 사용자가 참여한 채팅방들
         user_chats = ChatRoom.query.join(ChatParticipant).filter(
-            ChatParticipant.employee_id == employee_id
+            ChatParticipant.user_id == employee_id
         ).all()
         
         chats_data = []
@@ -45,8 +45,7 @@ def get_user_chats(employee_id):
             
             # 참여자 수
             participant_count = ChatParticipant.query.filter_by(
-                chat_type=chat.type, 
-                chat_id=chat.id
+                room_id=chat.id
             ).count()
             
             chat_info = {
