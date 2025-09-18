@@ -5973,14 +5973,29 @@ def auto_create_party_from_voting(session):
         if not session.confirmed_date:
             return
 
+        # 날짜와 시간 변환
+        from datetime import datetime, date, time
+        
+        # confirmed_date가 이미 date 객체인지 확인
+        if isinstance(session.confirmed_date, str):
+            party_date = datetime.strptime(session.confirmed_date, '%Y-%m-%d').date()
+        else:
+            party_date = session.confirmed_date
+        
+        # meeting_time이 문자열인 경우 time 객체로 변환
+        if isinstance(session.meeting_time, str):
+            party_time = datetime.strptime(session.meeting_time, '%H:%M').time()
+        else:
+            party_time = session.meeting_time or datetime.strptime("11:30", '%H:%M').time()
+        
         # 파티 생성
         new_party = Party(
             host_employee_id=session.created_by,
             title=session.title,
             restaurant_name=session.restaurant_name or "미정",
             restaurant_address=session.restaurant_address,
-            party_date=session.confirmed_date,
-            party_time=session.meeting_time or "11:30",  # 기본값을 '11:30'으로 설정
+            party_date=party_date,
+            party_time=party_time,
             meeting_location=session.meeting_location or "본관 1층 로비",  # 기본값을 '본관 1층 로비'로 설정
             max_members=len(json.loads(session.participants)),
             is_from_match=False,
