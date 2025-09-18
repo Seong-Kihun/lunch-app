@@ -7183,6 +7183,9 @@ def create_party_main():
             return jsonify({'error': '잘못된 시간 형식입니다. HH:MM 형식을 사용하세요.'}), 400
         
         # 새 파티 생성
+        print(f"🔍 [create_party_main] 변환된 날짜: {party_date} (타입: {type(party_date)})")
+        print(f"🔍 [create_party_main] 변환된 시간: {party_time} (타입: {type(party_time)})")
+        
         new_party = Party()
         new_party.host_employee_id = data['created_by']
         new_party.title = data['title']
@@ -7194,6 +7197,9 @@ def create_party_main():
         new_party.max_members = data.get('maxMembers', 4)
         new_party.is_from_match = False
         new_party.description = data.get('description', '')
+        
+        print(f"🔍 [create_party_main] 설정된 party_date: {new_party.party_date} (타입: {type(new_party.party_date)})")
+        print(f"🔍 [create_party_main] 설정된 party_time: {new_party.party_time} (타입: {type(new_party.party_time)})")
         
         db.session.add(new_party)
         db.session.flush()
