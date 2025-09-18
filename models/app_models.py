@@ -32,27 +32,7 @@ class Party(db.Model):
         db.Index('idx_party_restaurant', 'restaurant_name'),
     )
     
-    def __init__(self, host_employee_id, title, restaurant_name, restaurant_address, party_date, party_time, meeting_location, max_members, is_from_match=False, description=None):
-        self.host_employee_id = host_employee_id
-        self.title = title
-        self.restaurant_name = restaurant_name
-        self.restaurant_address = restaurant_address
-        
-        # 날짜와 시간 변환 처리
-        if isinstance(party_date, str):
-            self.party_date = datetime.strptime(party_date, '%Y-%m-%d').date()
-        else:
-            self.party_date = party_date
-            
-        if isinstance(party_time, str):
-            self.party_time = datetime.strptime(party_time, '%H:%M').time()
-        else:
-            self.party_time = party_time
-            
-        self.meeting_location = meeting_location
-        self.max_members = max_members
-        self.is_from_match = is_from_match
-        self.description = description
+    # __init__ 메서드 제거 - SQLAlchemy가 자동으로 처리하도록 함
 
     @property
     def current_members(self):
