@@ -192,3 +192,135 @@ def cancel_proposal(proposal_id):
             'error': '서버 내부 오류가 발생했습니다',
             'message': str(e)
         }), 500
+
+@proposals_bp.route('/<int:proposal_id>/accept', methods=['POST'])
+def accept_proposal(proposal_id):
+    """
+    제안을 수락하는 API
+    """
+    try:
+        from app import app
+        from models.app_models import db, LunchProposal, ProposalAcceptance
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': '사용자 ID가 필요합니다'}), 400
+        
+        with app.app_context():
+            # 제안 조회
+            proposal = LunchProposal.query.get(proposal_id)
+            if not proposal:
+                return jsonify({'error': '제안을 찾을 수 없습니다'}), 404
+            
+            # 권한 확인 (수신자만 수락 가능)
+            recipient_ids = proposal.recipient_ids.split(',') if proposal.recipient_ids else []
+            if user_id not in recipient_ids:
+                return jsonify({'error': '이 제안의 수신자가 아닙니다'}), 403
+            
+            # 상태 확인
+            if proposal.status != 'pending':
+                return jsonify({'error': '이미 처리된 제안입니다'}), 400
+            
+            # 만료 확인
+            if proposal.expires_at and datetime.utcnow() > proposal.expires_at:
+                return jsonify({'error': '제안이 만료되었습니다'}), 400
+            
+            # 이미 수락했는지 확인
+            existing_acceptance = ProposalAcceptance.query.filter_by(
+                proposal_id=proposal_id, 
+                user_id=user_id
+            ).first()
+            
+            if existing_acceptance:
+                return jsonify({'error': '이미 수락한 제안입니다'}), 400
+            
+            # 수락 기록 생성
+            new_acceptance = ProposalAcceptance(
+                proposal_id=proposal_id,
+                user_id=user_id
+            )
+            
+            db.session.add(new_acceptance)
+            
+            # 모든 수신자가 수락했는지 확인
+            all_recipients_accepted = all(
+                ProposalAcceptance.query.filter_by(
+                    proposal_id=proposal_id, 
+                    user_id=recipient_id
+                ).first() is not None
+                for recipient_id in recipient_ids
+            )
+            
+            if all_recipients_accepted:
+                proposal.status = 'confirmed'
+            
+            db.session.commit()
+        
+        logger.info(f"제안 수락 성공: {proposal_id}, {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '제안을 수락했습니다',
+            'status': 'confirmed' if all_recipients_accepted else 'pending'
+        })
+        
+    except Exception as e:
+        logger.error(f"제안 수락 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@proposals_bp.route('/<int:proposal_id>/reject', methods=['POST'])
+def reject_proposal(proposal_id):
+    """
+    제안을 거절하는 API
+    """
+    try:
+        from app import app
+        from models.app_models import db, LunchProposal
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+        
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': '사용자 ID가 필요합니다'}), 400
+        
+        with app.app_context():
+            # 제안 조회
+            proposal = LunchProposal.query.get(proposal_id)
+            if not proposal:
+                return jsonify({'error': '제안을 찾을 수 없습니다'}), 404
+            
+            # 권한 확인 (수신자만 거절 가능)
+            recipient_ids = proposal.recipient_ids.split(',') if proposal.recipient_ids else []
+            if user_id not in recipient_ids:
+                return jsonify({'error': '이 제안의 수신자가 아닙니다'}), 403
+            
+            # 상태 확인
+            if proposal.status != 'pending':
+                return jsonify({'error': '이미 처리된 제안입니다'}), 400
+            
+            # 제안 상태를 'rejected'로 변경
+            proposal.status = 'rejected'
+            db.session.commit()
+        
+        logger.info(f"제안 거절 성공: {proposal_id}, {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '제안을 거절했습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"제안 거절 중 오류 발생: {e}")
+        return jsonify({
+            'error': '서버 내부 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
