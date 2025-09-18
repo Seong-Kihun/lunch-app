@@ -30,7 +30,16 @@ def run_migrations():
         os.chdir(project_root)
         
         try:
-            # 1. 마이그레이션 상태 확인
+            # 1. 먼저 기본 테이블 생성
+            logger.info("🔧 기본 테이블 생성 중...")
+            try:
+                with current_app.app_context():
+                    db.create_all()
+                    logger.info("✅ 기본 테이블 생성 완료")
+            except Exception as e:
+                logger.warning(f"⚠️ 기본 테이블 생성 중 오류: {e}")
+            
+            # 2. 마이그레이션 상태 확인
             logger.info("📋 마이그레이션 상태 확인 중...")
             status_result = subprocess.run([
                 sys.executable, '-m', 'alembic', 'current'
@@ -38,15 +47,23 @@ def run_migrations():
             
             logger.info(f"현재 마이그레이션 상태: {status_result.stdout}")
             
-            # 2. 사용 가능한 마이그레이션 확인
-            history_result = subprocess.run([
-                sys.executable, '-m', 'alembic', 'history', '--verbose'
-            ], capture_output=True, text=True, timeout=30)
-            
-            logger.info(f"마이그레이션 히스토리: {history_result.stdout}")
-            
-            # 3. 마이그레이션 실행 (head까지)
+            # 3. 마이그레이션 실행 시도
             logger.info("🚀 마이그레이션 실행 중...")
+            
+            # 먼저 merge 마이그레이션 실행
+            try:
+                merge_result = subprocess.run([
+                    sys.executable, '-m', 'alembic', 'upgrade', 'c1fdd46a7c6f'
+                ], capture_output=True, text=True, timeout=60)
+                
+                if merge_result.returncode == 0:
+                    logger.info("✅ 마이그레이션 머지 완료")
+                else:
+                    logger.warning(f"⚠️ 마이그레이션 머지 실패: {merge_result.stderr}")
+            except Exception as e:
+                logger.warning(f"⚠️ 마이그레이션 머지 중 오류: {e}")
+            
+            # 그 다음 head까지 실행
             upgrade_result = subprocess.run([
                 sys.executable, '-m', 'alembic', 'upgrade', 'head'
             ], capture_output=True, text=True, timeout=120)
@@ -74,16 +91,26 @@ def run_migrations():
 def run_individual_migrations():
     """
     개별 마이그레이션을 순차적으로 실행합니다.
+    테이블이 존재하지 않는 경우를 고려하여 안전하게 실행합니다.
     """
     try:
         logger.info("🔄 개별 마이그레이션 실행 시도...")
         
-        # 마이그레이션 파일 목록 가져오기
+        # 먼저 테이블 생성
+        logger.info("🔧 기본 테이블 생성 중...")
+        try:
+            with current_app.app_context():
+                db.create_all()
+                logger.info("✅ 기본 테이블 생성 완료")
+        except Exception as e:
+            logger.warning(f"⚠️ 기본 테이블 생성 중 오류 (건너뜀): {e}")
+        
+        # 마이그레이션 파일 목록 (테이블 생성 후 실행)
         migration_files = [
-            "87bade1fb681_add_test_field_to_user_model",
-            "29c6da1f68ba_remove_test_field_from_user_model", 
-            "88b198af2208_party_datetime_columns_migration",
-            "add_title_column_to_chat_room"
+            "88b198af2208_party_datetime_columns_migration",  # 테이블 생성 마이그레이션 먼저
+            "add_title_column_to_chat_room",  # chat_room 수정
+            "87bade1fb681_add_test_field_to_user_model",  # users 수정
+            "29c6da1f68ba_remove_test_field_from_user_model"  # users 수정 제거
         ]
         
         for migration in migration_files:
