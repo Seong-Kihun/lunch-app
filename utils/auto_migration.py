@@ -149,11 +149,11 @@ def check_and_fix_database_schema():
             existing_tables = inspector.get_table_names()
             logger.info(f"기존 테이블 목록: {existing_tables}")
             
-            # 필수 테이블들이 존재하는지 확인
+            # 필수 테이블들이 존재하는지 확인 (실제 테이블 이름 사용)
             required_tables = [
                 'users', 'party', 'party_member', 'dangol_pot', 'dangol_pot_member',
-                'chat_room', 'chat_participant', 'chat_message', 'personal_schedule',
-                'schedule_attendee', 'lunch_proposal', 'proposal_acceptance',
+                'chat_room', 'chat_participant', 'chat_message', 'personal_schedules',
+                'schedule_attendees', 'lunch_proposal', 'proposal_acceptance',
                 'notification', 'user_analytics', 'restaurant', 'review'
             ]
             
@@ -198,22 +198,22 @@ def check_and_fix_database_schema():
                 except Exception as e:
                     logger.warning(f"⚠️ users 스키마 확인 중 오류 (건너뜀): {e}")
             
-            # personal_schedule 테이블 스키마 확인
-            if 'personal_schedule' in existing_tables:
+            # personal_schedules 테이블 스키마 확인
+            if 'personal_schedules' in existing_tables:
                 try:
-                    columns = inspector.get_columns('personal_schedule')
+                    columns = inspector.get_columns('personal_schedules')
                     column_names = [col['name'] for col in columns]
-                    logger.info(f"personal_schedule 컬럼들: {column_names}")
+                    logger.info(f"personal_schedules 컬럼들: {column_names}")
                     
                     # 필요한 컬럼들이 있는지 확인
                     required_columns = ['id', 'employee_id', 'title', 'start_date', 'time']
                     missing_columns = [col for col in required_columns if col not in column_names]
                     
                     if missing_columns:
-                        logger.warning(f"⚠️ personal_schedule 누락된 컬럼들: {missing_columns}")
+                        logger.warning(f"⚠️ personal_schedules 누락된 컬럼들: {missing_columns}")
                     
                 except Exception as e:
-                    logger.warning(f"⚠️ personal_schedule 스키마 확인 중 오류 (건너뜀): {e}")
+                    logger.warning(f"⚠️ personal_schedules 스키마 확인 중 오류 (건너뜀): {e}")
             
             logger.info("✅ 데이터베이스 스키마 확인 완료")
             return True
@@ -281,7 +281,7 @@ def validate_database_integrity():
             inspector = inspect(db.engine)
             existing_tables = inspector.get_table_names()
             
-            critical_tables = ['users', 'personal_schedule', 'chat_room']
+            critical_tables = ['users', 'personal_schedules', 'chat_room']
             missing_critical = [table for table in critical_tables if table not in existing_tables]
             
             if missing_critical:
@@ -319,10 +319,10 @@ def create_tables_if_not_exist():
             try:
                 logger.info("🔧 데이터베이스 인덱스 생성 중...")
                 
-                # personal_schedule 테이블 인덱스
+                # personal_schedules 테이블 인덱스
                 db.session.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_personal_schedule_employee_date 
-                    ON personal_schedule(employee_id, start_date)
+                    CREATE INDEX IF NOT EXISTS idx_personal_schedules_employee_date 
+                    ON personal_schedules(employee_id, start_date)
                 """))
                 
                 # chat_message 테이블 인덱스
