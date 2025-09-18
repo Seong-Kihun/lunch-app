@@ -8379,9 +8379,30 @@ except Exception as e:
 # 공통 로직은 group_matching.py 모듈로 이동
 
 if __name__ == "__main__":
-    # 앱 시작 시 식당 데이터 자동 로드
+    # 앱 시작 시 자동 마이그레이션 및 데이터베이스 초기화
     with app.app_context():
-        load_restaurant_data_if_needed()
+        try:
+            from utils.auto_migration import initialize_database, create_tables_if_not_exist
+            
+            print("🔄 데이터베이스 초기화 중...")
+            
+            # 1. 데이터베이스 마이그레이션 실행
+            db_init_success = initialize_database()
+            
+            # 2. 테이블 생성 (필요한 경우)
+            table_creation_success = create_tables_if_not_exist()
+            
+            if db_init_success and table_creation_success:
+                print("✅ 데이터베이스 초기화 완료")
+            else:
+                print("⚠️ 데이터베이스 초기화에 일부 문제가 있었지만 앱을 계속 실행합니다")
+            
+            # 3. 식당 데이터 자동 로드
+            load_restaurant_data_if_needed()
+            
+        except Exception as e:
+            print(f"❌ 데이터베이스 초기화 중 오류 발생: {e}")
+            print("⚠️ 오류가 있었지만 앱을 계속 실행합니다")
     
     if socketio:
         # Socket.IO와 함께 실행
