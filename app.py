@@ -8382,7 +8382,11 @@ if __name__ == "__main__":
     # 앱 시작 시 자동 마이그레이션 및 데이터베이스 초기화
     with app.app_context():
         try:
-            from utils.auto_migration import initialize_database, create_tables_if_not_exist
+            from utils.auto_migration import (
+                initialize_database, 
+                create_tables_if_not_exist, 
+                reset_database_if_needed
+            )
             
             print("🔄 데이터베이스 초기화 중...")
             
@@ -8395,14 +8399,36 @@ if __name__ == "__main__":
             if db_init_success and table_creation_success:
                 print("✅ 데이터베이스 초기화 완료")
             else:
-                print("⚠️ 데이터베이스 초기화에 일부 문제가 있었지만 앱을 계속 실행합니다")
+                print("⚠️ 데이터베이스 초기화에 일부 문제가 있었습니다")
+                print("🔄 데이터베이스 재초기화를 시도합니다...")
+                
+                # 재초기화 시도
+                reset_success = reset_database_if_needed()
+                if reset_success:
+                    print("✅ 데이터베이스 재초기화 완료")
+                else:
+                    print("❌ 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
             
             # 3. 식당 데이터 자동 로드
-            load_restaurant_data_if_needed()
+            try:
+                load_restaurant_data_if_needed()
+                print("✅ 식당 데이터 로드 완료")
+            except Exception as e:
+                print(f"⚠️ 식당 데이터 로드 실패 (건너뜀): {e}")
             
         except Exception as e:
             print(f"❌ 데이터베이스 초기화 중 오류 발생: {e}")
-            print("⚠️ 오류가 있었지만 앱을 계속 실행합니다")
+            print("🔄 데이터베이스 재초기화를 시도합니다...")
+            
+            try:
+                reset_success = reset_database_if_needed()
+                if reset_success:
+                    print("✅ 데이터베이스 재초기화 완료")
+                else:
+                    print("❌ 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
+            except Exception as reset_error:
+                print(f"❌ 데이터베이스 재초기화 중 오류: {reset_error}")
+                print("⚠️ 오류가 있었지만 앱을 계속 실행합니다")
     
     if socketio:
         # Socket.IO와 함께 실행
