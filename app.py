@@ -6,57 +6,45 @@ from flask_cors import CORS
 from flask_socketio import emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
 import os
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+# APScheduler는 Celery Beat로 대체됨
 
 # 구조화된 로깅 시스템 import
 from utils.logger import logger, log_startup, log_shutdown, log_api_call
 # 에러 모니터링 시스템 import
 from utils.error_monitor import setup_flask_error_handlers, create_error_monitoring_routes
 
-# 그룹 매칭 공통 로직 모듈 import
-try:
-    from group_matching import (
-        calculate_group_score,
-        get_virtual_users_data,
-    )
-
-    GROUP_MATCHING_AVAILABLE = True
-    print("✅ 그룹 매칭 모듈을 불러왔습니다.")
-except ImportError as e:
-    print(f"⚠️ 그룹 매칭 모듈을 불러올 수 없습니다: {e}")
-    GROUP_MATCHING_AVAILABLE = False
-
 # 환경변수 로드
 from config.env_loader import load_environment_variables
+from config.module_loader import module_loader
 
 load_environment_variables()
 
-# 인증 시스템 활성화
-try:
-    from auth import init_auth
-    from auth.utils import require_auth
-    from auth.models import Friendship
-    from auth.models import User  # User 모델 import 추가
+# 모듈 로딩
+loaded_modules = module_loader.load_all_modules()
 
-    AUTH_AVAILABLE = True
-    print("✅ 인증 시스템을 불러왔습니다.")
-except ImportError as e:
-    print(f"⚠️ 인증 시스템을 불러올 수 없습니다: {e}")
-    AUTH_AVAILABLE = False
-
-# 인증 시스템이 없을 때 사용할 fallback 데코레이터
-if not AUTH_AVAILABLE:
-    # require_auth는 이미 위에서 정의되었습니다
-    pass
-
-
+# 인증 시스템 상태 확인
+AUTH_AVAILABLE = module_loader.is_loaded('auth')
+GROUP_MATCHING_AVAILABLE = module_loader.is_loaded('group_matching')
 AUTH_USER_AVAILABLE = AUTH_AVAILABLE
 
+# 인증 관련 import
 if AUTH_AVAILABLE:
-    print("🚀 인증 시스템과 함께 실행됩니다.")
-else:
-    print("🚀 기본 모드로 실행됩니다. 인증 시스템은 비활성화되어 있습니다.")
+    try:
+    from auth.utils import require_auth
+        from auth.models import Friendship, User
+        print("✅ 인증 시스템이 활성화되었습니다.")
+except ImportError as e:
+        print(f"⚠️ 인증 모듈 import 실패: {e}")
+    AUTH_AVAILABLE = False
+
+# 그룹 매칭 관련 import
+if GROUP_MATCHING_AVAILABLE:
+    try:
+        from group_matching import calculate_group_score, get_virtual_users_data
+        print("✅ 그룹 매칭 시스템이 활성화되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ 그룹 매칭 모듈 import 실패: {e}")
+        GROUP_MATCHING_AVAILABLE = False
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -637,6 +625,7 @@ except ImportError as e:
     print("   캐싱은 비활성화됩니다.")
 
 # 실시간 통신 시스템 설정
+if module_loader.is_loaded('realtime'):
 try:
     from flask_socketio import SocketIO
     from realtime.notification_system import NotificationSystem
@@ -653,56 +642,43 @@ try:
     collaboration_system = CollaborationSystem(socketio, db)
     collaboration_system.setup_socket_events()
 
-    print("✅ 실시간 통신 시스템이 성공적으로 설정되었습니다.")
-    print("   - WebSocket 알림 시스템")
-    print("   - 실시간 협업 시스템")
-
+        print("✅ 실시간 통신 시스템이 설정되었습니다.")
 except ImportError as e:
     print(f"⚠️ 실시간 통신 시스템 설정 실패: {e}")
-    print("   실시간 기능은 비활성화됩니다.")
+        socketio = None
+        notification_system = None
+        collaboration_system = None
+else:
     socketio = None
     notification_system = None
     collaboration_system = None
 
 # API Blueprint 등록
+if module_loader.is_loaded('api'):
 try:
     from api import init_app as init_api
-
     init_api(app)
-    print("✅ API Blueprint가 성공적으로 등록되었습니다.")
+        print("✅ API Blueprint가 등록되었습니다.")
 except ImportError as e:
     print(f"⚠️ API Blueprint 등록 실패: {e}")
-    print("   기본 API 엔드포인트를 사용합니다.")
 
-# FriendInvite 모델은 다른 곳에서 정의됩니다
-
-# 인증 시스템 초기화 (데이터베이스 초기화 후)
+# 인증 시스템 초기화
 if AUTH_AVAILABLE:
     try:
-        # require_auth 데코레이터를 전역에서 사용할 수 있도록 설정
-        from auth.utils import require_auth
-
+        from auth import init_auth
         app.require_auth = require_auth
-
-        # 인증 시스템 초기화 (Blueprint 등록 전에 먼저 실행)
         app = init_auth(app)
-
-        print("✅ 인증 시스템이 성공적으로 초기화되었습니다.")
+        print("✅ 인증 시스템이 초기화되었습니다.")
     except Exception as e:
         print(f"⚠️ 인증 시스템 초기화 실패: {e}")
         AUTH_AVAILABLE = False
-else:
-    print("ℹ️ 인증 시스템 초기화를 건너뜁니다.")
 
-# 🚨 중요: 데이터베이스 초기화를 Blueprint 등록 전에 수행
+# 데이터베이스 초기화
 try:
     db.init_app(app)
-    print("✅ 데이터베이스가 Flask 앱과 연결되었습니다.")
+    print("✅ 데이터베이스가 연결되었습니다.")
 except Exception as e:
     print(f"❌ 데이터베이스 초기화 실패: {e}")
-    print("   Blueprint 등록이 실패할 수 있습니다.")
-
-# socketio는 이미 위에서 정의되었습니다
 
 
 # Root route to handle base URL requests
@@ -4092,22 +4068,22 @@ def get_friends():
                 PartyMember.employee_id.label('member_employee_id')
             )
             .join(PartyMember, Party.id == PartyMember.party_id)
-            .filter(
-                and_(
-                    or_(
+                    .filter(
                         and_(
-                            Party.host_employee_id == employee_id,
+                            or_(
+                                and_(
+                                    Party.host_employee_id == employee_id,
                             PartyMember.employee_id.in_(friend_ids)
-                        ),
-                        and_(
+                                ),
+                                and_(
                             Party.host_employee_id.in_(friend_ids),
                             PartyMember.employee_id == employee_id
                         )
-                    ),
+                                ),
                     Party.party_date < today_str
-                )
-            )
-            .order_by(desc(Party.party_date))
+                        )
+                    )
+                    .order_by(desc(Party.party_date))
         ).all()
 
         # 친구별 마지막 파티 날짜 매핑
@@ -4129,34 +4105,34 @@ def get_friends():
             if not friend:
                 continue
 
-            # 마지막 점심 날짜 계산
+                # 마지막 점심 날짜 계산
             last_party_date_str = last_party_dates.get(friend_id)
             if last_party_date_str:
                 last_party_date = datetime.strptime(last_party_date_str, "%Y-%m-%d").date()
-                days_diff = (today - last_party_date).days
+                    days_diff = (today - last_party_date).days
 
-                if days_diff == 1:
-                    last_lunch = "어제"
-                elif days_diff <= 7:
-                    last_lunch = f"{days_diff}일 전"
-                elif days_diff <= 30:
-                    last_lunch = f"{days_diff//7}주 전"
+                    if days_diff == 1:
+                        last_lunch = "어제"
+                    elif days_diff <= 7:
+                        last_lunch = f"{days_diff}일 전"
+                    elif days_diff <= 30:
+                        last_lunch = f"{days_diff//7}주 전"
+                    else:
+                        last_lunch = "1달 이상 전"
                 else:
-                    last_lunch = "1달 이상 전"
-            else:
-                last_lunch = "처음"
+                    last_lunch = "처음"
 
-            friends_data.append(
-                {
-                    "employee_id": friend.employee_id,
-                    "nickname": friend.nickname,
-                    "lunch_preference": friend.lunch_preference,
-                    "main_dish_genre": friend.main_dish_genre,
-                    "last_lunch": last_lunch,
-                    "allergies": friend.allergies,
-                    "preferred_time": friend.preferred_time,
-                }
-            )
+                friends_data.append(
+                    {
+                        "employee_id": friend.employee_id,
+                        "nickname": friend.nickname,
+                        "lunch_preference": friend.lunch_preference,
+                        "main_dish_genre": friend.main_dish_genre,
+                        "last_lunch": last_lunch,
+                        "allergies": friend.allergies,
+                        "preferred_time": friend.preferred_time,
+                    }
+                )
 
         return jsonify(friends_data)
     except Exception as e:
@@ -5091,16 +5067,7 @@ except ImportError as e:
     print(f"⚠️ 포인트 시스템 설정 실패: {e}")
     print("   포인트 시스템은 비활성화됩니다.")
 
-# 스케줄러 초기화
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=generate_daily_recommendations,
-    trigger=CronTrigger(hour=0, minute=0, timezone="Asia/Seoul"),
-    id="daily_recommendations",
-    name="Generate daily recommendations at midnight",
-    replace_existing=True,
-)
-scheduler.start()
+# 스케줄러는 Celery Beat로 통일됨 (celery_config.py에서 관리)
 
 
 @app.route("/proposals/generate-today", methods=["POST"])
@@ -5251,7 +5218,7 @@ def get_dev_user(employee_id):
         # 공통 모의 데이터 사용
         from utils.mock_data import get_all_mock_users
         mock_users = get_all_mock_users()
-        
+
         # 요청된 employee_id에 해당하는 유저 반환
         if employee_id in mock_users:
             user_data = mock_users[employee_id]
