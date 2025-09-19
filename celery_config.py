@@ -59,47 +59,46 @@ def setup_periodic_tasks(celery_app):
         # 매일 자정에 일일 추천 생성 (기존 APScheduler 작업 대체)
         sender.add_periodic_task(
             crontab(hour=0, minute=0),
-            generate_daily_recommendations_task.s(),
+            generate_daily_recommendations_task,
             name='daily-recommendations'
         )
         
         # 매일 새벽 2시에 추천 캐시 생성
         sender.add_periodic_task(
             crontab(hour=2, minute=0),
-            generate_recommendation_cache_task.s(),
+            generate_recommendation_cache_task,
             name='daily-recommendation-cache'
         )
         
         # 매주 일요일 새벽 3시에 만료 데이터 정리
         sender.add_periodic_task(
             crontab(day_of_week=0, hour=3, minute=0),
-            cleanup_expired_data_task.s(),
+            cleanup_expired_data_task,
             name='weekly-data-cleanup'
         )
         
         # 매일 오전 9시에 점심 추천 알림 준비
         sender.add_periodic_task(
             crontab(hour=9, minute=0),
-            prepare_lunch_recommendations_task.s(),
+            prepare_lunch_recommendations_task,
             name='daily-lunch-recommendations'
         )
         
         # 매시간 정각에 실시간 통계 업데이트
         sender.add_periodic_task(
             crontab(minute=0),
-            update_realtime_stats_task.s(),
+            update_realtime_stats_task,
             name='hourly-stats-update'
         )
         
         # 매일 오후 6시에 포인트 정산
         sender.add_periodic_task(
             crontab(hour=18, minute=0),
-            daily_points_settlement_task.s(),
+            daily_points_settlement_task,
             name='daily-points-settlement'
         )
 
 # 백그라운드 작업 태스크들
-@celery_app.task
 def generate_daily_recommendations_task():
     """매일 자정에 일일 추천 생성 (APScheduler 대체)"""
     try:
@@ -109,7 +108,6 @@ def generate_daily_recommendations_task():
     except Exception as e:
         print(f"❌ 일일 추천 생성 실패: {e}")
 
-@celery_app.task
 def generate_recommendation_cache_task():
     """추천 그룹 캐시 생성을 백그라운드에서 처리"""
     try:
@@ -119,7 +117,6 @@ def generate_recommendation_cache_task():
     except Exception as e:
         return f"추천 캐시 생성 실패: {e}"
 
-@celery_app.task
 def cleanup_expired_data_task():
     """만료된 데이터 정리"""
     try:
@@ -129,7 +126,6 @@ def cleanup_expired_data_task():
     except Exception as e:
         return f"데이터 정리 실패: {e}"
 
-@celery_app.task
 def prepare_lunch_recommendations_task():
     """점심 추천 알림 준비"""
     try:
@@ -139,7 +135,6 @@ def prepare_lunch_recommendations_task():
     except Exception as e:
         return f"점심 추천 준비 실패: {e}"
 
-@celery_app.task
 def update_realtime_stats_task():
     """실시간 통계 업데이트"""
     try:
@@ -149,7 +144,6 @@ def update_realtime_stats_task():
     except Exception as e:
         return f"통계 업데이트 실패: {e}"
 
-@celery_app.task
 def daily_points_settlement_task():
     """일일 포인트 정산"""
     try:
