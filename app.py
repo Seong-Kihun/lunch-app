@@ -2141,858 +2141,12 @@ def clear_read_notifications(employee_id):
 # Restaurant API는 routes/restaurants.py로 분리됨
 
 
-@app.route("/restaurants/sync-excel-data", methods=["POST"])
-def sync_excel_data():
-    """Excel/CSV 데이터를 백엔드 데이터베이스에 동기화"""
-    try:
-        # 기존 데이터가 있는지 확인
-        existing_count = Restaurant.query.count()
-        if existing_count > 0:
-            return (
-                jsonify({"message": f"이미 {existing_count}개의 식당 데이터가 있습니다. 동기화가 필요하지 않습니다."}),
-                200,
-            )
+# 식당 관련 함수들은 routes/restaurants.py로 분리됨
 
-        # 프론트엔드에서 Excel/CSV 데이터를 전송받아 처리
-        data = request.get_json()
-        if not data or "restaurants" not in data:
-            return jsonify({"error": "식당 데이터가 제공되지 않았습니다."}), 400
 
-        restaurants_data = data["restaurants"]
-        print(f"Excel/CSV에서 {len(restaurants_data)}개의 식당 데이터 수신")
+# 식당 관련 API들은 routes/restaurants.py로 분리됨
 
-        # 데이터베이스에 추가
-        for restaurant_info in restaurants_data:
-            # Excel/CSV 데이터 구조에 맞게 파싱
-            name = restaurant_info.get("name", "")
-            category = restaurant_info.get("category", "기타")
-            address = restaurant_info.get("address", "")
-            latitude = restaurant_info.get("latitude")
-            longitude = restaurant_info.get("longitude")
-
-            if name:  # 이름이 있는 경우만 추가
-                restaurant = Restaurant(
-                    name=name,
-                    category=category,
-                    address=address,
-                    latitude=latitude,
-                    longitude=longitude,
-                )
-                db.session.add(restaurant)
-
-        db.session.commit()
-        final_count = Restaurant.query.count()
-        print(f"{final_count}개의 식당 데이터 동기화 완료")
-
-        return (
-            jsonify(
-                {
-                    "message": f"{final_count}개의 식당 데이터가 동기화되었습니다.",
-                    "count": final_count,
-                }
-            ),
-            201,
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Excel/CSV 데이터 동기화 오류: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-# get_restaurants 함수는 routes/restaurants.py로 분리됨
-
-
-@app.route("/restaurants/<int:restaurant_id>", methods=["GET"])
-def get_restaurant_detail(restaurant_id):
-    restaurant = Restaurant.query.get(restaurant_id)
-    if not restaurant:
-        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
-    keywords = extract_keywords_from_reviews(restaurant.reviews)
-    return jsonify(
-        {
-            "id": restaurant.id,
-            "name": restaurant.name,
-            "category": restaurant.category,
-            "address": restaurant.address,
-            "latitude": restaurant.latitude,
-            "longitude": restaurant.longitude,
-            "keywords": keywords,
-        }
-    )
-
-
-@app.route("/restaurants/<int:restaurant_id>/reviews", methods=["GET"])
-def get_reviews(restaurant_id):
-    reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(desc(Review.created_at)).all()
-    return jsonify(
-        [
-            {
-                "id": r.id,
-                "nickname": r.nickname,
-                "rating": r.rating,
-                "comment": r.comment,
-                "created_at": r.created_at.strftime("%Y-%m-%d"),
-            }
-            for r in reviews
-        ]
-    )
-
-
-def _award_category_badge(user_id, category):
-    """카테고리별 배지 수여"""
-    category_lower = category.lower()
-
-    if "양식" in category_lower or "western" in category_lower:
-        badge = check_badge_earned(user_id, "western_master")
-        if badge:
-            award_badge(user_id, badge)
-    elif "카페" in category_lower or "cafe" in category_lower:
-        badge = check_badge_earned(user_id, "cafe_hunter")
-        if badge:
-            award_badge(user_id, badge)
-    elif "한식" in category_lower or "korean" in category_lower:
-        badge = check_badge_earned(user_id, "korean_expert")
-        if badge:
-            award_badge(user_id, badge)
-    elif "중식" in category_lower or "chinese" in category_lower:
-        badge = check_badge_earned(user_id, "chinese_explorer")
-        if badge:
-            award_badge(user_id, badge)
-    elif "일식" in category_lower or "japanese" in category_lower:
-        badge = check_badge_earned(user_id, "japanese_lover")
-        if badge:
-            award_badge(user_id, badge)
-
-
-def _process_review_rewards(user_id, has_photo, restaurant):
-    """리뷰 작성 보상 처리"""
-    if not user_id:
-        return
-
-    # 리뷰 작성 포인트
-    earn_points(user_id, "review_written", 20, "리뷰 작성")
-
-    # 사진이 있으면 추가 포인트
-    if has_photo:
-        earn_points(user_id, "review_with_photo", 15, "사진과 함께 리뷰 작성")
-
-    # 첫 리뷰 배지 확인
-    badge = check_badge_earned(user_id, "first_review")
-    if badge:
-        award_badge(user_id, badge)
-
-    # 카테고리별 배지 확인
-    if restaurant:
-        _award_category_badge(user_id, restaurant.category)
-
-
-@app.route("/restaurants/<int:restaurant_id>/reviews", methods=["POST"])
-def add_review(restaurant_id):
-    data = request.get_json() or {}
-    restaurant = Restaurant.query.get(restaurant_id)
-    if not restaurant:
-        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
-
-    new_review = Review(
-        restaurant_id=restaurant_id,
-        user_id=data.get("user_id"),
-        nickname=data.get("nickname"),
-        rating=data.get("rating"),
-        comment=data.get("comment"),
-        photo_url=data.get("photo_url"),
-        tags=data.get("tags"),
-    )
-    db.session.add(new_review)
-    db.session.commit()
-
-    # 보상 처리
-    user_id = data.get("user_id")
-    has_photo = bool(data.get("photo_url"))
-    _process_review_rewards(user_id, has_photo, restaurant)
-
-    return jsonify({"message": "리뷰가 추가되었습니다.", "id": new_review.id}), 201
-
-
-@app.route("/restaurants/search", methods=["GET"])
-def search_restaurants():
-    """식당 검색 API - 드롭다운용"""
-    query = request.args.get("query", "")
-    limit = request.args.get("limit", 10, type=int)
-
-    if not query:
-        return jsonify([])
-
-    # 검색 쿼리
-    restaurants_query = Restaurant.query.filter(Restaurant.name.contains(query))  # type: ignore
-    restaurants = restaurants_query.limit(limit).all()
-
-    # 간단한 정보만 반환
-    restaurants_data = []
-    for restaurant in restaurants:
-        restaurants_data.append(
-            {
-                "id": restaurant.id,
-                "name": restaurant.name,
-                "category": restaurant.category,
-                "address": restaurant.address,
-            }
-        )
-
-    return jsonify(restaurants_data)
-
-
-@app.route("/reviews/<int:review_id>/like", methods=["POST"])
-def like_review(review_id):
-    """리뷰 좋아요"""
-    review = Review.query.get(review_id)
-    if not review:
-        return jsonify({"message": "리뷰를 찾을 수 없습니다."}), 404
-
-    review.likes += 1
-    db.session.commit()
-
-    return jsonify({"message": "좋아요가 추가되었습니다.", "likes": review.likes})
-
-
-@app.route("/reviews/tags", methods=["GET"])
-def get_review_tags():
-    """사용 가능한 리뷰 태그 목록"""
-    tags = [
-        "맛있어요",
-        "깔끔해요",
-        "친절해요",
-        "분위기 좋아요",
-        "가성비 좋아요",
-        "양 많아요",
-        "신선해요",
-        "매운맛",
-        "달콤해요",
-        "고소해요",
-        "담백해요",
-        "진한맛",
-    ]
-    return jsonify({"tags": tags})
-
-
-# --- 식당 신청 관련 API ---
-@app.route("/restaurants/requests", methods=["POST"])
-def create_restaurant_request():
-    """식당 신청/수정/삭제 요청 생성"""
-    data = request.get_json()
-
-    # 일일 신청 제한 제거 - 사용자 편의성 향상
-    # 모든 식당 신청은 관리자 승인 필요
-
-    # 중복 신청 확인
-    existing_request = RestaurantRequest.query.filter(
-        RestaurantRequest.requester_id == data["requester_id"],
-        RestaurantRequest.request_type == data["request_type"],
-        RestaurantRequest.restaurant_name == data.get("restaurant_name"),
-        RestaurantRequest.status == "pending",
-    ).first()
-
-    if existing_request:
-        return jsonify({"error": "이미 동일한 신청이 대기 중입니다."}), 400
-
-    # 모든 식당은 관리자 승인 필요
-
-    request_obj = RestaurantRequest(
-        request_type=data["request_type"],
-        requester_id=data["requester_id"],
-        requester_nickname=data["requester_nickname"],
-        restaurant_name=data.get("restaurant_name"),
-        restaurant_address=data.get("restaurant_address"),
-        restaurant_id=data.get("restaurant_id"),
-        reason=data.get("reason"),
-    )
-
-    # 모든 신청은 pending 상태로 시작
-    request_obj.status = "pending"
-
-    db.session.add(request_obj)
-    db.session.commit()
-
-    # 모든 신청에 대해 관리자에게 알림 생성
-    create_notification(
-        user_id="admin",  # 관리자에게 알림
-        type="restaurant_request",
-        title="새로운 식당 신청",
-        message=f"{data['requester_nickname']}님이 식당을 신청했습니다.",
-        related_id=request_obj.id,
-    )
-
-    return (
-        jsonify(
-            {
-                "message": "신청이 접수되었습니다. 관리자 검토 후 승인됩니다.",
-                "auto_approved": False,
-            }
-        ),
-        201,
-    )
-
-
-@app.route("/restaurants/requests/my/<employee_id>", methods=["GET"])
-def get_my_restaurant_requests(employee_id):
-    """내 식당 신청 내역 조회"""
-    requests = (
-        RestaurantRequest.query.filter_by(requester_id=employee_id).order_by(RestaurantRequest.created_at.desc()).all()
-    )
-
-    return jsonify(
-        {
-            "requests": [
-                {
-                    "id": req.id,
-                    "request_type": req.request_type,
-                    "restaurant_name": req.restaurant_name,
-                    "restaurant_address": req.restaurant_address,
-                    "reason": req.reason,
-                    "status": req.status,
-                    "created_at": format_korean_time(req.created_at),
-                    "approved_at": (format_korean_time(req.approved_at) if req.approved_at else None),
-                    "rejection_reason": req.rejection_reason,
-                }
-                for req in requests
-            ]
-        }
-    )
-
-
-@app.route("/restaurants/requests/pending", methods=["GET"])
-def get_pending_restaurant_requests():
-    """관리자용 대기 중인 신청 목록"""
-    requests = RestaurantRequest.query.filter_by(status="pending").order_by(RestaurantRequest.created_at.desc()).all()
-
-    return jsonify(
-        {
-            "requests": [
-                {
-                    "id": req.id,
-                    "request_type": req.request_type,
-                    "restaurant_name": req.restaurant_name,
-                    "restaurant_address": req.restaurant_address,
-                    "reason": req.reason,
-                    "requester_id": req.requester_id,
-                    "requester_nickname": req.requester_nickname,
-                    "created_at": format_korean_time(req.created_at),
-                }
-                for req in requests
-            ]
-        }
-    )
-
-
-@app.route("/restaurants/requests/<int:request_id>/approve", methods=["PUT"])
-def approve_restaurant_request(request_id):
-    """식당 신청 승인"""
-    data = request.get_json()
-    request_obj = RestaurantRequest.query.get_or_404(request_id)
-
-    if request_obj.status != "pending":
-        return jsonify({"error": "이미 처리된 신청입니다."}), 400
-
-    request_obj.status = "approved"
-    request_obj.approved_at = datetime.utcnow()
-    request_obj.approved_by = data.get("admin_id", "admin")
-
-    # 신청 유형에 따른 처리
-    if request_obj.request_type == "add":
-        # 새 식당 추가
-        lat, lon = geocode_address(request_obj.restaurant_address or "")
-        restaurant = Restaurant(
-            name=request_obj.restaurant_name,
-            category="",
-            address=request_obj.restaurant_address,
-            latitude=lat,
-            longitude=lon,
-        )
-        db.session.add(restaurant)
-
-    elif request_obj.request_type == "update":
-        # 식당 정보 수정
-        restaurant = Restaurant.query.get(request_obj.restaurant_id)
-        if restaurant:
-            if request_obj.restaurant_name:
-                restaurant.name = request_obj.restaurant_name
-            if request_obj.restaurant_address:
-                restaurant.address = request_obj.restaurant_address
-                lat, lon = geocode_address(request_obj.restaurant_address)
-                restaurant.latitude = lat
-                restaurant.longitude = lon
-
-    elif request_obj.request_type == "delete":
-        # 식당 삭제
-        restaurant = Restaurant.query.get(request_obj.restaurant_id)
-        if restaurant:
-            db.session.delete(restaurant)
-
-    db.session.commit()
-
-    # 신청자에게 승인 알림
-    create_notification(
-        user_id=request_obj.requester_id,
-        type="restaurant_request_approved",
-        title="식당 신청 승인",
-        message=f'"{request_obj.restaurant_name}" 신청이 승인되었습니다.',
-        related_id=request_obj.id,
-    )
-
-    return jsonify({"message": "신청이 승인되었습니다."})
-
-
-@app.route("/restaurants/frequent/<employee_id>", methods=["GET"])
-def get_frequent_restaurants(employee_id):
-    """사용자가 자주 가는 식당 목록을 반환"""
-    try:
-        # 사용자가 최근에 방문한 식당들을 조회
-        # 현재는 테스트용 임시 데이터 반환 (실제 구현 시 사용자 방문 기록 기반으로 수정)
-        frequent_restaurants = [
-            {
-                "id": 1,
-                "name": "맛있는 라면집",
-                "category": "라면",
-                "address": "판교역 1번 출구 앞",
-            },
-            {
-                "id": 2,
-                "name": "신선한 초밥",
-                "category": "일식",
-                "address": "판교역 2번 출구 옆",
-            },
-            {
-                "id": 3,
-                "name": "따뜻한 국밥",
-                "category": "한식",
-                "address": "판교역 3번 출구 근처",
-            },
-        ]
-
-        return jsonify(frequent_restaurants)
-    except Exception as e:
-        print(f"자주 가는 식당 조회 오류: {e}")
-        return jsonify([])
-
-
-@app.route("/restaurants/requests/<int:request_id>/reject", methods=["PUT"])
-def reject_restaurant_request(request_id):
-    """식당 신청 거절"""
-    data = request.get_json()
-    request_obj = RestaurantRequest.query.get_or_404(request_id)
-
-    if request_obj.status != "pending":
-        return jsonify({"error": "이미 처리된 신청입니다."}), 400
-
-    request_obj.status = "rejected"
-    request_obj.rejection_reason = data.get("rejection_reason", "")
-
-    db.session.commit()
-
-    # 신청자에게 거절 알림
-    create_notification(
-        user_id=request_obj.requester_id,
-        type="restaurant_request_rejected",
-        title="식당 신청 거절",
-        message=f'"{request_obj.restaurant_name}" 신청이 거절되었습니다.',
-        related_id=request_obj.id,
-    )
-
-    return jsonify({"message": "신청이 거절되었습니다."})
-
-
-# --- 즐겨찾기 API ---
-@app.route("/restaurants/favorites", methods=["POST"])
-def add_favorite():
-    """즐겨찾기 추가"""
-    try:
-        data = request.get_json()
-        user_id = data.get("user_id")
-        restaurant_id = data.get("restaurant_id")
-
-        if not user_id or not restaurant_id:
-            return jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
-
-        # 이미 즐겨찾기로 등록되어 있는지 확인
-        existing_favorite = UserFavorite.query.filter_by(user_id=user_id, restaurant_id=restaurant_id).first()
-
-        if existing_favorite:
-            return jsonify({"error": "이미 즐겨찾기로 등록된 식당입니다."}), 400
-
-        # 식당 존재 여부 확인
-        restaurant = Restaurant.query.get(restaurant_id)
-        if not restaurant:
-            return jsonify({"error": "존재하지 않는 식당입니다."}), 404
-
-        # 즐겨찾기 추가
-        new_favorite = UserFavorite(user_id=user_id, restaurant_id=restaurant_id)
-        db.session.add(new_favorite)
-        db.session.commit()
-
-        return (
-            jsonify(
-                {
-                    "message": "즐겨찾기가 추가되었습니다.",
-                    "favorite": new_favorite.to_dict(),
-                }
-            ),
-            201,
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/restaurants/favorites/<user_id>", methods=["GET"])
-def get_user_favorites(user_id):
-    """사용자 즐겨찾기 목록 조회"""
-    try:
-        favorites = UserFavorite.query.filter_by(user_id=user_id).all()
-
-        # 즐겨찾기한 식당들의 상세 정보 포함
-        favorites_with_details = []
-        for favorite in favorites:
-            if favorite.restaurant:
-                restaurant_data = favorite.restaurant.to_dict()
-                # 즐겨찾기 정보 추가
-                restaurant_data["favorite_id"] = favorite.id
-                restaurant_data["favorited_at"] = favorite.created_at.isoformat() if favorite.created_at else None
-                favorites_with_details.append(restaurant_data)
-
-        return jsonify(
-            {
-                "favorites": favorites_with_details,
-                "total_count": len(favorites_with_details),
-            }
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/restaurants/favorites/<int:favorite_id>", methods=["DELETE"])
-def remove_favorite(favorite_id):
-    """즐겨찾기 제거"""
-    try:
-        favorite = UserFavorite.query.get_or_404(favorite_id)
-        db.session.delete(favorite)
-        db.session.commit()
-
-        return jsonify({"message": "즐겨찾기가 제거되었습니다."})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/restaurants/favorites/check", methods=["POST"])
-def check_favorite():
-    """즐겨찾기 여부 확인"""
-    try:
-        data = request.get_json()
-        user_id = data.get("user_id")
-        restaurant_id = data.get("restaurant_id")
-
-        if not user_id or not restaurant_id:
-            return jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
-
-        favorite = UserFavorite.query.filter_by(user_id=user_id, restaurant_id=restaurant_id).first()
-
-        return jsonify(
-            {
-                "is_favorite": favorite is not None,
-                "favorite_id": favorite.id if favorite else None,
-            }
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# --- 방문 통계 및 인기 식당 API ---
-@app.route("/restaurants/visits", methods=["POST"])
-def add_restaurant_visit():
-    """식당 방문 기록 추가"""
-    try:
-        data = request.get_json()
-        user_id = data.get("user_id")
-        restaurant_id = data.get("restaurant_id")
-        visit_date = data.get("visit_date")  # YYYY-MM-DD 형식
-        visit_time = data.get("visit_time")  # HH:MM 형식
-        party_size = data.get("party_size", 1)
-
-        if not user_id or not restaurant_id or not visit_date:
-            return (
-                jsonify({"error": "사용자 ID, 식당 ID, 방문 날짜가 필요합니다."}),
-                400,
-            )
-
-        # 식당 존재 여부 확인
-        restaurant = Restaurant.query.get(restaurant_id)
-        if not restaurant:
-            return jsonify({"error": "존재하지 않는 식당입니다."}), 404
-
-        # 방문 기록 생성
-        visit_date_obj = datetime.strptime(visit_date, "%Y-%m-%d").date()
-        visit_time_obj = None
-        if visit_time:
-            visit_time_obj = datetime.strptime(visit_time, "%H:%M").time()
-
-        new_visit = RestaurantVisit(
-            user_id=user_id,
-            restaurant_id=restaurant_id,
-            visit_date=visit_date_obj,
-            visit_time=visit_time_obj,
-            party_size=party_size,
-        )
-
-        db.session.add(new_visit)
-        db.session.commit()
-
-        return (
-            jsonify({"message": "방문 기록이 추가되었습니다.", "visit": new_visit.to_dict()}),
-            201,
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/restaurants/popular", methods=["GET"])
-def get_popular_restaurants():
-    """인기 식당 조회 (주간/월간)"""
-    try:
-        period = request.args.get("period", "weekly")  # weekly, monthly
-        limit = min(int(request.args.get("limit", 10)), 50)  # 최대 50개
-
-        # 기간 설정
-        end_date = datetime.now().date()
-        if period == "weekly":
-            start_date = end_date - timedelta(days=7)
-        else:  # monthly
-            start_date = end_date - timedelta(days=30)
-
-        # 방문 기록 기반 인기 식당 계산
-        popular_restaurants = (
-            db.session.query(
-                Restaurant,
-                func.count(RestaurantVisit.id).label("visit_count"),
-                func.avg(RestaurantVisit.party_size).label("avg_party_size"),
-            )
-            .join(RestaurantVisit, Restaurant.id == RestaurantVisit.restaurant_id)
-            .filter(RestaurantVisit.visit_date >= start_date)
-            .filter(RestaurantVisit.visit_date <= end_date)
-            .group_by(Restaurant.id)
-            .order_by(func.count(RestaurantVisit.id).desc())
-            .limit(limit)
-            .all()
-        )
-
-        # 리뷰 기반 인기 식당도 포함
-        review_popular = (
-            db.session.query(
-                Restaurant,
-                func.count(Review.id).label("review_count"),
-                func.avg(Review.rating).label("avg_rating"),
-            )
-            .join(Review, Restaurant.id == Review.restaurant_id)
-            .group_by(Restaurant.id)
-            .order_by(func.count(Review.id).desc())
-            .limit(limit)
-            .all()
-        )
-
-        # 결과 합치기 및 정렬
-        all_restaurants = {}
-
-        # 방문 기반 점수
-        for restaurant, visit_count, avg_party_size in popular_restaurants:
-            all_restaurants[restaurant.id] = {
-                "restaurant": restaurant.to_dict(),
-                "visit_score": visit_count * 2 + (avg_party_size or 1),
-                "review_score": 0,
-                "total_score": 0,
-            }
-
-        # 리뷰 기반 점수
-        for restaurant, review_count, avg_rating in review_popular:
-            if restaurant.id in all_restaurants:
-                all_restaurants[restaurant.id]["review_score"] = review_count + (avg_rating or 0) * 2
-            else:
-                all_restaurants[restaurant.id] = {
-                    "restaurant": restaurant.to_dict(),
-                    "visit_score": 0,
-                    "review_score": review_count + (avg_rating or 0) * 2,
-                    "total_score": 0,
-                }
-
-        # 총점 계산 및 정렬
-        for restaurant_data in all_restaurants.values():
-            restaurant_data["total_score"] = restaurant_data["visit_score"] + restaurant_data["review_score"]
-
-        sorted_restaurants = sorted(all_restaurants.values(), key=lambda x: x["total_score"], reverse=True)[:limit]
-
-        return jsonify(
-            {
-                "period": period,
-                "restaurants": sorted_restaurants,
-                "total_count": len(sorted_restaurants),
-            }
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/restaurants/visits/stats/<user_id>", methods=["GET"])
-def get_user_visit_stats(user_id):
-    """사용자 방문 통계 조회"""
-    try:
-        # 최근 30일 방문 통계
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=30)
-
-        visits = RestaurantVisit.query.filter(
-            RestaurantVisit.user_id == user_id,
-            RestaurantVisit.visit_date >= start_date,
-            RestaurantVisit.visit_date <= end_date,
-        ).all()
-
-        # 방문 통계 계산
-        total_visits = len(visits)
-        total_party_size = sum(visit.party_size for visit in visits)
-
-        # 카테고리별 방문 통계
-        category_stats = {}
-        for visit in visits:
-            category = visit.restaurant.category
-            if category not in category_stats:
-                category_stats[category] = {"count": 0, "total_party": 0}
-            category_stats[category]["count"] += 1
-            category_stats[category]["total_party"] += visit.party_size
-
-        # 가장 많이 방문한 식당
-        restaurant_visits = {}
-        for visit in visits:
-            restaurant_name = visit.restaurant.name
-            if restaurant_name not in restaurant_visits:
-                restaurant_visits[restaurant_name] = 0
-            restaurant_visits[restaurant_name] += 1
-
-        favorite_restaurant = max(restaurant_visits.items(), key=lambda x: x[1])[0] if restaurant_visits else None
-
-        return jsonify(
-            {
-                "total_visits": total_visits,
-                "total_party_size": total_party_size,
-                "category_stats": category_stats,
-                "favorite_restaurant": favorite_restaurant,
-                "period": "30일",
-            }
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# --- 개인화 추천 시스템 ---
-@app.route("/restaurants/recommendations/<user_id>", methods=["GET"])
-def get_personalized_recommendations(user_id):
-    """사용자 취향 기반 맞춤 추천"""
-    try:
-        limit = min(int(request.args.get("limit", 10)), 20)  # 최대 20개
-
-        # 1. 사용자 리뷰 기반 선호 카테고리 분석
-        user_reviews = Review.query.filter_by(user_id=user_id).all()
-        category_preferences = {}
-        total_rating = 0
-
-        for review in user_reviews:
-            restaurant = Restaurant.query.get(review.restaurant_id)
-            if restaurant:
-                category = restaurant.category
-                if category not in category_preferences:
-                    category_preferences[category] = {"total_rating": 0, "count": 0}
-                category_preferences[category]["total_rating"] += review.rating
-                category_preferences[category]["count"] += 1
-                total_rating += review.rating
-
-        # 카테고리별 평균 평점 계산
-        for category in category_preferences:
-            category_preferences[category]["avg_rating"] = (
-                category_preferences[category]["total_rating"] / category_preferences[category]["count"]
-            )
-
-        # 2. 사용자 방문 기록 기반 선호 식당 분석
-        user_visits = RestaurantVisit.query.filter_by(user_id=user_id).all()
-        restaurant_preferences = {}
-
-        for visit in user_visits:
-            restaurant_name = visit.restaurant.name
-            if restaurant_name not in restaurant_preferences:
-                restaurant_preferences[restaurant_name] = 0
-            restaurant_preferences[restaurant_name] += 1
-
-        # 3. 추천 점수 계산
-        recommendations = []
-        all_restaurants = Restaurant.query.all()
-
-        for restaurant in all_restaurants:
-            score = 0
-
-            # 카테고리 선호도 점수 (0-5점)
-            if restaurant.category in category_preferences:
-                avg_rating = category_preferences[restaurant.category]["avg_rating"]
-                score += avg_rating
-
-            # 방문 빈도 점수 (0-3점)
-            if restaurant.name in restaurant_preferences:
-                visit_count = restaurant_preferences[restaurant.name]
-                score += min(visit_count * 0.5, 3)
-
-            # 리뷰 점수 (0-2점)
-            if restaurant.reviews:
-                avg_restaurant_rating = sum(r.rating for r in restaurant.reviews) / len(restaurant.reviews)
-                score += min(avg_restaurant_rating / 5 * 2, 2)
-
-            # 거리 점수 (현재 위치 기반, 0-1점)
-            # 여기서는 기본값으로 설정 (실제로는 현재 위치 정보 필요)
-            distance_score = 0.5
-            score += distance_score
-
-            if score > 0:
-                recommendations.append(
-                    {
-                        "restaurant": restaurant.to_dict(),
-                        "score": round(score, 2),
-                        "reasons": [],
-                    }
-                )
-
-                # 추천 이유 추가
-                if restaurant.category in category_preferences:
-                    recommendations[-1]["reasons"].append(f"선호하는 {restaurant.category}")
-                if restaurant.name in restaurant_preferences:
-                    recommendations[-1]["reasons"].append("자주 방문하는 곳")
-                if restaurant.reviews and any(r.rating >= 4 for r in restaurant.reviews):
-                    recommendations[-1]["reasons"].append("높은 평점")
-
-        # 점수 순으로 정렬
-        recommendations.sort(key=lambda x: x["score"], reverse=True)
-
-        return jsonify(
-            {
-                "user_id": user_id,
-                "recommendations": recommendations[:limit],
-                "total_count": len(recommendations),
-                "category_preferences": category_preferences,
-            }
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# 식당 관련 API들은 routes/restaurants.py로 분리됨
 
 
 # --- 데이터 분석 API ---
@@ -3098,26 +2252,32 @@ def get_restaurant_analytics(restaurant_id):
 def get_trends():
     """전체 트렌드 분석"""
     try:
-        # 인기 식당 카테고리
-        restaurants = Restaurant.query.all()
-        category_stats = {}
+        # 인기 식당 카테고리 (N+1 문제 해결)
+        # 모든 식당과 리뷰를 한 번에 조회
+        restaurants_with_reviews = (
+            db.session.query(
+                Restaurant.category,
+                func.avg(Review.rating).label('avg_rating'),
+                func.count(Review.id).label('review_count')
+            )
+            .outerjoin(Review, Restaurant.id == Review.restaurant_id)
+            .group_by(Restaurant.category)
+            .all()
+        )
 
-        for restaurant in restaurants:
-            reviews = Review.query.filter_by(restaurant_id=restaurant.id).all()
-            if reviews:
-                avg_rating = sum(r.rating for r in reviews) / len(reviews)
-                category_stats[restaurant.category] = category_stats.get(
-                    restaurant.category,
-                    {"count": 0, "total_rating": 0, "total_reviews": 0},
-                )
-                category_stats[restaurant.category]["count"] += 1
-                category_stats[restaurant.category]["total_rating"] += avg_rating
-                category_stats[restaurant.category]["total_reviews"] += len(reviews)
+        category_stats = {}
+        for category, avg_rating, review_count in restaurants_with_reviews:
+            if avg_rating is not None:  # 리뷰가 있는 카테고리만
+                category_stats[category] = {
+                    "count": 1,  # 식당 수 (그룹화되어 있으므로 1)
+                    "total_rating": avg_rating,
+                    "total_reviews": review_count,
+                }
 
         # 평균 평점으로 정렬
         popular_categories = sorted(
             [(cat, stats) for cat, stats in category_stats.items()],
-            key=lambda x: x[1]["total_rating"] / x[1]["count"],
+            key=lambda x: x[1]["total_rating"],
             reverse=True,
         )[:5]
 
@@ -3129,7 +2289,7 @@ def get_trends():
                 "popular_categories": [
                     {
                         "category": cat,
-                        "average_rating": round(stats["total_rating"] / stats["count"], 1),
+                        "average_rating": round(stats["total_rating"], 1),
                         "total_reviews": stats["total_reviews"],
                     }
                     for cat, stats in popular_categories
@@ -5013,68 +4173,100 @@ def get_friends():
             )
         ).all()
 
-        friends_data = []
-        today = get_seoul_today()
-
+        # 친구 ID 리스트 생성
+        friend_ids = []
         for friendship in friendships:
-            # 친구 ID 결정 (requester_id가 현재 사용자면 receiver_id가 친구, 반대면 requester_id가 친구)
             if friendship.requester_id == employee_id:
-                friend_id = friendship.receiver_id
+                friend_ids.append(friendship.receiver_id)
             else:
-                friend_id = friendship.requester_id
+                friend_ids.append(friendship.requester_id)
 
-            friend = User.query.filter_by(employee_id=friend_id).first()
+        if not friend_ids:
+            return jsonify([])
 
-            if friend:
-                # 마지막으로 함께 점심 먹은 날 계산 (dining_history 로직 참조)
-                last_party = (
-                    Party.query.join(PartyMember, Party.id == PartyMember.party_id)
-                    .filter(
+        # 친구 정보를 한 번에 조회 (N+1 문제 해결)
+        friends = User.query.filter(User.employee_id.in_(friend_ids)).all()
+        
+        # 친구 ID를 키로 하는 딕셔너리 생성
+        friends_dict = {friend.employee_id: friend for friend in friends}
+
+        # 마지막 점심 기록을 한 번에 조회 (N+1 문제 해결)
+        today = get_seoul_today()
+        today_str = today.strftime("%Y-%m-%d")
+        
+        # 모든 친구와의 마지막 파티 기록을 한 번에 조회
+        last_parties_query = (
+            db.session.query(
+                Party.party_date,
+                Party.host_employee_id,
+                PartyMember.employee_id.label('member_employee_id')
+            )
+            .join(PartyMember, Party.id == PartyMember.party_id)
+            .filter(
+                and_(
+                    or_(
                         and_(
-                            or_(
-                                and_(
-                                    Party.host_employee_id == employee_id,
-                                    PartyMember.employee_id == friend.employee_id,
-                                ),
-                                and_(
-                                    Party.host_employee_id == friend.employee_id,
-                                    PartyMember.employee_id == employee_id,
-                                ),
-                            ),
-                            Party.party_date < today.strftime("%Y-%m-%d"),
+                            Party.host_employee_id == employee_id,
+                            PartyMember.employee_id.in_(friend_ids)
+                        ),
+                        and_(
+                            Party.host_employee_id.in_(friend_ids),
+                            PartyMember.employee_id == employee_id
                         )
-                    )
-                    .order_by(desc(Party.party_date))
-                    .first()
+                    ),
+                    Party.party_date < today_str
                 )
+            )
+            .order_by(desc(Party.party_date))
+        ).all()
 
-                # 마지막 점심 날짜 계산
-                if last_party:
-                    last_party_date = datetime.strptime(last_party.party_date, "%Y-%m-%d").date()
-                    days_diff = (today - last_party_date).days
+        # 친구별 마지막 파티 날짜 매핑
+        last_party_dates = {}
+        for party_date, host_id, member_id in last_parties_query:
+            # 친구 ID 결정
+            if host_id == employee_id:
+                friend_id = member_id
+            else:
+                friend_id = host_id
+            
+            # 가장 최근 파티만 기록 (이미 정렬되어 있음)
+            if friend_id not in last_party_dates:
+                last_party_dates[friend_id] = party_date
 
-                    if days_diff == 1:
-                        last_lunch = "어제"
-                    elif days_diff <= 7:
-                        last_lunch = f"{days_diff}일 전"
-                    elif days_diff <= 30:
-                        last_lunch = f"{days_diff//7}주 전"
-                    else:
-                        last_lunch = "1달 이상 전"
+        friends_data = []
+        for friend_id in friend_ids:
+            friend = friends_dict.get(friend_id)
+            if not friend:
+                continue
+
+            # 마지막 점심 날짜 계산
+            last_party_date_str = last_party_dates.get(friend_id)
+            if last_party_date_str:
+                last_party_date = datetime.strptime(last_party_date_str, "%Y-%m-%d").date()
+                days_diff = (today - last_party_date).days
+
+                if days_diff == 1:
+                    last_lunch = "어제"
+                elif days_diff <= 7:
+                    last_lunch = f"{days_diff}일 전"
+                elif days_diff <= 30:
+                    last_lunch = f"{days_diff//7}주 전"
                 else:
-                    last_lunch = "처음"
+                    last_lunch = "1달 이상 전"
+            else:
+                last_lunch = "처음"
 
-                friends_data.append(
-                    {
-                        "employee_id": friend.employee_id,
-                        "nickname": friend.nickname,
-                        "lunch_preference": friend.lunch_preference,
-                        "main_dish_genre": friend.main_dish_genre,
-                        "last_lunch": last_lunch,
-                        "allergies": friend.allergies,
-                        "preferred_time": friend.preferred_time,
-                    }
-                )
+            friends_data.append(
+                {
+                    "employee_id": friend.employee_id,
+                    "nickname": friend.nickname,
+                    "lunch_preference": friend.lunch_preference,
+                    "main_dish_genre": friend.main_dish_genre,
+                    "last_lunch": last_lunch,
+                    "allergies": friend.allergies,
+                    "preferred_time": friend.preferred_time,
+                }
+            )
 
         return jsonify(friends_data)
     except Exception as e:
@@ -5465,125 +4657,7 @@ def suggest_party_titles():
         )
 
 
-# --- 위치 기반 서비스 ---
-@app.route("/restaurants/nearby", methods=["GET"])
-def get_nearby_restaurants():
-    """현재 위치 기반 근처 식당 추천"""
-    latitude = request.args.get("latitude", type=float)
-    longitude = request.args.get("longitude", type=float)
-    radius = request.args.get("radius", 1000, type=int)  # 기본 1km
-
-    if not latitude or not longitude:
-        return jsonify({"message": "위치 정보가 필요합니다."}), 400
-
-    # 간단한 거리 계산 (실제로는 Haversine 공식 사용)
-    restaurants = Restaurant.query.filter(
-        Restaurant.latitude.isnot(None),  # type: ignore
-        Restaurant.longitude.isnot(None),  # type: ignore
-    ).all()
-
-    nearby_restaurants = []
-    for restaurant in restaurants:
-        # 간단한 유클리드 거리 계산 (실제로는 Haversine 공식 사용)
-        distance = (
-            (restaurant.latitude - latitude) ** 2 + (restaurant.longitude - longitude) ** 2
-        ) ** 0.5 * 111000  # 대략적인 km 변환
-
-        if distance <= radius:
-            nearby_restaurants.append(
-                {
-                    "id": restaurant.id,
-                    "name": restaurant.name,
-                    "category": restaurant.category,
-                    "address": restaurant.address,
-                    "distance": round(distance, 1),
-                    "avg_rating": restaurant.avg_rating,
-                    "review_count": restaurant.review_count,
-                }
-            )
-
-    # 거리순으로 정렬
-    nearby_restaurants.sort(key=lambda x: x["distance"])
-
-    return jsonify(
-        {
-            "restaurants": nearby_restaurants[:10],  # 최대 10개
-            "user_location": {"latitude": latitude, "longitude": longitude},
-        }
-    )
-
-
-# get_nearby_users 함수는 routes/users.py로 분리됨
-
-
-# --- 식당 추천 API ---
-@app.route("/restaurants/recommend", methods=["GET"])
-def recommend_restaurants():
-    employee_id = request.args.get("employee_id")
-    if not employee_id:
-        return jsonify({"message": "사용자 ID가 필요합니다."}), 400
-
-    user = User.query.filter_by(employee_id=employee_id).first()
-    if not user:
-        return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-
-    # 사용자 선호도 기반 추천
-    user_preferences = []
-    if user.food_preferences:
-        user_preferences = user.food_preferences.split(",")
-
-        # 기본 추천 (사용자 선호도가 없으면 인기 식당)
-        if user_preferences:
-            recommended_restaurants = (
-                Restaurant.query.filter(Restaurant.category.in_(user_preferences)).limit(10).all()  # type: ignore
-            )
-        else:
-            # 평점 높은 식당 추천
-            recommended_restaurants = (
-                Restaurant.query.order_by(Restaurant.avg_rating.desc()).limit(10).all()  # type: ignore
-            )
-
-    # 친구들이 좋아하는 식당 추천
-    friends = get_user_friends(employee_id)
-    friend_favorites = []
-    if friends:
-        for friend in friends:
-            friend_user = User.query.filter_by(employee_id=friend["employee_id"]).first()
-            if friend_user and friend_user.main_dish_genre:
-                friend_favorites.append(friend_user.main_dish_genre)
-
-    friend_recommendations = []
-    if friend_favorites:
-        friend_recommendations = (
-            Restaurant.query.filter(Restaurant.category.in_(friend_favorites)).limit(5).all()  # type: ignore
-        )
-
-    return jsonify(
-        {
-            "personal_recommendations": [
-                {
-                    "id": restaurant.id,
-                    "name": restaurant.name,
-                    "category": restaurant.category,
-                    "address": restaurant.address,
-                    "avg_rating": restaurant.avg_rating,
-                    "review_count": restaurant.review_count,
-                }
-                for restaurant in recommended_restaurants
-            ],
-            "friend_recommendations": [
-                {
-                    "id": restaurant.id,
-                    "name": restaurant.name,
-                    "category": restaurant.category,
-                    "address": restaurant.address,
-                    "avg_rating": restaurant.avg_rating,
-                    "review_count": restaurant.review_count,
-                }
-                for restaurant in friend_recommendations
-            ],
-        }
-    )
+# 식당 관련 API들은 routes/restaurants.py로 분리됨
 
 
 def get_user_friends(employee_id):
@@ -7009,95 +6083,7 @@ def create_dev_chat_room():
         print(f"개발용 채팅방 생성 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
-# 🚀 개발용 식당 데이터 자동 로드 API
-@app.route("/dev/restaurants/load-excel", methods=["POST"])
-def load_restaurant_excel():
-    """엑셀 파일에서 식당 데이터를 자동으로 로드"""
-    try:
-        import pandas as pd
-        import os
-        from models.restaurant_models import RestaurantV2
-        
-        excel_file_path = "data/restaurants_707.xlsx"
-        
-        if not os.path.exists(excel_file_path):
-            return jsonify({"error": "엑셀 파일을 찾을 수 없습니다."}), 404
-        
-        # 기존 데이터 확인
-        existing_count = RestaurantV2.query.count()
-        if existing_count > 0:
-            return jsonify({
-                "message": f"이미 {existing_count}개의 식당 데이터가 있습니다.",
-                "count": existing_count
-            }), 200
-        
-        # 엑셀 파일 읽기
-        print(f"📖 엑셀 파일 읽는 중: {excel_file_path}")
-        df = pd.read_excel(excel_file_path)
-        
-        print(f"📊 데이터 정보: 총 {len(df)}개 행")
-        
-        # 데이터 변환 및 저장
-        success_count = 0
-        error_count = 0
-        
-        for index, row in df.iterrows():
-            try:
-                # 엑셀 컬럼명에 맞게 데이터 추출
-                name = str(row.get('name', '')).strip()
-                address = str(row.get('address', '')).strip()
-                category = str(row.get('category', '기타')).strip()
-                latitude = row.get('latitude')
-                longitude = row.get('longitude')
-                phone = str(row.get('phone', '')).strip()
-                
-                if not name or name == 'nan':
-                    continue
-                
-                # 위도/경도 변환
-                try:
-                    lat = float(latitude) if latitude and str(latitude) != 'nan' else None
-                    lng = float(longitude) if longitude and str(longitude) != 'nan' else None
-                except (ValueError, TypeError):
-                    lat, lng = None, None
-                
-                # 식당 데이터 생성
-                restaurant = RestaurantV2(
-                    name=name,
-                    address=address,
-                    category=category,
-                    latitude=lat,
-                    longitude=lng,
-                    phone=phone if phone != 'nan' else None,
-                    is_active=True
-                )
-                
-                db.session.add(restaurant)
-                success_count += 1
-                
-                if success_count % 100 == 0:
-                    print(f"진행률: {success_count}/{len(df)}")
-                    
-            except Exception as e:
-                error_count += 1
-                print(f"행 {index} 처리 오류: {e}")
-                continue
-        
-        db.session.commit()
-        
-        print(f"✅ 식당 데이터 로드 완료: 성공 {success_count}개, 실패 {error_count}개")
-        
-        return jsonify({
-            "message": "식당 데이터가 성공적으로 로드되었습니다.",
-            "success_count": success_count,
-            "error_count": error_count,
-            "total": success_count
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"식당 데이터 로드 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+# 식당 관련 API들은 routes/restaurants.py로 분리됨
 
 # 🚀 개발용 특정 날짜 일정 조회 API
 @app.route("/dev/schedules/date", methods=["GET"])
@@ -8383,6 +7369,15 @@ with app.app_context():
         print("✅ 식당 관리 Blueprint v2 등록 성공")
     except Exception as e:
         print(f"❌ 식당 관리 Blueprint v2 등록 실패: {e}")
+
+    # 식당 관련 API 등록 (routes/restaurants.py)
+    try:
+        from routes.restaurants import restaurants_bp
+
+        app.register_blueprint(restaurants_bp)
+        print("✅ 식당 관련 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"❌ 식당 관련 Blueprint 등록 실패: {e}")
 
     try:
         from api.parties import parties_bp
