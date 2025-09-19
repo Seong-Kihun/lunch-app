@@ -30,12 +30,12 @@ AUTH_USER_AVAILABLE = AUTH_AVAILABLE
 # 인증 관련 import
 if AUTH_AVAILABLE:
     try:
-    from auth.utils import require_auth
+        from auth.utils import require_auth
         from auth.models import Friendship, User
         print("✅ 인증 시스템이 활성화되었습니다.")
-except ImportError as e:
+    except ImportError as e:
         print(f"⚠️ 인증 모듈 import 실패: {e}")
-    AUTH_AVAILABLE = False
+        AUTH_AVAILABLE = False
 
 # 그룹 매칭 관련 import
 if GROUP_MATCHING_AVAILABLE:
@@ -626,25 +626,25 @@ except ImportError as e:
 
 # 실시간 통신 시스템 설정
 if module_loader.is_loaded('realtime'):
-try:
-    from flask_socketio import SocketIO
-    from realtime.notification_system import NotificationSystem
-    from realtime.collaboration_system import CollaborationSystem
+    try:
+        from flask_socketio import SocketIO
+        from realtime.notification_system import NotificationSystem
+        from realtime.collaboration_system import CollaborationSystem
 
-    # Socket.IO 초기화
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+        # Socket.IO 초기화
+        socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-    # 알림 시스템 초기화
-    notification_system = NotificationSystem(socketio, db)
-    notification_system.setup_socket_events()
+        # 알림 시스템 초기화
+        notification_system = NotificationSystem(socketio, db)
+        notification_system.setup_socket_events()
 
-    # 협업 시스템 초기화
-    collaboration_system = CollaborationSystem(socketio, db)
-    collaboration_system.setup_socket_events()
+        # 협업 시스템 초기화
+        collaboration_system = CollaborationSystem(socketio, db)
+        collaboration_system.setup_socket_events()
 
         print("✅ 실시간 통신 시스템이 설정되었습니다.")
-except ImportError as e:
-    print(f"⚠️ 실시간 통신 시스템 설정 실패: {e}")
+    except ImportError as e:
+        print(f"⚠️ 실시간 통신 시스템 설정 실패: {e}")
         socketio = None
         notification_system = None
         collaboration_system = None
@@ -655,12 +655,12 @@ else:
 
 # API Blueprint 등록
 if module_loader.is_loaded('api'):
-try:
-    from api import init_app as init_api
-    init_api(app)
+    try:
+        from api import init_app as init_api
+        init_api(app)
         print("✅ API Blueprint가 등록되었습니다.")
-except ImportError as e:
-    print(f"⚠️ API Blueprint 등록 실패: {e}")
+    except ImportError as e:
+        print(f"⚠️ API Blueprint 등록 실패: {e}")
 
 # 인증 시스템 초기화
 if AUTH_AVAILABLE:
@@ -4105,24 +4105,24 @@ def get_friends():
             if not friend:
                 continue
 
-                # 마지막 점심 날짜 계산
+            # 마지막 점심 날짜 계산
             last_party_date_str = last_party_dates.get(friend_id)
             if last_party_date_str:
                 last_party_date = datetime.strptime(last_party_date_str, "%Y-%m-%d").date()
-                    days_diff = (today - last_party_date).days
+                days_diff = (today - last_party_date).days
 
-                    if days_diff == 1:
-                        last_lunch = "어제"
-                    elif days_diff <= 7:
-                        last_lunch = f"{days_diff}일 전"
-                    elif days_diff <= 30:
-                        last_lunch = f"{days_diff//7}주 전"
-                    else:
-                        last_lunch = "1달 이상 전"
+                if days_diff == 1:
+                    last_lunch = "어제"
+                elif days_diff <= 7:
+                    last_lunch = f"{days_diff}일 전"
+                elif days_diff <= 30:
+                    last_lunch = f"{days_diff//7}주 전"
                 else:
-                    last_lunch = "처음"
+                    last_lunch = "1달 이상 전"
+            else:
+                last_lunch = "처음"
 
-                friends_data.append(
+            friends_data.append(
                     {
                         "employee_id": friend.employee_id,
                         "nickname": friend.nickname,
