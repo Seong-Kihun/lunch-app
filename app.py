@@ -818,12 +818,8 @@ CACHE_GENERATION_DATE = None
 
 
 # --- 유틸리티 함수 ---
-def get_seoul_today():
-    """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
-    # 현재 UTC 시간을 가져와서 한국 시간(UTC+9)으로 변환
-    utc_now = datetime.utcnow()
-    korean_time = utc_now + timedelta(hours=9)
-    return korean_time.date()
+# 날짜/시간 유틸리티는 utils/datetime_utils.py로 이동됨
+from utils.datetime_utils import get_seoul_today
 
 
 def _should_use_existing_cache():
@@ -1152,17 +1148,8 @@ def calculate_pattern_score_cached(user1, user2):
 # 중복 함수 제거 - get_last_dining_together 함수는 아래쪽에 더 완성된 버전이 있음
 
 
-def get_korean_time():
-    """한국 시간을 반환하는 함수"""
-    korean_tz = datetime.now().replace(tzinfo=None) + timedelta(hours=9)
-    return korean_tz
-
-
-def format_korean_time(dt):
-    """한국 시간으로 포맷팅하는 함수"""
-    if dt:
-        return (dt + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
-    return None
+# 날짜/시간 유틸리티는 utils/datetime_utils.py로 이동됨
+from utils.datetime_utils import get_korean_time, format_korean_time
 
 
 def get_restaurant_recommend_count(restaurant_id):
@@ -4105,24 +4092,24 @@ def get_friends():
             if not friend:
                 continue
 
-            # 마지막 점심 날짜 계산
-            last_party_date_str = last_party_dates.get(friend_id)
-            if last_party_date_str:
-                last_party_date = datetime.strptime(last_party_date_str, "%Y-%m-%d").date()
-                days_diff = (today - last_party_date).days
+                # 마지막 점심 날짜 계산
+                last_party_date_str = last_party_dates.get(friend_id)
+                if last_party_date_str:
+                    last_party_date = datetime.strptime(last_party_date_str, "%Y-%m-%d").date()
+                    days_diff = (today - last_party_date).days
 
-                if days_diff == 1:
-                    last_lunch = "어제"
-                elif days_diff <= 7:
-                    last_lunch = f"{days_diff}일 전"
-                elif days_diff <= 30:
-                    last_lunch = f"{days_diff//7}주 전"
+                    if days_diff == 1:
+                        last_lunch = "어제"
+                    elif days_diff <= 7:
+                        last_lunch = f"{days_diff}일 전"
+                    elif days_diff <= 30:
+                        last_lunch = f"{days_diff//7}주 전"
+                    else:
+                        last_lunch = "1달 이상 전"
                 else:
-                    last_lunch = "1달 이상 전"
-            else:
-                last_lunch = "처음"
+                    last_lunch = "처음"
 
-            friends_data.append(
+                friends_data.append(
                     {
                         "employee_id": friend.employee_id,
                         "nickname": friend.nickname,
@@ -5290,88 +5277,6 @@ def create_recurring_instances(master_schedule):
 # 개발용 일정 조회 API는 routes/dev_api.py로 이동됨
 
 # 개발용 점심 약속 히스토리 API는 routes/dev_api.py로 이동됨
-# @app.route("/dev/users/<employee_id>/lunch-history", methods=["GET"])
-# def get_dev_lunch_history(employee_id):
-    """개발용 점심 약속 히스토리 API - 인증 없이 테스트 가능"""
-    try:
-        # 가상 점심 약속 히스토리 생성 (실제로는 데이터베이스에서 조회)
-        # 각 유저별로 최근 30일간의 점심 약속 히스토리 생성
-        from datetime import datetime, timedelta
-
-        # 현재 날짜 기준으로 30일 전까지의 히스토리 생성
-        today = datetime.now()
-        history_data = []
-
-        # 가상 친구 관계 (위의 친구 관계와 동일)
-        friend_relationships = {
-            "1": ["2", "3", "4", "5"],  # 김철수의 친구들
-            "2": ["1", "3", "6", "7"],  # 이영희의 친구들
-            "3": ["1", "2", "4", "8"],  # 박민수의 친구들
-            "4": ["1", "3", "5", "9"],  # 최지은의 친구들
-            "5": ["1", "4", "6", "10"],  # 정현우의 친구들
-            "6": ["2", "5", "7", "11"],  # 한소영의 친구들
-            "7": ["2", "6", "8", "12"],  # 윤준호의 친구들
-            "8": ["3", "7", "9", "13"],  # 송미라의 친구들
-            "9": ["4", "8", "10", "14"],  # 강동현의 친구들
-            "10": ["5", "9", "11", "15"],  # 임서연의 친구들
-            "11": ["6", "10", "12", "16"],  # 오태호의 친구들
-            "12": ["7", "11", "13", "17"],  # 신유진의 친구들
-            "13": ["8", "12", "14", "18"],  # 조성민의 친구들
-            "14": ["9", "13", "15", "19"],  # 백하은의 친구들
-            "15": ["10", "14", "16", "20"],  # 남준석의 친구들
-            "16": ["11", "15", "17", "1"],  # 류지현의 친구들
-            "17": ["12", "16", "18", "2"],  # 차준호의 친구들
-            "18": ["13", "17", "19", "3"],  # 구미영의 친구들
-            "19": ["14", "18", "20", "4"],  # 홍성훈의 친구들
-            "20": ["15", "19", "1", "5"],  # 전소연의 친구들
-        }
-
-        if employee_id in friend_relationships:
-            friends = friend_relationships[employee_id]
-
-            # 최근 30일간의 점심 약속 히스토리 생성
-            for i in range(30):
-                # 30일 중 랜덤하게 15-20일 정도에 점심 약속 생성
-                if random.random() < 0.6:  # 60% 확률로 점심 약속 생성
-                    meeting_date = today - timedelta(days=i)
-
-                    # 해당 날짜에 랜덤하게 1-3명의 친구와 점심 약속
-                    num_attendees = random.randint(1, min(3, len(friends)))
-                    selected_friends = random.sample(friends, num_attendees)
-
-                    # 본인도 포함하여 참석자 목록 생성
-                    attendees = [
-                        {
-                            "employee_id": employee_id,
-                            "nickname": get_nickname_by_id(employee_id),
-                        }
-                    ]
-                    for friend_id in selected_friends:
-                        attendees.append(
-                            {
-                                "employee_id": friend_id,
-                                "nickname": get_nickname_by_id(friend_id),
-                            }
-                        )
-
-                    history_data.append(
-                        {
-                            "date": meeting_date.strftime("%Y-%m-%d"),
-                            "time": "12:00",
-                            "attendees": attendees,
-                            "restaurant": f"가상 식당 {random.randint(1, 10)}",
-                            "type": "lunch",
-                        }
-                    )
-
-        return jsonify({"employee_id": employee_id, "lunch_history": history_data})
-
-    except Exception as e:
-
-        return (
-            jsonify({"error": "점심 약속 히스토리 조회 중 오류가 발생했습니다."}),
-            500,
-        )
 
 
 def get_nickname_by_id(employee_id):
