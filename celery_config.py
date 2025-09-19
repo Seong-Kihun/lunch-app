@@ -10,68 +10,59 @@ def create_celery(app):
     """Flask 앱과 연동되는 Celery 인스턴스 생성"""
     
     # Redis 연결 설정
-    redis_url = os.getenv('REDIS_URL')
+    redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
-    # Render 환경에서 Redis가 없으면 Celery 비활성화
-    if not redis_url:
-        print("ℹ️ Redis가 설정되지 않아 Celery를 비활성화합니다.")
-        return None
+    celery = Celery(
+        'lunch_app',
+        broker=redis_url,
+        backend=redis_url,
+        include=['celery_tasks']
+    )
     
-    try:
-        celery = Celery(
-            'lunch_app',
-            broker=redis_url,
-            backend=redis_url,
-            include=['celery_tasks']
-        )
+    # Celery 설정
+    celery.conf.update(
+        # 작업 결과 저장
+        result_expires=3600,  # 1시간
         
-        # Celery 설정
-        celery.conf.update(
-            # 작업 결과 저장
-            result_expires=3600,  # 1시간
-            
-            # 작업 타임아웃
-            task_soft_time_limit=300,  # 5분
-            task_time_limit=600,       # 10분
-            
-            # 워커 설정
-            worker_prefetch_multiplier=1,
-            worker_max_tasks_per_child=1000,
-            
-            # 태스크 설정
-            task_always_eager=False,  # 개발 환경에서는 True로 설정 가능
-            
-            # 로깅
-            worker_log_format='[%(asctime)s: %(levelname)s/%(processName)s] %(message)s',
-            worker_task_log_format='[%(asctime)s: %(task_name)s(%(task_id)s)] %(message)s'
-        )
+        # 작업 타임아웃
+        task_soft_time_limit=300,  # 5분
+        task_time_limit=600,       # 10분
         
-        # Flask 컨텍스트 통합
-        class FlaskTask(celery.Task):
-            def __call__(self, *args, **kwargs):
-                with app.app_context():
-                    return self.run(*args, **kwargs)
+        # 워커 설정
+        worker_prefetch_multiplier=1,
+        worker_max_tasks_per_child=1000,
         
-        celery.Task = FlaskTask
+        # 태스크 설정
+        task_always_eager=False,  # 개발 환경에서는 True로 설정 가능
         
-        print("✅ Celery가 성공적으로 설정되었습니다.")
-        return celery
-        
-    except Exception as e:
-        print(f"⚠️ Celery 설정 실패: {e}")
-        print("   백그라운드 작업 기능은 비활성화됩니다.")
-        return None
+        # 로깅
+        worker_log_format='[%(asctime)s: %(levelname)s/%(processName)s] %(message)s',
+        worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s(%(task_id)s)] %(message)s'
+    )
+    
+    # Flask 컨텍스트 통합
+    class FlaskTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+    
+    celery.Task = FlaskTask
+    
+    return celery
 
 # 주기적 작업 스케줄링
 def setup_periodic_tasks(celery_app):
     """정기적으로 실행될 작업들을 스케줄링"""
     
-    if not celery_app:
-        print("ℹ️ Celery가 설정되지 않아 주기적 작업을 건너뜁니다.")
-        return
-    
     @celery_app.on_after_configure.connect
     def setup_periodic_tasks(sender, **kwargs):
+        # 매일 자정에 일일 추천 생성 (기존 APScheduler 작업 대체)
+        sender.add_periodic_task(
+            crontab(hour=0, minute=0),
+            generate_daily_recommendations_task.s(),
+            name='daily-recommendations'
+        )
+        
         # 매일 새벽 2시에 추천 캐시 생성
         sender.add_periodic_task(
             crontab(hour=2, minute=0),
@@ -99,49 +90,74 @@ def setup_periodic_tasks(celery_app):
             update_realtime_stats_task.s(),
             name='hourly-stats-update'
         )
-    
-    print("✅ 주기적 작업이 스케줄링되었습니다.")
+        
+        # 매일 오후 6시에 포인트 정산
+        sender.add_periodic_task(
+            crontab(hour=18, minute=0),
+            daily_points_settlement_task.s(),
+            name='daily-points-settlement'
+        )
 
 # 백그라운드 작업 태스크들
-def generate_recommendation_cache_task(self):
+@celery_app.task
+def generate_daily_recommendations_task():
+    """매일 자정에 일일 추천 생성 (APScheduler 대체)"""
+    try:
+        from app import generate_daily_recommendations
+        generate_daily_recommendations()
+        print("✅ 일일 추천 생성 완료")
+    except Exception as e:
+        print(f"❌ 일일 추천 생성 실패: {e}")
+
+@celery_app.task
+def generate_recommendation_cache_task():
     """추천 그룹 캐시 생성을 백그라운드에서 처리"""
     try:
         from app import generate_recommendation_cache
         result = generate_recommendation_cache()
         return f"추천 캐시 생성 완료: {result}"
     except Exception as e:
-        self.retry(countdown=60, max_retries=3)  # 1분 후 재시도, 최대 3회
-        raise
+        return f"추천 캐시 생성 실패: {e}"
 
-def cleanup_expired_data_task(self):
-    """만료된 데이터 정리를 백그라운드에서 처리"""
+@celery_app.task
+def cleanup_expired_data_task():
+    """만료된 데이터 정리"""
     try:
         from app import cleanup_expired_data
         result = cleanup_expired_data()
         return f"데이터 정리 완료: {result}"
     except Exception as e:
-        self.retry(countdown=120, max_retries=2)  # 2분 후 재시도, 최대 2회
-        raise
+        return f"데이터 정리 실패: {e}"
 
-def prepare_lunch_recommendations_task(self):
+@celery_app.task
+def prepare_lunch_recommendations_task():
     """점심 추천 알림 준비"""
     try:
         from app import prepare_lunch_recommendations
         result = prepare_lunch_recommendations()
         return f"점심 추천 준비 완료: {result}"
     except Exception as e:
-        self.retry(countdown=300, max_retries=1)  # 5분 후 재시도, 최대 1회
-        raise
+        return f"점심 추천 준비 실패: {e}"
 
-def update_realtime_stats_task(self):
+@celery_app.task
+def update_realtime_stats_task():
     """실시간 통계 업데이트"""
     try:
         from app import update_realtime_stats
         result = update_realtime_stats()
         return f"통계 업데이트 완료: {result}"
     except Exception as e:
-        # 통계 업데이트 실패는 재시도하지 않음 (다음 시간에 다시 시도)
-        raise
+        return f"통계 업데이트 실패: {e}"
+
+@celery_app.task
+def daily_points_settlement_task():
+    """일일 포인트 정산"""
+    try:
+        from app import daily_points_settlement
+        result = daily_points_settlement()
+        return f"포인트 정산 완료: {result}"
+    except Exception as e:
+        return f"포인트 정산 실패: {e}"
 
 # 개발 환경용 즉시 실행 태스크
 def test_celery_connection():
