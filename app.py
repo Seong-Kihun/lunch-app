@@ -1917,8 +1917,8 @@ def _format_notification(notification):
     }
 
 
-@app.route("/notifications/<employee_id>", methods=["GET"])
-def get_notifications(employee_id):
+# @app.route("/notifications/<employee_id>", methods=["GET"])
+# def get_notifications(employee_id):
     """사용자의 알림 목록 조회"""
     try:
         # 읽지 않은 알림 수 조회
@@ -1939,8 +1939,8 @@ def get_notifications(employee_id):
         return jsonify({"message": "알림을 불러오는데 실패했습니다."}), 500
 
 
-@app.route("/notifications/<int:notification_id>/read", methods=["POST"])
-def mark_notification_read(notification_id):
+# @app.route("/notifications/<int:notification_id>/read", methods=["POST"])
+# def mark_notification_read(notification_id):
     """개별 알림 읽음 처리"""
     try:
         notification = Notification.query.get(notification_id)
@@ -1957,8 +1957,8 @@ def mark_notification_read(notification_id):
         return jsonify({"message": "알림 읽음 처리에 실패했습니다."}), 500
 
 
-@app.route("/notifications/<employee_id>/read-all", methods=["POST"])
-def mark_all_notifications_read(employee_id):
+# @app.route("/notifications/<employee_id>/read-all", methods=["POST"])
+# def mark_all_notifications_read(employee_id):
     """모든 알림 읽음 처리"""
     try:
         updated_count = Notification.query.filter_by(user_id=employee_id, is_read=False).update({"is_read": True})
@@ -1971,8 +1971,8 @@ def mark_all_notifications_read(employee_id):
         return jsonify({"message": "알림 읽음 처리에 실패했습니다."}), 500
 
 
-@app.route("/notifications/<int:notification_id>", methods=["DELETE"])
-def delete_notification(notification_id):
+# @app.route("/notifications/<int:notification_id>", methods=["DELETE"])
+# def delete_notification(notification_id):
     """개별 알림 삭제"""
     try:
         notification = Notification.query.get(notification_id)
@@ -1989,8 +1989,8 @@ def delete_notification(notification_id):
         return jsonify({"message": "알림 삭제에 실패했습니다."}), 500
 
 
-@app.route("/notifications/<employee_id>/clear-read", methods=["DELETE"])
-def clear_read_notifications(employee_id):
+# @app.route("/notifications/<employee_id>/clear-read", methods=["DELETE"])
+# def clear_read_notifications(employee_id):
     """읽은 알림 모두 삭제"""
     try:
         deleted_count = Notification.query.filter_by(user_id=employee_id, is_read=True).count()
@@ -2408,8 +2408,8 @@ def award_badge(user_id, badge):
 
 
 # 포인트 시스템 API 엔드포인트들
-@app.route("/api/points/earn", methods=["POST"])
-def earn_points_api():
+# @app.route("/api/points/earn", methods=["POST"])
+# def earn_points_api():
     """포인트 획득 API"""
     try:
         data = request.get_json()
@@ -2442,9 +2442,9 @@ def earn_points_api():
         )
 
 
-@app.route("/api/points/history/<user_id>", methods=["GET"])
-@require_auth
-def get_points_history(user_id):
+# @app.route("/api/points/history/<user_id>", methods=["GET"])
+# @require_auth
+# def get_points_history(user_id):
     """포인트 히스토리 조회 API"""
     try:
         # 인증된 사용자 정보 사용
@@ -2482,9 +2482,9 @@ def get_points_history(user_id):
         )
 
 
-@app.route("/api/points/my-ranking/<user_id>", methods=["GET"])
-@require_auth
-def get_my_points_ranking(user_id):
+# @app.route("/api/points/my-ranking/<user_id>", methods=["GET"])
+# @require_auth
+# def get_my_points_ranking(user_id):
     """내 포인트 순위 조회 API"""
     try:
         # 인증된 사용자 정보 사용
@@ -2748,8 +2748,8 @@ def add_category_activity():
         )
 
 
-@app.route("/notifications", methods=["POST"])
-def create_notification_api():
+# @app.route("/notifications", methods=["POST"])
+# def create_notification_api():
     """알림 생성 API"""
     try:
         data = request.get_json()
@@ -5210,55 +5210,7 @@ def delete_all_randomlunch():
         return jsonify({"error": str(e)}), 500
 
 
-# 🚀 개발용 임시 유저 API (인증 없이 테스트 가능)
-@app.route("/dev/users/<employee_id>", methods=["GET"])
-def get_dev_user(employee_id):
-    """개발용 임시 유저 API - 인증 없이 테스트 가능"""
-    try:
-        # 공통 모의 데이터 사용
-        from utils.mock_data import get_all_mock_users
-        mock_users = get_all_mock_users()
-
-        # 요청된 employee_id에 해당하는 유저 반환
-        if employee_id in mock_users:
-            user_data = mock_users[employee_id]
-            
-            # API 응답 형식으로 변환
-            return jsonify({
-                "employee_id": user_data["employee_id"],
-                "nickname": user_data["nickname"],
-                "foodPreferences": user_data["food_preferences"].split(","),
-                "lunchStyle": user_data["lunchStyle"],
-                "allergies": user_data["allergies"],
-                "preferredTime": user_data["preferred_time"],
-            })
-        else:
-            return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
-
-    except Exception as e:
-        return jsonify({"error": "임시 유저 데이터 조회 중 오류가 발생했습니다."}), 500
-
-
-# 🚀 개발용 임시 유저 목록 API
-@app.route("/dev/users", methods=["GET"])
-def get_dev_users_list():
-    """개발용 임시 유저 목록 API"""
-    try:
-        # 공통 모의 데이터 사용
-        from utils.mock_data import get_all_mock_users
-        mock_users = get_all_mock_users()
-        
-        # API 응답 형식으로 변환
-        users_list = []
-        for user_id, user_data in mock_users.items():
-            users_list.append({
-                "employee_id": user_data["employee_id"],
-                "nickname": user_data["nickname"]
-            })
-        
-        return jsonify(users_list)
-    except Exception as e:
-        return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
+# 개발용 유저 API들은 routes/dev_api.py로 이동됨
 
 def create_recurring_instances(master_schedule):
     """반복일정의 각 인스턴스를 생성하는 함수"""
@@ -5335,111 +5287,11 @@ def create_recurring_instances(master_schedule):
         raise
 
 # 🚀 개발용 일정 조회 API (인증 없이 테스트 가능)
-@app.route("/dev/schedules", methods=["GET"])
-def get_dev_schedules():
-    """개발용 일정 조회 API - 인증 없이 테스트 가능"""
-    try:
-        # 쿼리 파라미터 가져오기
-        start_date_str = request.args.get('start_date')
-        end_date_str = request.args.get('end_date')
-        employee_id = request.args.get('employee_id')
-        
-        if not all([start_date_str, end_date_str, employee_id]):
-            return jsonify({
-                'error': '필수 파라미터가 누락되었습니다',
-                'required': ['start_date', 'end_date', 'employee_id']
-            }), 400
-        
-        # 실제 데이터베이스에서 일정 조회
-        from models.schedule_models import PersonalSchedule, ScheduleAttendee
-        from datetime import datetime
-        
-        # 날짜 범위로 일정 조회
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        
-        schedules = PersonalSchedule.query.filter(
-            PersonalSchedule.employee_id == employee_id,
-            PersonalSchedule.start_date >= start_date,
-            PersonalSchedule.start_date <= end_date
-        ).all()
-        
-        # 일정 데이터를 API 형식으로 변환
-        sample_schedules = []
-        for schedule in schedules:
-            # 참석자 정보 조회
-            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
-            attendees_data = []
-            for attendee in attendees:
-                # 실제 사용자 정보 조회
-                nickname = get_nickname_by_id(attendee.employee_id)
-                attendees_data.append({
-                    "employee_id": attendee.employee_id,
-                    "id": attendee.employee_id,
-                    "name": nickname,
-                    "nickname": nickname
-                })
-            
-            # 반복일정 그룹 인식 로직
-            is_recurring_group = False
-            recurrence_type = None
-            master_schedule_id = None
-            
-            if schedule.is_recurring:
-                # 마스터 일정인 경우
-                is_recurring_group = True
-                recurrence_type = schedule.recurrence_type
-                master_schedule_id = schedule.id
-            elif schedule.master_schedule_id:
-                # 인스턴스 일정인 경우 - 마스터 일정 정보 조회
-                master_schedule = PersonalSchedule.query.get(schedule.master_schedule_id)
-                if master_schedule and master_schedule.is_recurring:
-                    is_recurring_group = True
-                    recurrence_type = master_schedule.recurrence_type
-                    master_schedule_id = schedule.master_schedule_id
-            
-            sample_schedules.append({
-                "id": schedule.id,
-                "title": schedule.title,
-                "start_date": schedule.start_date.isoformat(),
-                "end_date": schedule.start_date.isoformat(),
-                "start_time": schedule.time + ":00" if schedule.time else "12:00:00",
-                "end_time": (schedule.time + ":00" if schedule.time else "12:00:00"),
-                "is_recurring": is_recurring_group,
-                "recurrence_type": recurrence_type,
-                "master_schedule_id": master_schedule_id,
-                "description": schedule.description or "",
-                "location": schedule.location or "",
-                "status": "confirmed",
-                "restaurant": schedule.restaurant or "",
-                "created_by": schedule.created_by or schedule.employee_id,
-                "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
-                "attendees": attendees_data
-            })
-        
-        print(f"🔍 [개발용] 일정 조회 결과: {len(sample_schedules)}개 일정")
-        for schedule in sample_schedules:
-            print(f"  - {schedule['title']} ({schedule['start_date']})")
-        
-        return jsonify({
-            'success': True,
-            'data': sample_schedules,
-            'period': {
-                'start_date': start_date_str,
-                'end_date': end_date_str
-            },
-            'total_dates': len(sample_schedules)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'error': '개발용 일정 조회 중 오류가 발생했습니다',
-            'message': str(e)
-        }), 500
+# 개발용 일정 조회 API는 routes/dev_api.py로 이동됨
 
-# 🚀 개발용 점심 약속 히스토리 API
-@app.route("/dev/users/<employee_id>/lunch-history", methods=["GET"])
-def get_dev_lunch_history(employee_id):
+# 개발용 점심 약속 히스토리 API는 routes/dev_api.py로 이동됨
+# @app.route("/dev/users/<employee_id>/lunch-history", methods=["GET"])
+# def get_dev_lunch_history(employee_id):
     """개발용 점심 약속 히스토리 API - 인증 없이 테스트 가능"""
     try:
         # 가상 점심 약속 히스토리 생성 (실제로는 데이터베이스에서 조회)
@@ -5550,8 +5402,8 @@ def get_nickname_by_id(employee_id):
 
 
 # 🚀 개발용 채팅 API
-@app.route("/dev/chats/<employee_id>", methods=["GET"])
-def get_dev_chats(employee_id):
+# @app.route("/dev/chats/<employee_id>", methods=["GET"])
+# def get_dev_chats(employee_id):
     """개발용 채팅 목록 API - 실제 데이터베이스에서 조회"""
     try:
         from models.app_models import ChatRoom, ChatParticipant
@@ -5600,8 +5452,8 @@ def get_dev_chats(employee_id):
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 채팅방 멤버 API
-@app.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
-def get_dev_chat_room_members(chat_type, chat_id):
+# @app.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+# def get_dev_chat_room_members(chat_type, chat_id):
     """개발용 채팅방 멤버 조회 API - 인증 없이 테스트 가능"""
     try:
         mock_members = [
@@ -5628,8 +5480,8 @@ def get_dev_chat_room_members(chat_type, chat_id):
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 채팅 메시지 API
-@app.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
-def get_dev_chat_messages(chat_type, chat_id):
+# @app.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
+# def get_dev_chat_messages(chat_type, chat_id):
     """개발용 채팅 메시지 조회 API - 인증 없이 테스트 가능"""
     try:
         print(f"개발용 채팅 메시지 조회: {chat_type}/{chat_id}")
@@ -5684,8 +5536,8 @@ def get_dev_chat_messages(chat_type, chat_id):
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 메시지 전송 API
-@app.route("/dev/chat/messages", methods=["POST"])
-def send_dev_chat_message():
+# @app.route("/dev/chat/messages", methods=["POST"])
+# def send_dev_chat_message():
     """개발용 메시지 전송 API - 인증 없이 테스트 가능"""
     try:
         import time
@@ -5727,8 +5579,8 @@ def send_dev_chat_message():
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 채팅방 생성 API
-@app.route("/dev/chat/create", methods=["POST"])
-def create_dev_chat_room():
+# @app.route("/dev/chat/create", methods=["POST"])
+# def create_dev_chat_room():
     """개발용 채팅방 생성 API - 실제 데이터베이스에 저장"""
     try:
         data = request.get_json()
@@ -5778,8 +5630,8 @@ def create_dev_chat_room():
 # 식당 관련 API들은 routes/restaurants.py로 분리됨
 
 # 🚀 개발용 특정 날짜 일정 조회 API
-@app.route("/dev/schedules/date", methods=["GET"])
-def get_dev_schedules_by_date():
+# @app.route("/dev/schedules/date", methods=["GET"])
+# def get_dev_schedules_by_date():
     """개발용 특정 날짜 일정 조회 API - PersonalSchedule 모델 사용"""
     try:
         date = request.args.get('date')
@@ -5826,8 +5678,8 @@ def get_dev_schedules_by_date():
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 파티 API
-@app.route("/parties", methods=["POST"])
-def create_party_main():
+# @app.route("/parties", methods=["POST"])
+# def create_party_main():
     """파티 생성 API - 메인 엔드포인트"""
     try:
         data = request.get_json()
@@ -5928,8 +5780,8 @@ def create_party_main():
         print(f"❌ [create_party_main] 파티 생성 오류: {e}")
         return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/parties", methods=["GET"])
-def get_parties_main():
+# @app.route("/parties", methods=["GET"])
+# def get_parties_main():
     """파티 목록 조회 API - 메인 엔드포인트"""
     try:
         # 파티 Blueprint의 get_all_parties 함수를 호출
@@ -5939,8 +5791,8 @@ def get_parties_main():
         print(f"❌ [get_parties_main] 오류: {e}")
         return jsonify({'error': '파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/parties/<int:party_id>", methods=["GET"])
-def get_party_main(party_id):
+# @app.route("/parties/<int:party_id>", methods=["GET"])
+# def get_party_main(party_id):
     """파티 상세 조회 API - 메인 엔드포인트"""
     try:
         # 파티 Blueprint의 get_party 함수를 호출
@@ -5950,8 +5802,8 @@ def get_party_main(party_id):
         print(f"❌ [get_party_main] 오류: {e}")
         return jsonify({'error': '파티 상세 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/parties/<int:party_id>/join", methods=["POST"])
-def join_party_main(party_id):
+# @app.route("/parties/<int:party_id>/join", methods=["POST"])
+# def join_party_main(party_id):
     """파티 참여 API - 메인 엔드포인트"""
     try:
         # 파티 Blueprint의 join_party 함수를 호출
@@ -5961,8 +5813,8 @@ def join_party_main(party_id):
         print(f"❌ [join_party_main] 오류: {e}")
         return jsonify({'error': '파티 참여 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/parties/<int:party_id>/leave", methods=["POST"])
-def leave_party_main(party_id):
+# @app.route("/parties/<int:party_id>/leave", methods=["POST"])
+# def leave_party_main(party_id):
     """파티 나가기 API - 메인 엔드포인트"""
     try:
         # 파티 Blueprint의 leave_party 함수를 호출
@@ -5972,8 +5824,8 @@ def leave_party_main(party_id):
         print(f"❌ [leave_party_main] 오류: {e}")
         return jsonify({'error': '파티 나가기 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/parties/<int:party_id>", methods=["DELETE"])
-def delete_party_main(party_id):
+# @app.route("/parties/<int:party_id>", methods=["DELETE"])
+# def delete_party_main(party_id):
     """파티 삭제 API - 메인 엔드포인트"""
     try:
         # 파티 Blueprint의 delete_party 함수를 호출
@@ -5983,8 +5835,8 @@ def delete_party_main(party_id):
         print(f"❌ [delete_party_main] 오류: {e}")
         return jsonify({'error': '파티 삭제 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@app.route("/dev/parties", methods=["GET"])
-def get_dev_parties():
+# @app.route("/dev/parties", methods=["GET"])
+# def get_dev_parties():
     """개발용 파티 목록 API - 실제 데이터베이스에서 조회"""
     try:
         from models.app_models import Party, PartyMember
@@ -6039,8 +5891,8 @@ def get_dev_parties():
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 일정 생성 API
-@app.route("/dev/schedules", methods=["POST"])
-def create_dev_schedule():
+# @app.route("/dev/schedules", methods=["POST"])
+# def create_dev_schedule():
     """개발용 일정 생성 API - 실제 데이터베이스에 저장"""
     try:
         data = request.get_json()
@@ -6120,8 +5972,8 @@ def create_dev_schedule():
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 일정 수정 API
-@app.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
-def update_dev_schedule(schedule_id):
+# @app.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
+# def update_dev_schedule(schedule_id):
     """개발용 일정 수정 API - 실제 데이터베이스에서 수정"""
     try:
         data = request.get_json()
@@ -6198,8 +6050,8 @@ def update_dev_schedule(schedule_id):
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 일정 삭제 API
-@app.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
-def delete_dev_schedule(schedule_id):
+# @app.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
+# def delete_dev_schedule(schedule_id):
     """개발용 일정 삭제 API - 실제 데이터베이스에서 삭제"""
     try:
         from models.schedule_models import PersonalSchedule, ScheduleAttendee
@@ -6229,8 +6081,8 @@ def delete_dev_schedule(schedule_id):
         return jsonify({"error": str(e)}), 500
 
 # 🚀 개발용 친구 관계 API
-@app.route("/dev/friends/<employee_id>", methods=["GET"])
-def get_dev_friends(employee_id):
+# @app.route("/dev/friends/<employee_id>", methods=["GET"])
+# def get_dev_friends(employee_id):
     """개발용 임시 친구 관계 API - 인증 없이 테스트 가능"""
     try:
         # 먼저 실제 데이터베이스에서 친구 관계 확인
@@ -6416,8 +6268,8 @@ def get_dev_friends(employee_id):
 
 
 # 🚀 개발용 그룹 매칭 API
-@app.route("/dev/random-lunch/<employee_id>", methods=["GET"])
-def get_dev_random_lunch(employee_id):
+# @app.route("/dev/random-lunch/<employee_id>", methods=["GET"])
+# def get_dev_random_lunch(employee_id):
     """개발용 임시 그룹 매칭 API - 실제와 유사하게 구현"""
     try:
         import random
