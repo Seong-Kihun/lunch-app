@@ -1736,3 +1736,529 @@ def dev_get_notification_types():
         
     except Exception as e:
         return jsonify({"error": f"알림 타입 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+# 추가 개발용 API들 (app.py에서 이동)
+
+@dev_bp.route("/dev/schedules", methods=["GET"])
+def get_dev_schedules():
+    """개발용 일정 조회 API - 인증 없이 테스트 가능"""
+    try:
+        # 쿼리 파라미터 가져오기
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        employee_id = request.args.get('employee_id')
+        
+        if not all([start_date_str, end_date_str, employee_id]):
+            return jsonify({
+                'error': '필수 파라미터가 누락되었습니다',
+                'required': ['start_date', 'end_date', 'employee_id']
+            }), 400
+        
+        # 실제 데이터베이스에서 일정 조회
+        from models.schedule_models import PersonalSchedule, ScheduleAttendee
+        from datetime import datetime
+        
+        # 날짜 범위로 일정 조회
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        
+        schedules = PersonalSchedule.query.filter(
+            PersonalSchedule.employee_id == employee_id,
+            PersonalSchedule.start_date >= start_date,
+            PersonalSchedule.start_date <= end_date
+        ).all()
+        
+        # 일정 데이터를 API 형식으로 변환
+        sample_schedules = []
+        for schedule in schedules:
+            # 참석자 정보 조회
+            attendees = ScheduleAttendee.query.filter_by(schedule_id=schedule.id).all()
+            attendees_data = []
+            for attendee in attendees:
+                # 실제 사용자 정보 조회
+                nickname = get_nickname_by_id(attendee.employee_id)
+                attendees_data.append({
+                    "employee_id": attendee.employee_id,
+                    "id": attendee.employee_id,
+                    "name": nickname,
+                    "nickname": nickname
+                })
+            
+            # 반복일정 그룹 인식 로직
+            is_recurring_group = False
+            recurrence_type = None
+            master_schedule_id = None
+            
+            if schedule.is_recurring:
+                # 마스터 일정인 경우
+                is_recurring_group = True
+                recurrence_type = schedule.recurrence_type
+                master_schedule_id = schedule.id
+            elif schedule.master_schedule_id:
+                # 인스턴스 일정인 경우 - 마스터 일정 정보 조회
+                master_schedule = PersonalSchedule.query.get(schedule.master_schedule_id)
+                if master_schedule and master_schedule.is_recurring:
+                    is_recurring_group = True
+                    recurrence_type = master_schedule.recurrence_type
+                    master_schedule_id = schedule.master_schedule_id
+            
+            sample_schedules.append({
+                "id": schedule.id,
+                "title": schedule.title,
+                "start_date": schedule.start_date.isoformat(),
+                "end_date": schedule.start_date.isoformat(),
+                "start_time": schedule.time + ":00" if schedule.time else "12:00:00",
+                "end_time": (schedule.time + ":00" if schedule.time else "12:00:00"),
+                "is_recurring": is_recurring_group,
+                "recurrence_type": recurrence_type,
+                "master_schedule_id": master_schedule_id,
+                "description": schedule.description or "",
+                "location": schedule.location or "",
+                "status": "confirmed",
+                "restaurant": schedule.restaurant or "",
+                "created_by": schedule.created_by or schedule.employee_id,
+                "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
+                "attendees": attendees_data
+            })
+        
+        print(f"🔍 [개발용] 일정 조회 결과: {len(sample_schedules)}개 일정")
+        for schedule in sample_schedules:
+            print(f"  - {schedule['title']} ({schedule['start_date']})")
+        
+        return jsonify({
+            'success': True,
+            'data': sample_schedules,
+            'period': {
+                'start_date': start_date_str,
+                'end_date': end_date_str
+            },
+            'total_dates': len(sample_schedules)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': '개발용 일정 조회 중 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@dev_bp.route("/dev/chats/<employee_id>", methods=["GET"])
+def get_dev_chats(employee_id):
+    """개발용 채팅 목록 조회 API"""
+    try:
+        # 실제 데이터베이스에서 채팅방 조회
+        chat_rooms = ChatRoom.query.join(ChatParticipant).filter(
+            ChatParticipant.employee_id == employee_id
+        ).all()
+        
+        chat_list = []
+        for room in chat_rooms:
+            # 마지막 메시지 조회
+            last_message = ChatMessage.query.filter_by(chat_room_id=room.id).order_by(desc(ChatMessage.created_at)).first()
+            
+            # 참여자 수 조회
+            participant_count = ChatParticipant.query.filter_by(chat_room_id=room.id).count()
+            
+            chat_list.append({
+                "id": room.id,
+                "name": room.name,
+                "type": room.chat_type,
+                "last_message": {
+                    "content": last_message.content if last_message else "",
+                    "sender": last_message.sender_id if last_message else None,
+                    "timestamp": last_message.created_at.isoformat() if last_message else None
+                },
+                "participant_count": participant_count,
+                "created_at": room.created_at.isoformat()
+            })
+        
+        return jsonify({
+            "success": True,
+            "chats": chat_list
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "개발용 채팅 목록 조회 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_room_members(chat_type, chat_id):
+    """개발용 채팅방 멤버 조회 API"""
+    try:
+        # 채팅방 멤버 조회
+        participants = ChatParticipant.query.filter_by(
+            chat_room_id=chat_id
+        ).all()
+        
+        members = []
+        for participant in participants:
+            # 사용자 정보 조회
+            user = User.query.get(participant.employee_id)
+            if user:
+                members.append({
+                    "employee_id": user.employee_id,
+                    "nickname": user.nickname,
+                    "joined_at": participant.joined_at.isoformat() if participant.joined_at else None
+                })
+        
+        return jsonify({
+            "success": True,
+            "members": members,
+            "total_count": len(members)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "개발용 채팅방 멤버 조회 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_messages(chat_type, chat_id):
+    """개발용 채팅 메시지 조회 API"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        # 메시지 조회 (페이지네이션)
+        messages_query = ChatMessage.query.filter_by(chat_room_id=chat_id).order_by(desc(ChatMessage.created_at))
+        messages = messages_query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        message_list = []
+        for message in messages.items:
+            # 발신자 정보 조회
+            sender = User.query.get(message.sender_id)
+            
+            message_list.append({
+                "id": message.id,
+                "content": message.content,
+                "sender": {
+                    "employee_id": sender.employee_id if sender else None,
+                    "nickname": sender.nickname if sender else "알 수 없음"
+                },
+                "created_at": message.created_at.isoformat(),
+                "message_type": message.message_type or "text"
+            })
+        
+        return jsonify({
+            "success": True,
+            "messages": message_list,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": messages.total,
+                "pages": messages.pages
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "개발용 채팅 메시지 조회 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/chat/messages", methods=["POST"])
+def send_dev_chat_message():
+    """개발용 채팅 메시지 전송 API"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['chat_room_id', 'sender_id', 'content']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"{field}는 필수입니다."}), 400
+        
+        # 메시지 생성
+        message = ChatMessage(
+            chat_room_id=data['chat_room_id'],
+            sender_id=data['sender_id'],
+            content=data['content'],
+            message_type=data.get('message_type', 'text')
+        )
+        
+        db.session.add(message)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message_id": message.id,
+            "message": "메시지가 전송되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "개발용 채팅 메시지 전송 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/chat/create", methods=["POST"])
+def create_dev_chat_room():
+    """개발용 채팅방 생성 API"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['name', 'chat_type', 'creator_id']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"{field}는 필수입니다."}), 400
+        
+        # 채팅방 생성
+        chat_room = ChatRoom(
+            name=data['name'],
+            chat_type=data['chat_type'],
+            created_by=data['creator_id']
+        )
+        
+        db.session.add(chat_room)
+        db.session.flush()
+        
+        # 생성자를 멤버로 추가
+        participant = ChatParticipant(
+            chat_room_id=chat_room.id,
+            employee_id=data['creator_id']
+        )
+        db.session.add(participant)
+        
+        # 추가 멤버가 있다면 추가
+        if data.get('member_ids'):
+            for member_id in data['member_ids']:
+                if member_id != data['creator_id']:
+                    participant = ChatParticipant(
+                        chat_room_id=chat_room.id,
+                        employee_id=member_id
+                    )
+                    db.session.add(participant)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "chat_room_id": chat_room.id,
+            "message": "채팅방이 생성되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "개발용 채팅방 생성 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/schedules/date", methods=["GET"])
+def get_dev_schedules_by_date():
+    """개발용: 특정 날짜의 일정 조회"""
+    try:
+        date_str = request.args.get('date')
+        employee_id = request.args.get('employee_id')
+        
+        if not date_str or not employee_id:
+            return jsonify({
+                'error': '필수 파라미터가 누락되었습니다',
+                'required': ['date', 'employee_id']
+            }), 400
+        
+        from models.schedule_models import PersonalSchedule
+        from datetime import datetime
+        
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        schedules = PersonalSchedule.query.filter(
+            PersonalSchedule.employee_id == employee_id,
+            PersonalSchedule.start_date == target_date
+        ).all()
+        
+        schedule_list = []
+        for schedule in schedules:
+            schedule_list.append({
+                "id": schedule.id,
+                "title": schedule.title,
+                "start_date": schedule.start_date.isoformat(),
+                "time": schedule.time,
+                "description": schedule.description or "",
+                "location": schedule.location or "",
+                "restaurant": schedule.restaurant or ""
+            })
+        
+        return jsonify({
+            'success': True,
+            'date': date_str,
+            'schedules': schedule_list,
+            'count': len(schedule_list)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': '개발용 일정 조회 중 오류가 발생했습니다',
+            'message': str(e)
+        }), 500
+
+@dev_bp.route("/dev/schedules", methods=["POST"])
+def create_dev_schedule():
+    """개발용: 일정 생성 API"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['employee_id', 'title', 'start_date']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"{field}는 필수입니다."}), 400
+        
+        from models.schedule_models import PersonalSchedule
+        from datetime import datetime
+        
+        # 일정 생성
+        schedule = PersonalSchedule(
+            employee_id=data['employee_id'],
+            title=data['title'],
+            start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+            time=data.get('time'),
+            description=data.get('description'),
+            location=data.get('location'),
+            restaurant=data.get('restaurant'),
+            is_recurring=data.get('is_recurring', False),
+            recurrence_type=data.get('recurrence_type'),
+            recurrence_interval=data.get('recurrence_interval'),
+            recurrence_end_date=datetime.strptime(data['recurrence_end_date'], '%Y-%m-%d').date() if data.get('recurrence_end_date') else None,
+            created_by=data['employee_id']
+        )
+        
+        db.session.add(schedule)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "schedule_id": schedule.id,
+            "message": "일정이 생성되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "개발용 일정 생성 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
+def update_dev_schedule(schedule_id):
+    """개발용: 일정 수정 API"""
+    try:
+        data = request.get_json()
+        
+        from models.schedule_models import PersonalSchedule
+        from datetime import datetime
+        
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
+        
+        # 일정 수정
+        if 'title' in data:
+            schedule.title = data['title']
+        if 'start_date' in data:
+            schedule.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+        if 'time' in data:
+            schedule.time = data['time']
+        if 'description' in data:
+            schedule.description = data['description']
+        if 'location' in data:
+            schedule.location = data['location']
+        if 'restaurant' in data:
+            schedule.restaurant = data['restaurant']
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "일정이 수정되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "개발용 일정 수정 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
+def delete_dev_schedule(schedule_id):
+    """개발용: 일정 삭제 API"""
+    try:
+        from models.schedule_models import PersonalSchedule
+        
+        schedule = PersonalSchedule.query.get(schedule_id)
+        if not schedule:
+            return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
+        
+        db.session.delete(schedule)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "일정이 삭제되었습니다."
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "개발용 일정 삭제 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+@dev_bp.route("/dev/random-lunch/<employee_id>", methods=["GET"])
+def get_dev_random_lunch(employee_id):
+    """개발용: 랜덤 런치 추천 API"""
+    try:
+        from utils.mock_data import get_all_mock_users
+        mock_users = get_all_mock_users()
+        
+        # 가상 유저 데이터에서 추천 생성
+        user_data = mock_users.get(employee_id)
+        if not user_data:
+            return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
+        
+        # 간단한 추천 로직
+        recommendations = []
+        for user_id, user in mock_users.items():
+            if user_id != employee_id:
+                # 호환성 점수 계산 (간단한 버전)
+                compatibility = random.randint(60, 95)
+                
+                recommendations.append({
+                    "employee_id": user["employee_id"],
+                    "nickname": user["nickname"],
+                    "compatibility_score": compatibility,
+                    "reason": f"{user['food_preferences']} 선호도가 비슷합니다"
+                })
+        
+        # 점수순으로 정렬
+        recommendations.sort(key=lambda x: x['compatibility_score'], reverse=True)
+        
+        return jsonify({
+            "success": True,
+            "recommendations": recommendations[:5],  # 상위 5명만
+            "user_preferences": {
+                "food_preferences": user_data["food_preferences"],
+                "lunch_style": user_data["lunchStyle"]
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "error": "개발용 랜덤 런치 추천 중 오류가 발생했습니다",
+            "message": str(e)
+        }), 500
+
+# 헬퍼 함수들
+def get_nickname_by_id(employee_id):
+    """직원 ID로 닉네임 조회"""
+    try:
+        from utils.mock_data import get_all_mock_users
+        mock_users = get_all_mock_users()
+        user_data = mock_users.get(employee_id)
+        return user_data["nickname"] if user_data else "알 수 없음"
+    except:
+        return "알 수 없음"
