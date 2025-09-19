@@ -1,9 +1,13 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from extensions import db
-from models.app_models import Restaurant, Review, RestaurantRequest, RestaurantFavorite, RestaurantVisit
+from models.app_models import (
+    Restaurant, Review, RestaurantRequest, RestaurantFavorite, RestaurantVisit,
+    UserFavorite, UserActivity, CategoryActivity, Badge, UserBadge
+)
 from datetime import datetime, timedelta
 import random
+import os
 from auth.utils import require_auth
 
 def get_seoul_today():
@@ -217,96 +221,8 @@ def get_restaurants():
         }
     )
 
-@restaurants_bp.route("/restaurants/<int:restaurant_id>", methods=["GET"])
-def get_restaurant_detail(restaurant_id):
-    restaurant = Restaurant.query.get_or_404(restaurant_id)
-    
-    # 평균 평점과 리뷰 수 계산
-    avg_rating = 0
-    review_count = 0
-    if restaurant.reviews:
-        ratings = [review.rating for review in restaurant.reviews if review.rating]
-        if ratings:
-            avg_rating = sum(ratings) / len(ratings)
-            review_count = len(ratings)
-    
-    return jsonify({
-        "id": restaurant.id,
-        "name": restaurant.name,
-        "category": restaurant.category,
-        "address": restaurant.address,
-        "latitude": restaurant.latitude,
-        "longitude": restaurant.longitude,
-        "avg_rating": round(avg_rating, 1),
-        "review_count": review_count,
-        "created_at": restaurant.created_at.isoformat() if restaurant.created_at else None
-    })
 
-@restaurants_bp.route("/restaurants/<int:restaurant_id>/reviews", methods=["GET"])
-def get_restaurant_reviews(restaurant_id):
-    page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 20, type=int), 100)
-    
-    reviews_query = Review.query.filter_by(restaurant_id=restaurant_id).order_by(desc(Review.created_at))
-    total = reviews_query.count()
-    reviews = reviews_query.offset((page - 1) * per_page).limit(per_page).all()
-    
-    reviews_data = []
-    for review in reviews:
-        review_info = {
-            "id": review.id,
-            "rating": review.rating,
-            "comment": review.comment,
-            "user_id": review.user_id,
-            "created_at": review.created_at.isoformat() if review.created_at else None,
-            "likes": review.likes
-        }
-        reviews_data.append(review_info)
-    
-    return jsonify({
-        "reviews": reviews_data,
-        "pagination": {
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "pages": (total + per_page - 1) // per_page
-        }
-    })
 
-@restaurants_bp.route("/restaurants/<int:restaurant_id>/reviews", methods=["POST"])
-def add_restaurant_review(restaurant_id):
-    data = request.get_json()
-    
-    # 필수 필드 검증
-    if not data.get("rating") or not data.get("comment"):
-        return jsonify({"error": "평점과 코멘트는 필수입니다."}), 400
-    
-    # 평점 범위 검증
-    rating = data["rating"]
-    if not (1 <= rating <= 5):
-        return jsonify({"error": "평점은 1-5 사이여야 합니다."}), 400
-    
-    try:
-        new_review = Review(
-            restaurant_id=restaurant_id,
-            user_id=data.get("user_id"),
-            rating=rating,
-            comment=data["comment"],
-            likes=0
-        )
-        
-        db.session.add(new_review)
-        db.session.commit()
-        
-        return jsonify({
-            "message": "리뷰가 등록되었습니다!",
-            "review_id": new_review.id
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"리뷰 등록 오류: {e}")
-        return jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/search", methods=["GET"])
 def search_restaurants():
@@ -744,3 +660,297 @@ def get_restaurant_recommendations(user_id):
                 })
     
     return jsonify({"recommendations": recommendations[:10]})
+
+# 추가 식당 관련 API들 (app.py에서 이전)
+
+@restaurants_bp.route("/restaurants/frequent/<employee_id>", methods=["GET"])
+def get_frequent_restaurants(employee_id):
+    """사용자가 자주 가는 식당 목록을 반환"""
+    try:
+        # 사용자가 최근에 방문한 식당들을 조회
+        # 현재는 테스트용 임시 데이터 반환 (실제 구현 시 사용자 방문 기록 기반으로 수정)
+        frequent_restaurants = [
+            {
+                "id": 1,
+                "name": "맛있는 한식당",
+                "category": "한식",
+                "address": "서울시 강남구",
+                "visit_count": 5,
+                "last_visit": "2024-01-15"
+            },
+            {
+                "id": 2,
+                "name": "피자마루",
+                "category": "양식",
+                "address": "서울시 서초구",
+                "visit_count": 3,
+                "last_visit": "2024-01-10"
+            }
+        ]
+        
+        return jsonify({
+            "frequent_restaurants": frequent_restaurants,
+            "message": "자주 가는 식당 목록을 조회했습니다."
+        })
+        
+    except Exception as e:
+        print(f"자주 가는 식당 조회 오류: {e}")
+        return jsonify({"error": "자주 가는 식당을 조회할 수 없습니다."}), 500
+
+@restaurants_bp.route("/restaurants/nearby", methods=["GET"])
+def get_nearby_restaurants():
+    """현재 위치 기반 근처 식당 추천"""
+    latitude = request.args.get("latitude", type=float)
+    longitude = request.args.get("longitude", type=float)
+    radius = request.args.get("radius", 1000, type=int)  # 기본 1km
+    
+    if not latitude or not longitude:
+        return jsonify({"error": "위도와 경도가 필요합니다."}), 400
+    
+    try:
+        # 간단한 거리 계산 (실제로는 Haversine 공식 사용)
+        restaurants = Restaurant.query.all()
+        nearby_restaurants = []
+        
+        for restaurant in restaurants:
+            if restaurant.latitude and restaurant.longitude:
+                # 간단한 거리 계산 (실제로는 더 정확한 계산 필요)
+                distance = abs(restaurant.latitude - latitude) + abs(restaurant.longitude - longitude)
+                if distance * 111000 <= radius:  # 대략적인 km 변환
+                    nearby_restaurants.append({
+                        "id": restaurant.id,
+                        "name": restaurant.name,
+                        "category": restaurant.category,
+                        "address": restaurant.address,
+                        "latitude": restaurant.latitude,
+                        "longitude": restaurant.longitude,
+                        "distance": round(distance * 111000)  # 대략적인 미터 단위
+                    })
+        
+        # 거리순으로 정렬
+        nearby_restaurants.sort(key=lambda x: x["distance"])
+        
+        return jsonify({
+            "nearby_restaurants": nearby_restaurants[:20],  # 최대 20개
+            "total_found": len(nearby_restaurants)
+        })
+        
+    except Exception as e:
+        print(f"근처 식당 조회 오류: {e}")
+        return jsonify({"error": "근처 식당을 조회할 수 없습니다."}), 500
+
+@restaurants_bp.route("/restaurants/recommend", methods=["GET"])
+def recommend_restaurants():
+    """사용자 기반 식당 추천"""
+    employee_id = request.args.get("employee_id")
+    if not employee_id:
+        return jsonify({"message": "사용자 ID가 필요합니다."}), 400
+    
+    try:
+        # 간단한 추천 로직 (실제로는 더 정교한 알고리즘 필요)
+        recommended_restaurants = Restaurant.query.limit(10).all()
+        
+        recommendations = []
+        for restaurant in recommended_restaurants:
+            recommendations.append({
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "category": restaurant.category,
+                "address": restaurant.address,
+                "reason": "인기 식당"
+            })
+        
+        return jsonify({
+            "recommendations": recommendations,
+            "message": "추천 식당 목록을 조회했습니다."
+        })
+        
+    except Exception as e:
+        print(f"식당 추천 오류: {e}")
+        return jsonify({"error": "식당 추천을 할 수 없습니다."}), 500
+
+# 리뷰 키워드 추출 함수
+def extract_keywords_from_reviews(reviews):
+    """리뷰에서 키워드 추출 (간단한 구현)"""
+    if not reviews:
+        return []
+    
+    # 간단한 키워드 추출 로직
+    common_keywords = ["맛있어요", "깔끔해요", "친절해요", "가성비 좋아요", "분위기 좋아요"]
+    return common_keywords[:3]  # 최대 3개
+
+# 배지 관련 함수들
+def check_badge_earned(user_id, badge_type):
+    """배지 획득 조건 확인"""
+    # 실제 구현에서는 배지 조건을 확인
+    return None
+
+def award_badge(user_id, badge):
+    """배지 수여"""
+    # 실제 구현에서는 배지를 수여
+    pass
+
+def earn_points(user_id, activity_type, points, description):
+    """포인트 획득"""
+    # 실제 구현에서는 포인트를 지급
+    pass
+
+def _award_category_badge(user_id, category):
+    """카테고리별 배지 수여"""
+    category_lower = category.lower()
+
+    if "양식" in category_lower or "western" in category_lower:
+        badge = check_badge_earned(user_id, "western_master")
+        if badge:
+            award_badge(user_id, badge)
+    elif "카페" in category_lower or "cafe" in category_lower:
+        badge = check_badge_earned(user_id, "cafe_hunter")
+        if badge:
+            award_badge(user_id, badge)
+    elif "한식" in category_lower or "korean" in category_lower:
+        badge = check_badge_earned(user_id, "korean_expert")
+        if badge:
+            award_badge(user_id, badge)
+    elif "중식" in category_lower or "chinese" in category_lower:
+        badge = check_badge_earned(user_id, "chinese_explorer")
+        if badge:
+            award_badge(user_id, badge)
+    elif "일식" in category_lower or "japanese" in category_lower:
+        badge = check_badge_earned(user_id, "japanese_lover")
+        if badge:
+            award_badge(user_id, badge)
+
+def _process_review_rewards(user_id, has_photo, restaurant):
+    """리뷰 작성 보상 처리"""
+    if not user_id:
+        return
+
+    # 리뷰 작성 포인트
+    earn_points(user_id, "review_written", 20, "리뷰 작성")
+
+    # 사진이 있으면 추가 포인트
+    if has_photo:
+        earn_points(user_id, "review_with_photo", 15, "사진과 함께 리뷰 작성")
+
+    # 첫 리뷰 배지 확인
+    badge = check_badge_earned(user_id, "first_review")
+    if badge:
+        award_badge(user_id, badge)
+
+    # 카테고리별 배지 확인
+    if restaurant:
+        _award_category_badge(user_id, restaurant.category)
+
+# 기존 get_restaurant_detail 함수 개선
+@restaurants_bp.route("/restaurants/<int:restaurant_id>", methods=["GET"])
+def get_restaurant_detail(restaurant_id):
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not restaurant:
+        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
+    
+    # 평균 평점과 리뷰 수 계산
+    avg_rating = 0
+    review_count = 0
+    if restaurant.reviews:
+        ratings = [review.rating for review in restaurant.reviews if review.rating]
+        if ratings:
+            avg_rating = sum(ratings) / len(ratings)
+            review_count = len(ratings)
+    
+    keywords = extract_keywords_from_reviews(restaurant.reviews)
+    
+    return jsonify({
+        "id": restaurant.id,
+        "name": restaurant.name,
+        "category": restaurant.category,
+        "address": restaurant.address,
+        "latitude": restaurant.latitude,
+        "longitude": restaurant.longitude,
+        "avg_rating": round(avg_rating, 1),
+        "review_count": review_count,
+        "keywords": keywords,
+        "created_at": restaurant.created_at.isoformat() if restaurant.created_at else None
+    })
+
+# 기존 add_restaurant_review 함수 개선
+@restaurants_bp.route("/restaurants/<int:restaurant_id>/reviews", methods=["POST"])
+def add_restaurant_review(restaurant_id):
+    data = request.get_json()
+    
+    # 필수 필드 검증
+    if not data.get("rating") or not data.get("comment"):
+        return jsonify({"error": "평점과 코멘트는 필수입니다."}), 400
+    
+    # 평점 범위 검증
+    rating = data["rating"]
+    if not (1 <= rating <= 5):
+        return jsonify({"error": "평점은 1-5 사이여야 합니다."}), 400
+    
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not restaurant:
+        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
+    
+    try:
+        new_review = Review(
+            restaurant_id=restaurant_id,
+            user_id=data.get("user_id"),
+            nickname=data.get("nickname"),
+            rating=rating,
+            comment=data["comment"],
+            photo_url=data.get("photo_url"),
+            tags=data.get("tags"),
+            likes=0
+        )
+        
+        db.session.add(new_review)
+        db.session.commit()
+        
+        # 보상 처리
+        user_id = data.get("user_id")
+        has_photo = bool(data.get("photo_url"))
+        _process_review_rewards(user_id, has_photo, restaurant)
+        
+        return jsonify({
+            "message": "리뷰가 등록되었습니다!",
+            "review_id": new_review.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"리뷰 등록 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 기존 get_restaurant_reviews 함수 개선
+@restaurants_bp.route("/restaurants/<int:restaurant_id>/reviews", methods=["GET"])
+def get_restaurant_reviews(restaurant_id):
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
+    
+    reviews_query = Review.query.filter_by(restaurant_id=restaurant_id).order_by(desc(Review.created_at))
+    total = reviews_query.count()
+    reviews = reviews_query.offset((page - 1) * per_page).limit(per_page).all()
+    
+    reviews_data = []
+    for review in reviews:
+        review_info = {
+            "id": review.id,
+            "nickname": getattr(review, 'nickname', '익명'),
+            "rating": review.rating,
+            "comment": review.comment,
+            "user_id": review.user_id,
+            "created_at": review.created_at.isoformat() if review.created_at else None,
+            "likes": getattr(review, 'likes', 0),
+            "photo_url": getattr(review, 'photo_url', None),
+            "tags": getattr(review, 'tags', None)
+        }
+        reviews_data.append(review_info)
+    
+    return jsonify({
+        "reviews": reviews_data,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "pages": (total + per_page - 1) // per_page
+        }
+    })
