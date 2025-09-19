@@ -1493,129 +1493,19 @@ def create_initial_data():
             db.session.commit()
             print("DEBUG: users 테이블 재생성 완료")
         
-        # 가상 유저 데이터 생성 (20명) - 온보딩 정보에 맞춤
-        users_data = [
-            {
-                "employee_id": "1",
-                "nickname": "김철수",
-                "food_preferences": "한식,중식",
-                "lunch_style": "맛집 탐방,새로운 메뉴 도전",
-            },
-            {
-                "employee_id": "2",
-                "nickname": "이영희",
-                "food_preferences": "양식,일식",
-                "lunch_style": "건강한 식사,분위기 좋은 곳",
-            },
-            {
-                "employee_id": "3",
-                "nickname": "박민수",
-                "food_preferences": "한식,분식",
-                "lunch_style": "가성비 좋은 곳,빠른 식사",
-            },
-            {
-                "employee_id": "4",
-                "nickname": "최지은",
-                "food_preferences": "양식,한식",
-                "lunch_style": "다양한 음식,새로운 메뉴 도전",
-            },
-            {
-                "employee_id": "5",
-                "nickname": "정현우",
-                "food_preferences": "한식,중식",
-                "lunch_style": "전통 음식,친구들과 함께",
-            },
-            {
-                "employee_id": "6",
-                "nickname": "한소영",
-                "food_preferences": "일식,양식",
-                "lunch_style": "맛집 탐방,분위기 좋은 곳",
-            },
-            {
-                "employee_id": "7",
-                "nickname": "윤준호",
-                "food_preferences": "한식,양식",
-                "lunch_style": "건강한 식사,빠른 식사",
-            },
-            {
-                "employee_id": "8",
-                "nickname": "송미라",
-                "food_preferences": "중식,일식",
-                "lunch_style": "맛있는 음식,친구들과 함께",
-            },
-            {
-                "employee_id": "9",
-                "nickname": "강동현",
-                "food_preferences": "한식,분식",
-                "lunch_style": "다양한 음식,가성비 좋은 곳",
-            },
-            {
-                "employee_id": "10",
-                "nickname": "임서연",
-                "food_preferences": "양식,한식",
-                "lunch_style": "전통 음식,분위기 좋은 곳",
-            },
-            {
-                "employee_id": "11",
-                "nickname": "오태호",
-                "food_preferences": "일식,중식",
-                "lunch_style": "맛집 탐방,새로운 메뉴 도전",
-            },
-            {
-                "employee_id": "12",
-                "nickname": "신유진",
-                "food_preferences": "한식,양식",
-                "lunch_style": "건강한 식사,혼자 조용히",
-            },
-            {
-                "employee_id": "13",
-                "nickname": "조성민",
-                "food_preferences": "분식,일식",
-                "lunch_style": "맛있는 음식,빠른 식사",
-            },
-            {
-                "employee_id": "14",
-                "nickname": "백하은",
-                "food_preferences": "양식,한식",
-                "lunch_style": "다양한 음식,친구들과 함께",
-            },
-            {
-                "employee_id": "15",
-                "nickname": "남준석",
-                "food_preferences": "한식,중식",
-                "lunch_style": "전통 음식,가성비 좋은 곳",
-            },
-            {
-                "employee_id": "16",
-                "nickname": "류지현",
-                "food_preferences": "일식,양식",
-                "lunch_style": "맛집 탐방,분위기 좋은 곳",
-            },
-            {
-                "employee_id": "17",
-                "nickname": "차준호",
-                "food_preferences": "한식,분식",
-                "lunch_style": "건강한 식사,빠른 식사",
-            },
-            {
-                "employee_id": "18",
-                "nickname": "구미영",
-                "food_preferences": "양식,일식",
-                "lunch_style": "맛있는 음식,친구들과 함께",
-            },
-            {
-                "employee_id": "19",
-                "nickname": "홍성훈",
-                "food_preferences": "한식,일식",
-                "lunch_style": "다양한 음식,새로운 메뉴 도전",
-            },
-            {
-                "employee_id": "20",
-                "nickname": "전소연",
-                "food_preferences": "중식,양식",
-                "lunch_style": "전통 음식,분위기 좋은 곳",
-            },
-        ]
+        # 공통 모의 데이터 사용
+        from utils.mock_data import get_all_mock_users
+        mock_users = get_all_mock_users()
+        
+        # 데이터베이스 형식으로 변환
+        users_data = []
+        for user_id, user_data in mock_users.items():
+            users_data.append({
+                "employee_id": user_data["employee_id"],
+                "nickname": user_data["nickname"],
+                "food_preferences": user_data["food_preferences"],
+                "lunch_style": ",".join(user_data["lunchStyle"]),
+            })
 
         # User 생성
         for user_data in users_data:
@@ -5358,180 +5248,27 @@ def delete_all_randomlunch():
 def get_dev_user(employee_id):
     """개발용 임시 유저 API - 인증 없이 테스트 가능"""
     try:
-        # 임시 유저 데이터 생성 (20명) - 온보딩 정보에 맞춤
-        temp_users = {
-            "1": {
-                "employee_id": "1",
-                "nickname": "김철수",
-                "foodPreferences": ["한식", "중식"],
-                "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "2": {
-                "employee_id": "2",
-                "nickname": "이영희",
-                "foodPreferences": ["양식", "일식"],
-                "lunchStyle": ["건강한 식사", "분위기 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "11:45",
-            },
-            "3": {
-                "employee_id": "3",
-                "nickname": "박민수",
-                "foodPreferences": ["한식", "분식"],
-                "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                "allergies": ["없음"],
-                "preferredTime": "12:15",
-            },
-            "4": {
-                "employee_id": "4",
-                "nickname": "최지은",
-                "foodPreferences": ["양식", "한식"],
-                "lunchStyle": ["다양한 음식", "새로운 메뉴 도전"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "5": {
-                "employee_id": "5",
-                "nickname": "정현우",
-                "foodPreferences": ["한식", "중식"],
-                "lunchStyle": ["전통 음식", "친구들과 함께"],
-                "allergies": ["없음"],
-                "preferredTime": "11:30",
-            },
-            "6": {
-                "employee_id": "6",
-                "nickname": "한소영",
-                "foodPreferences": ["일식", "양식"],
-                "lunchStyle": ["맛집 탐방", "분위기 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "7": {
-                "employee_id": "7",
-                "nickname": "윤준호",
-                "foodPreferences": ["한식", "양식"],
-                "lunchStyle": ["건강한 식사", "빠른 식사"],
-                "allergies": ["없음"],
-                "preferredTime": "11:45",
-            },
-            "8": {
-                "employee_id": "8",
-                "nickname": "송미라",
-                "foodPreferences": ["중식", "일식"],
-                "lunchStyle": ["맛있는 음식", "친구들과 함께"],
-                "allergies": ["없음"],
-                "preferredTime": "12:15",
-            },
-            "9": {
-                "employee_id": "9",
-                "nickname": "강동현",
-                "foodPreferences": ["한식", "분식"],
-                "lunchStyle": ["다양한 음식", "가성비 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "10": {
-                "employee_id": "10",
-                "nickname": "임서연",
-                "foodPreferences": ["양식", "한식"],
-                "lunchStyle": ["전통 음식", "분위기 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "11:30",
-            },
-            "11": {
-                "employee_id": "11",
-                "nickname": "오태호",
-                "foodPreferences": ["일식", "중식"],
-                "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "12": {
-                "employee_id": "12",
-                "nickname": "신유진",
-                "foodPreferences": ["한식", "양식"],
-                "lunchStyle": ["건강한 식사", "혼자 조용히"],
-                "allergies": ["없음"],
-                "preferredTime": "11:45",
-            },
-            "13": {
-                "employee_id": "13",
-                "nickname": "조성민",
-                "foodPreferences": ["분식", "일식"],
-                "lunchStyle": ["맛있는 음식", "빠른 식사"],
-                "allergies": ["없음"],
-                "preferredTime": "12:15",
-            },
-            "14": {
-                "employee_id": "14",
-                "nickname": "백하은",
-                "foodPreferences": ["양식", "한식"],
-                "lunchStyle": ["다양한 음식", "친구들과 함께"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "15": {
-                "employee_id": "15",
-                "nickname": "남준석",
-                "foodPreferences": ["한식", "중식"],
-                "lunchStyle": ["전통 음식", "가성비 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "11:30",
-            },
-            "16": {
-                "employee_id": "16",
-                "nickname": "류지현",
-                "foodPreferences": ["일식", "양식"],
-                "lunchStyle": ["맛집 탐방", "분위기 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "17": {
-                "employee_id": "17",
-                "nickname": "차준호",
-                "foodPreferences": ["한식", "분식"],
-                "lunchStyle": ["건강한 식사", "빠른 식사"],
-                "allergies": ["없음"],
-                "preferredTime": "11:45",
-            },
-            "18": {
-                "employee_id": "18",
-                "nickname": "구미영",
-                "foodPreferences": ["양식", "일식"],
-                "lunchStyle": ["맛있는 음식", "친구들과 함께"],
-                "allergies": ["없음"],
-                "preferredTime": "12:15",
-            },
-            "19": {
-                "employee_id": "19",
-                "nickname": "홍성훈",
-                "foodPreferences": ["한식", "일식"],
-                "lunchStyle": ["다양한 음식", "새로운 메뉴 도전"],
-                "allergies": ["없음"],
-                "preferredTime": "12:00",
-            },
-            "20": {
-                "employee_id": "20",
-                "nickname": "전소연",
-                "foodPreferences": ["중식", "양식"],
-                "lunchStyle": ["전통 음식", "분위기 좋은 곳"],
-                "allergies": ["없음"],
-                "preferredTime": "11:30",
-            },
-        }
-
+        # 공통 모의 데이터 사용
+        from utils.mock_data import get_all_mock_users
+        mock_users = get_all_mock_users()
+        
         # 요청된 employee_id에 해당하는 유저 반환
-        if employee_id in temp_users:
-            user_data = temp_users[employee_id]
-
-            return jsonify(user_data)
+        if employee_id in mock_users:
+            user_data = mock_users[employee_id]
+            
+            # API 응답 형식으로 변환
+            return jsonify({
+                "employee_id": user_data["employee_id"],
+                "nickname": user_data["nickname"],
+                "foodPreferences": user_data["food_preferences"].split(","),
+                "lunchStyle": user_data["lunchStyle"],
+                "allergies": user_data["allergies"],
+                "preferredTime": user_data["preferred_time"],
+            })
         else:
             return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
 
     except Exception as e:
-
         return jsonify({"error": "임시 유저 데이터 조회 중 오류가 발생했습니다."}), 500
 
 
@@ -5540,32 +5277,20 @@ def get_dev_user(employee_id):
 def get_dev_users_list():
     """개발용 임시 유저 목록 API"""
     try:
-        # 실제 닉네임으로 유저 목록 반환
-        users_list = [
-            {"employee_id": "1", "nickname": "김철수"},
-            {"employee_id": "2", "nickname": "이영희"},
-            {"employee_id": "3", "nickname": "박민수"},
-            {"employee_id": "4", "nickname": "최지은"},
-            {"employee_id": "5", "nickname": "정현우"},
-            {"employee_id": "6", "nickname": "한소영"},
-            {"employee_id": "7", "nickname": "윤준호"},
-            {"employee_id": "8", "nickname": "송미라"},
-            {"employee_id": "9", "nickname": "강동현"},
-            {"employee_id": "10", "nickname": "임서연"},
-            {"employee_id": "11", "nickname": "오태호"},
-            {"employee_id": "12", "nickname": "신유진"},
-            {"employee_id": "13", "nickname": "조성민"},
-            {"employee_id": "14", "nickname": "백하은"},
-            {"employee_id": "15", "nickname": "남준석"},
-            {"employee_id": "16", "nickname": "류지현"},
-            {"employee_id": "17", "nickname": "차준호"},
-            {"employee_id": "18", "nickname": "구미영"},
-            {"employee_id": "19", "nickname": "홍성훈"},
-            {"employee_id": "20", "nickname": "전소연"},
-        ]
+        # 공통 모의 데이터 사용
+        from utils.mock_data import get_all_mock_users
+        mock_users = get_all_mock_users()
+        
+        # API 응답 형식으로 변환
+        users_list = []
+        for user_id, user_data in mock_users.items():
+            users_list.append({
+                "employee_id": user_data["employee_id"],
+                "nickname": user_data["nickname"]
+            })
+        
         return jsonify(users_list)
     except Exception as e:
-
         return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
 def create_recurring_instances(master_schedule):
@@ -7005,150 +6730,21 @@ def get_dev_random_lunch(employee_id):
 
 def get_dev_user_data(employee_id):
     """가상 유저 데이터 반환 헬퍼 함수"""
-    temp_users = {
-        "1": {
-            "nickname": "김철수",
-            "foodPreferences": ["한식", "중식"],
-            "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "2": {
-            "nickname": "이영희",
-            "foodPreferences": ["양식", "일식"],
-            "lunchStyle": ["건강한 식사", "분위기 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "11:45",
-        },
-        "3": {
-            "nickname": "박민수",
-            "foodPreferences": ["한식", "분식"],
-            "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-            "allergies": ["없음"],
-            "preferredTime": "12:15",
-        },
-        "4": {
-            "nickname": "최지은",
-            "foodPreferences": ["양식", "한식"],
-            "lunchStyle": ["다양한 음식", "새로운 메뉴 도전"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "5": {
-            "nickname": "정현우",
-            "foodPreferences": ["한식", "중식"],
-            "lunchStyle": ["전통 음식", "친구들과 함께"],
-            "allergies": ["없음"],
-            "preferredTime": "11:30",
-        },
-        "6": {
-            "nickname": "한소영",
-            "foodPreferences": ["일식", "양식"],
-            "lunchStyle": ["맛집 탐방", "분위기 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "7": {
-            "nickname": "윤준호",
-            "foodPreferences": ["한식", "양식"],
-            "lunchStyle": ["건강한 식사", "빠른 식사"],
-            "allergies": ["없음"],
-            "preferredTime": "12:15",
-        },
-        "8": {
-            "nickname": "송미라",
-            "foodPreferences": ["중식", "일식"],
-            "lunchStyle": ["맛있는 음식", "친구들과 함께"],
-            "allergies": ["없음"],
-            "preferredTime": "11:45",
-        },
-        "9": {
-            "nickname": "강동현",
-            "foodPreferences": ["한식", "분식"],
-            "lunchStyle": ["다양한 음식", "가성비 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "10": {
-            "nickname": "임서연",
-            "foodPreferences": ["양식", "한식"],
-            "lunchStyle": ["전통 음식", "분위기 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "12:15",
-        },
-        "11": {
-            "nickname": "오태호",
-            "foodPreferences": ["일식", "중식"],
-            "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "12": {
-            "nickname": "신유진",
-            "foodPreferences": ["한식", "양식"],
-            "lunchStyle": ["건강한 식사", "혼자 조용히"],
-            "allergies": ["없음"],
-            "preferredTime": "11:45",
-        },
-        "13": {
-            "nickname": "조성민",
-            "foodPreferences": ["분식", "일식"],
-            "lunchStyle": ["맛있는 음식", "빠른 식사"],
-            "allergies": ["없음"],
-            "preferredTime": "12:15",
-        },
-        "14": {
-            "nickname": "백하은",
-            "foodPreferences": ["양식", "한식"],
-            "lunchStyle": ["다양한 음식", "친구들과 함께"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "15": {
-            "nickname": "남준석",
-            "foodPreferences": ["한식", "중식"],
-            "lunchStyle": ["전통 음식", "가성비 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "11:30",
-        },
-        "16": {
-            "nickname": "류지현",
-            "foodPreferences": ["일식", "양식"],
-            "lunchStyle": ["맛집 탐방", "분위기 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "12:15",
-        },
-        "17": {
-            "nickname": "차준호",
-            "foodPreferences": ["한식", "분식"],
-            "lunchStyle": ["건강한 식사", "빠른 식사"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "18": {
-            "nickname": "구미영",
-            "foodPreferences": ["양식", "일식"],
-            "lunchStyle": ["맛있는 음식", "친구들과 함께"],
-            "allergies": ["없음"],
-            "preferredTime": "11:45",
-        },
-        "19": {
-            "nickname": "홍성훈",
-            "foodPreferences": ["한식", "일식"],
-            "lunchStyle": ["다양한 음식", "새로운 메뉴 도전"],
-            "allergies": ["없음"],
-            "preferredTime": "12:00",
-        },
-        "20": {
-            "nickname": "전소연",
-            "foodPreferences": ["중식", "양식"],
-            "lunchStyle": ["전통 음식", "분위기 좋은 곳"],
-            "allergies": ["없음"],
-            "preferredTime": "11:30",
-        },
-    }
-
-    return temp_users.get(employee_id)
+    # 공통 모의 데이터 사용
+    from utils.mock_data import get_all_mock_users
+    mock_users = get_all_mock_users()
+    
+    if employee_id in mock_users:
+        user_data = mock_users[employee_id]
+        return {
+            "nickname": user_data["nickname"],
+            "foodPreferences": user_data["food_preferences"].split(","),
+            "lunchStyle": user_data["lunchStyle"],
+            "allergies": user_data["allergies"],
+            "preferredTime": user_data["preferred_time"],
+        }
+    
+    return None
 
 
 # 데이터베이스 자동 초기화 함수
