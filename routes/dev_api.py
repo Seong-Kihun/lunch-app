@@ -26,214 +26,68 @@ def bypass_security_for_dev():
     # 개발용 API는 보안 검사를 건너뛰도록 설정
     pass
 
-    @dev_bp.route('/users/<employee_id>', methods=['GET'])
-    def get_dev_user(employee_id):
-        """개발용 임시 유저 API - 인증 없이 테스트 가능"""
-        try:
-            # 임시 유저 데이터 생성 (20명) - 온보딩 정보에 맞춤
-            temp_users = {
-                "1": {
-                    "employee_id": "1",
-                    "nickname": "김철수",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "2": {
-                    "employee_id": "2",
-                    "nickname": "이영희",
-                    "foodPreferences": ["양식", "일식"],
-                    "lunchStyle": ["건강한 식사", "분위기 좋은 곳"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:45",
-                },
-                "3": {
-                    "employee_id": "3",
-                    "nickname": "박민수",
-                    "foodPreferences": ["한식", "분식"],
-                    "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:15",
-                },
-                "4": {
-                    "employee_id": "4",
-                    "nickname": "최지은",
-                    "foodPreferences": ["양식", "한식"],
-                    "lunchStyle": ["다양한 음식", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "5": {
-                    "employee_id": "5",
-                    "nickname": "정현우",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["전통 음식", "친구들과 함께"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:30",
-                },
-                "6": {
-                    "employee_id": "6",
-                    "nickname": "한소영",
-                    "foodPreferences": ["일식", "양식"],
-                    "lunchStyle": ["건강한 식사", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:30",
-                },
-                "7": {
-                    "employee_id": "7",
-                    "nickname": "윤준호",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:45",
-                },
-                "8": {
-                    "employee_id": "8",
-                    "nickname": "송미라",
-                    "foodPreferences": ["양식", "일식"],
-                    "lunchStyle": ["분위기 좋은 곳", "다양한 음식"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:15",
-                },
-                "9": {
-                    "employee_id": "9",
-                    "nickname": "강동현",
-                    "foodPreferences": ["한식", "분식"],
-                    "lunchStyle": ["전통 음식", "친구들과 함께"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "10": {
-                    "employee_id": "10",
-                    "nickname": "임서연",
-                    "foodPreferences": ["일식", "양식"],
-                    "lunchStyle": ["건강한 식사", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:30",
-                },
-                "11": {
-                    "employee_id": "11",
-                    "nickname": "오태호",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:30",
-                },
-                "12": {
-                    "employee_id": "12",
-                    "nickname": "신유진",
-                    "foodPreferences": ["양식", "일식"],
-                    "lunchStyle": ["분위기 좋은 곳", "다양한 음식"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "13": {
-                    "employee_id": "13",
-                    "nickname": "조성민",
-                    "foodPreferences": ["한식", "분식"],
-                    "lunchStyle": ["전통 음식", "친구들과 함께"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:45",
-                },
-                "14": {
-                    "employee_id": "14",
-                    "nickname": "백하은",
-                    "foodPreferences": ["일식", "양식"],
-                    "lunchStyle": ["건강한 식사", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:15",
-                },
-                "15": {
-                    "employee_id": "15",
-                    "nickname": "남준석",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "16": {
-                    "employee_id": "16",
-                    "nickname": "류지현",
-                    "foodPreferences": ["양식", "일식"],
-                    "lunchStyle": ["분위기 좋은 곳", "다양한 음식"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:30",
-                },
-                "17": {
-                    "employee_id": "17",
-                    "nickname": "차준호",
-                    "foodPreferences": ["한식", "분식"],
-                    "lunchStyle": ["전통 음식", "친구들과 함께"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:30",
-                },
-                "18": {
-                    "employee_id": "18",
-                    "nickname": "구미영",
-                    "foodPreferences": ["일식", "양식"],
-                    "lunchStyle": ["건강한 식사", "새로운 메뉴 도전"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:00",
-                },
-                "19": {
-                    "employee_id": "19",
-                    "nickname": "홍성훈",
-                    "foodPreferences": ["한식", "중식"],
-                    "lunchStyle": ["가성비 좋은 곳", "빠른 식사"],
-                    "allergies": ["없음"],
-                    "preferredTime": "11:45",
-                },
-                "20": {
-                    "employee_id": "20",
-                    "nickname": "전소연",
-                    "foodPreferences": ["양식", "일식"],
-                    "lunchStyle": ["분위기 좋은 곳", "다양한 음식"],
-                    "allergies": ["없음"],
-                    "preferredTime": "12:15",
-                },
+@dev_bp.route('/users/<employee_id>', methods=['GET'])
+def get_dev_user(employee_id):
+    """개발용 임시 유저 API - 인증 없이 테스트 가능"""
+    try:
+        # 간단한 임시 유저 데이터
+        temp_users = {
+            "1": {
+                "employee_id": "1",
+                "nickname": "김철수",
+                "foodPreferences": ["한식", "중식"],
+                "lunchStyle": ["맛집 탐방", "새로운 메뉴 도전"],
+                "allergies": ["없음"],
+                "preferredTime": "12:00",
+            },
+            "2": {
+                "employee_id": "2",
+                "nickname": "이영희",
+                "foodPreferences": ["양식", "일식"],
+                "lunchStyle": ["건강한 식사", "분위기 좋은 곳"],
+                "allergies": ["없음"],
+                "preferredTime": "11:45",
             }
+        }
+        
+        if employee_id in temp_users:
+            return jsonify(temp_users[employee_id])
+        else:
+            return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
 
-            # 요청된 employee_id에 해당하는 유저 반환
-            if employee_id in temp_users:
-                user_data = temp_users[employee_id]
-                return jsonify(user_data)
-            else:
-                return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
+    except Exception as e:
+        return jsonify({"error": "임시 유저 데이터 조회 중 오류가 발생했습니다."}), 500
 
-        except Exception as e:
-            return jsonify({"error": "임시 유저 데이터 조회 중 오류가 발생했습니다."}), 500
-
-    @dev_bp.route('/users', methods=['GET'])
-    def get_dev_users_list():
-        """개발용 임시 유저 목록 API"""
-        try:
-            # 실제 닉네임으로 유저 목록 반환
-            users_list = [
-                {"employee_id": "1", "nickname": "김철수"},
-                {"employee_id": "2", "nickname": "이영희"},
-                {"employee_id": "3", "nickname": "박민수"},
-                {"employee_id": "4", "nickname": "최지은"},
-                {"employee_id": "5", "nickname": "정현우"},
-                {"employee_id": "6", "nickname": "한소영"},
-                {"employee_id": "7", "nickname": "윤준호"},
-                {"employee_id": "8", "nickname": "송미라"},
-                {"employee_id": "9", "nickname": "강동현"},
-                {"employee_id": "10", "nickname": "임서연"},
-                {"employee_id": "11", "nickname": "오태호"},
-                {"employee_id": "12", "nickname": "신유진"},
-                {"employee_id": "13", "nickname": "조성민"},
-                {"employee_id": "14", "nickname": "백하은"},
-                {"employee_id": "15", "nickname": "남준석"},
-                {"employee_id": "16", "nickname": "류지현"},
-                {"employee_id": "17", "nickname": "차준호"},
-                {"employee_id": "18", "nickname": "구미영"},
-                {"employee_id": "19", "nickname": "홍성훈"},
-                {"employee_id": "20", "nickname": "전소연"},
-            ]
-            return jsonify(users_list)
-        except Exception as e:
-            return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
+@dev_bp.route('/users', methods=['GET'])
+def get_dev_users_list():
+    """개발용 임시 유저 목록 API"""
+    try:
+        # 실제 닉네임으로 유저 목록 반환
+        users_list = [
+            {"employee_id": "1", "nickname": "김철수"},
+            {"employee_id": "2", "nickname": "이영희"},
+            {"employee_id": "3", "nickname": "박민수"},
+            {"employee_id": "4", "nickname": "최지은"},
+            {"employee_id": "5", "nickname": "정현우"},
+            {"employee_id": "6", "nickname": "한소영"},
+            {"employee_id": "7", "nickname": "윤준호"},
+            {"employee_id": "8", "nickname": "송미라"},
+            {"employee_id": "9", "nickname": "강동현"},
+            {"employee_id": "10", "nickname": "임서연"},
+            {"employee_id": "11", "nickname": "오태호"},
+            {"employee_id": "12", "nickname": "신유진"},
+            {"employee_id": "13", "nickname": "조성민"},
+            {"employee_id": "14", "nickname": "백하은"},
+            {"employee_id": "15", "nickname": "남준석"},
+            {"employee_id": "16", "nickname": "류지현"},
+            {"employee_id": "17", "nickname": "차준호"},
+            {"employee_id": "18", "nickname": "구미영"},
+            {"employee_id": "19", "nickname": "홍성훈"},
+            {"employee_id": "20", "nickname": "전소연"},
+        ]
+        return jsonify(users_list)
+    except Exception as e:
+        return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
     @dev_bp.route('/schedules', methods=['GET', 'POST'])
     def dev_schedules():
