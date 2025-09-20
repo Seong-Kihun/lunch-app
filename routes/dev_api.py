@@ -2025,30 +2025,6 @@ def create_dev_schedule():
             }), 500
 
 
-@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
-def delete_dev_schedule(schedule_id):
-        """개발용: 일정 삭제 API"""
-        try:
-            from models.schedule_models import PersonalSchedule
-            
-            schedule = PersonalSchedule.query.get(schedule_id)
-            if not schedule:
-                return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
-            
-            db.session.delete(schedule)
-            db.session.commit()
-            
-            return jsonify({
-                "success": True,
-                "message": "일정이 삭제되었습니다."
-            })
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                "error": "개발용 일정 삭제 중 오류가 발생했습니다",
-                "message": str(e)
-            }), 500
 
 @dev_bp.route("/dev/random-lunch/<employee_id>", methods=["GET"])
 def get_dev_random_lunch(employee_id):
