@@ -1729,24 +1729,24 @@ def get_dev_chats(employee_id):
     try:
         # 실제 데이터베이스에서 채팅방 조회
         chat_rooms = ChatRoom.query.join(ChatParticipant).filter(
-            ChatParticipant.employee_id == employee_id
+            ChatParticipant.user_id == employee_id
         ).all()
         
         chat_list = []
         for room in chat_rooms:
             # 마지막 메시지 조회
-            last_message = ChatMessage.query.filter_by(chat_room_id=room.id).order_by(desc(ChatMessage.created_at)).first()
+            last_message = ChatMessage.query.filter_by(chat_id=room.id).order_by(desc(ChatMessage.created_at)).first()
             
             # 참여자 수 조회
-            participant_count = ChatParticipant.query.filter_by(chat_room_id=room.id).count()
+            participant_count = ChatParticipant.query.filter_by(room_id=room.id).count()
             
             chat_list.append({
                 "id": room.id,
                 "name": room.name,
                 "type": room.chat_type,
                 "last_message": {
-                    "content": last_message.content if last_message else "",
-                    "sender": last_message.sender_id if last_message else None,
+                    "content": last_message.message if last_message else "",
+                    "sender": last_message.sender_employee_id if last_message else None,
                     "timestamp": last_message.created_at.isoformat() if last_message else None
                 },
                 "participant_count": participant_count,
