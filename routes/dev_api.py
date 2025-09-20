@@ -1802,7 +1802,7 @@ def get_dev_chat_messages(chat_type, chat_id):
             per_page = min(request.args.get('per_page', 50, type=int), 100)
             
             # 메시지 조회 (페이지네이션)
-            messages_query = ChatMessage.query.filter_by(chat_room_id=chat_id).order_by(desc(ChatMessage.created_at))
+            messages_query = ChatMessage.query.filter_by(chat_type=chat_type, chat_id=chat_id).order_by(desc(ChatMessage.created_at))
             messages = messages_query.paginate(
                 page=page, per_page=per_page, error_out=False
             )
@@ -1810,14 +1810,14 @@ def get_dev_chat_messages(chat_type, chat_id):
             message_list = []
             for message in messages.items:
                 # 발신자 정보 조회
-                sender = User.query.get(message.sender_id)
+                sender = User.query.filter_by(employee_id=message.sender_employee_id).first()
                 
                 message_list.append({
                     "id": message.id,
-                    "content": message.content,
+                    "content": message.message,
                     "sender": {
-                        "employee_id": sender.employee_id if sender else None,
-                        "nickname": sender.nickname if sender else "알 수 없음"
+                        "employee_id": message.sender_employee_id,
+                        "nickname": message.sender_nickname if message.sender_nickname else (sender.nickname if sender else "알 수 없음")
                     },
                     "created_at": message.created_at.isoformat(),
                     "message_type": message.message_type or "text"
