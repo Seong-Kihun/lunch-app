@@ -4,7 +4,7 @@
 """
 
 from flask import Blueprint, request, jsonify
-from app import safe_jsonify
+from utils.safe_jsonify import safe_jsonify
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from extensions import db
