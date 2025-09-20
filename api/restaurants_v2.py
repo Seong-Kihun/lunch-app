@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from extensions import db
 from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
+from auth.middleware import check_authentication
 import logging
 import math
 
@@ -16,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 # Blueprint 생성
 restaurants_v2_bp = Blueprint('restaurants_v2', __name__, url_prefix='/api/v2/restaurants')
+
+# 인증 미들웨어 적용
+@restaurants_v2_bp.before_request
+def _restaurants_v2_guard():
+    return check_authentication()
 
 @restaurants_v2_bp.route('/', methods=['GET'])
 def get_restaurants():
