@@ -8,9 +8,15 @@ from sqlalchemy import desc, or_, and_
 from datetime import datetime, timedelta
 from extensions import db
 from models.app_models import Party, PartyMember
+from auth.utils import require_auth
 
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
+
+# 인증 미들웨어 적용
+@parties_bp.before_request
+def _parties_guard():
+    return require_auth()()
 
 # 모델 import
 from flask import current_app
