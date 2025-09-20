@@ -19,14 +19,7 @@ chats_bp = Blueprint('chats', __name__)
 # 인증 미들웨어 적용
 @chats_bp.before_request
 def _chats_guard():
-    # 개발 환경에서는 인증 우회
-    import os
-    if (os.getenv('FLASK_ENV') == 'development' or 
-        os.getenv('DEV_MODE') == 'true' or 
-        os.getenv('DEV_MODE') == '1' or
-        'DEV' in os.getenv('FLASK_ENV', '') or
-        os.getenv('FLASK_DEBUG') == '1'):
-        return None
+    # 프로덕션 환경에서는 모든 API에 인증 적용
     return require_auth()()
 
 def get_seoul_today():
