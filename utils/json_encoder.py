@@ -6,7 +6,6 @@ datetime, date, time 객체를 자동으로 직렬화합니다.
 import json
 from datetime import datetime, date, time
 from decimal import Decimal
-from sqlalchemy.orm import Base
 from sqlalchemy.inspection import inspect
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -14,7 +13,7 @@ class CustomJSONEncoder(json.JSONEncoder):
     
     def default(self, obj):
         # SQLAlchemy 모델 객체 처리
-        if isinstance(obj, Base):
+        if hasattr(obj, '__tablename__'):  # SQLAlchemy 모델인지 확인
             return self._sqlalchemy_to_dict(obj)
         
         # datetime 객체들 처리
