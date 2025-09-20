@@ -3500,10 +3500,10 @@ def get_my_chats(employee_id):
             'DEV' in os.getenv('FLASK_ENV', '')):
         # 프로덕션 환경에서는 인증 필요
         try:
-            from auth.utils import require_auth
-            authenticated_user = require_auth()()
-            if not authenticated_user:
-                return jsonify({"error": "Authorization header missing"}), 401
+            from auth.middleware import check_authentication
+            auth_result = check_authentication()
+            if auth_result:
+                return auth_result
         except:
             return jsonify({"error": "Authorization header missing"}), 401
     else:
