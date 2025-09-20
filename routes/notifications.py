@@ -7,11 +7,17 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models.app_models import ChatNotification, NotificationSettings, User
 from utils.notification_manager import notification_manager
+from auth.utils import require_auth
 from datetime import datetime, timedelta
 import json
 
 # Blueprint 생성
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
+
+# 인증 미들웨어 적용
+@notifications_bp.before_request
+def _notifications_guard():
+    return require_auth()()
 
 @notifications_bp.route('/send', methods=['POST'])
 def send_notification():
