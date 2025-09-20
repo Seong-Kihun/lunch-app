@@ -9,7 +9,7 @@ from flask import Blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # 하위 Blueprint들을 import하고 등록
-from . import auth, parties, dangolpots, schedules, users
+from . import auth, parties, dangolpots, schedules
 
 def init_app(app):
     """Flask 앱에 API Blueprint를 등록"""
@@ -18,7 +18,7 @@ def init_app(app):
     api_bp.register_blueprint(parties.parties_bp)
     api_bp.register_blueprint(dangolpots.dangolpots_bp)
     api_bp.register_blueprint(schedules.schedules_bp)
-    api_bp.register_blueprint(users.users_bp)
+    # users Blueprint는 app.py에서 직접 등록 (중복 방지)
     
     # 메인 API Blueprint를 앱에 등록
     app.register_blueprint(api_bp)
