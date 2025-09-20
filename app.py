@@ -55,6 +55,10 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # 커스텀 JSON 인코더 설정
 app.json_encoder = CustomJSONEncoder
 
+# JSON 직렬화 설정
+app.config['JSON_SORT_KEYS'] = False
+app.config['JSON_AS_ASCII'] = False
+
 # 데이터베이스 URI 설정 - Render 환경 고려
 database_url = os.getenv("DATABASE_URL")
 if database_url:
