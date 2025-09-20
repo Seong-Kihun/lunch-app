@@ -257,7 +257,7 @@ class SecurityAuditor:
             self.security_events.append(event)
             
             # 로그 파일에 기록
-            logger.warning(f"🚨 보안 이벤트: {event_type} - {details}")
+            logger.warning(f"[ALERT] 보안 이벤트: {event_type} - {details}")
             
             # 데이터베이스에 저장 (선택사항)
             self._save_security_event_to_db(event)
@@ -416,7 +416,7 @@ if __name__ == '__main__':
     for test_input in test_inputs:
         threat = security_auditor._check_threat_patterns(test_input, 'test')
         if threat:
-            print(f"🚨 위협 감지: {threat['type']} - {test_input}")
+            print(f"[ALERT] 위협 감지: {threat['type']} - {test_input}")
         else:
             print(f"✅ 안전: {test_input}")
     
