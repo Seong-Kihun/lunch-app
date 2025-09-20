@@ -1728,7 +1728,7 @@ def get_dev_chats(employee_id):
     """개발용 채팅 목록 조회 API"""
     try:
         # 실제 데이터베이스에서 채팅방 조회
-        chat_rooms = ChatRoom.query.join(ChatParticipant).filter(
+        chat_rooms = ChatRoom.query.join(ChatParticipant, ChatRoom.id == ChatParticipant.chat_id).filter(
             ChatParticipant.employee_id == employee_id
         ).all()
         
@@ -1738,7 +1738,7 @@ def get_dev_chats(employee_id):
             last_message = ChatMessage.query.filter_by(chat_id=room.id).order_by(desc(ChatMessage.created_at)).first()
             
             # 참여자 수 조회
-            participant_count = ChatParticipant.query.filter_by(room_id=room.id).count()
+            participant_count = ChatParticipant.query.filter_by(chat_id=room.id).count()
             
             chat_list.append({
                 "id": room.id,
