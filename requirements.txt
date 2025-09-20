@@ -28,7 +28,7 @@ psutil==5.9.6
 
 # 이미지 처리
 Pillow>=10.0.0
-python-magic>=0.4.27
+python-magic-bin>=0.4.14
 
 # 백그라운드 작업 (Python 3.13 호환)
 celery>=5.3.4,<6.0.0
