@@ -1743,7 +1743,7 @@ def get_dev_chats(employee_id):
             chat_list.append({
                 "id": room.id,
                 "name": room.name,
-                "type": room.chat_type,
+                "type": room.type,
                 "last_message": {
                     "content": last_message.message if last_message else "",
                     "sender": last_message.sender_employee_id if last_message else None,
