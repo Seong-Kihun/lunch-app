@@ -7,11 +7,17 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from typing import Dict, Any
 import logging
+from auth.utils import require_auth
 
 logger = logging.getLogger(__name__)
 
 # Blueprint 생성
 proposals_bp = Blueprint('proposals', __name__, url_prefix='/api/proposals')
+
+# 인증 미들웨어 적용
+@proposals_bp.before_request
+def _proposals_guard():
+    return require_auth()()
 
 @proposals_bp.route('/mine', methods=['GET'])
 def get_my_proposals():
