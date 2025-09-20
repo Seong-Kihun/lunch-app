@@ -58,6 +58,19 @@ app.json_encoder = CustomJSONEncoder
 # JSON 직렬화 설정
 app.config['JSON_SORT_KEYS'] = False
 app.config['JSON_AS_ASCII'] = False
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+
+# JSON 직렬화 오류 처리
+@app.errorhandler(500)
+def handle_json_error(e):
+    """JSON 직렬화 오류 처리"""
+    if 'JSON' in str(e) or 'serializable' in str(e).lower():
+        return jsonify({
+            'error': '데이터 직렬화 오류',
+            'message': '서버에서 데이터를 처리하는 중 오류가 발생했습니다.',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+    return jsonify({'error': '서버 내부 오류'}), 500
 
 # 데이터베이스 URI 설정 - Render 환경 고려
 database_url = os.getenv("DATABASE_URL")
