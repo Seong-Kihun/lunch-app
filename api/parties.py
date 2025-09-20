@@ -10,6 +10,7 @@ from extensions import db
 from models.app_models import Party, PartyMember
 from auth.utils import require_auth
 from utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result, optimize_json_response
+from app import safe_jsonify
 
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
@@ -207,9 +208,8 @@ def get_all_parties():
             'parties': parties_data
         }
         
-        # 최적화된 JSON 응답 반환
-        optimized_response = optimize_json_response(response_data)
-        return jsonify(optimized_response)
+        # 안전한 JSON 응답 반환
+        return safe_jsonify(response_data)
         
     except Exception as e:
         print(f"Error in get_all_parties: {e}")
