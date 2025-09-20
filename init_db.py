@@ -7,7 +7,7 @@
 from app import app, db
 
 # 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
-from models.app_models import User
+from auth.models import User
 
 # 그 다음에 다른 모델들을 import
 from models.schedule_models import PersonalSchedule, ScheduleException
