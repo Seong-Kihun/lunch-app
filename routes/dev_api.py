@@ -1744,11 +1744,9 @@ def get_dev_chats(employee_id):
                 "id": room.id,
                 "name": room.name,
                 "type": room.type,
-                "last_message": {
-                    "content": last_message.message if last_message else "",
-                    "sender": last_message.sender_employee_id if last_message else None,
-                    "timestamp": last_message.created_at.isoformat() if last_message else None
-                },
+                "last_message_content": last_message.message if last_message else "",
+                "last_message_sender": last_message.sender_employee_id if last_message else None,
+                "last_message_timestamp": last_message.created_at.isoformat() if last_message else None,
                 "participant_count": participant_count,
                 "created_at": room.created_at.isoformat()
             })
