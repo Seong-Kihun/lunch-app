@@ -10,7 +10,7 @@ from extensions import db
 from models.app_models import Party, PartyMember
 from auth.utils import require_auth
 from utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result, optimize_json_response
-from app import safe_jsonify
+from utils.safe_jsonify import safe_jsonify
 
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
