@@ -21,7 +21,10 @@ chats_bp = Blueprint('chats', __name__)
 def _chats_guard():
     # 개발 환경에서는 인증 우회
     import os
-    if os.getenv('FLASK_ENV') == 'development' or os.getenv('DEV_MODE') == 'true':
+    if (os.getenv('FLASK_ENV') == 'development' or 
+        os.getenv('DEV_MODE') == 'true' or 
+        os.getenv('DEV_MODE') == '1' or
+        'DEV' in os.getenv('FLASK_ENV', '')):
         return None
     return require_auth()()
 
