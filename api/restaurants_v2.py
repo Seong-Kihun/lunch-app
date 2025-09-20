@@ -4,6 +4,7 @@
 """
 
 from flask import Blueprint, request, jsonify
+from app import safe_jsonify
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from extensions import db
@@ -109,7 +110,7 @@ def get_restaurants():
             
             restaurants_data.append(restaurant_dict)
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '식당 목록 조회 성공',
             'data': {
@@ -131,7 +132,7 @@ def get_restaurants():
         
     except Exception as e:
         logger.error(f"Error in get_restaurants: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '식당 목록 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -147,7 +148,7 @@ def get_restaurant(restaurant_id):
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
         
         if not restaurant.is_active:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': '비활성화된 식당입니다.'
             }), 404
@@ -164,7 +165,7 @@ def get_restaurant(restaurant_id):
             restaurant_data['avg_rating'] = 0.0
             restaurant_data['total_reviews'] = 0
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '식당 상세 정보 조회 성공',
             'data': restaurant_data
@@ -172,7 +173,7 @@ def get_restaurant(restaurant_id):
         
     except Exception as e:
         logger.error(f"Error in get_restaurant: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '식당 상세 정보 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -194,7 +195,7 @@ def get_categories():
         category_list = [cat[0] for cat in categories if cat[0]]
         category_list.sort()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '카테고리 목록 조회 성공',
             'data': {
@@ -205,7 +206,7 @@ def get_categories():
         
     except Exception as e:
         logger.error(f"Error in get_categories: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '카테고리 목록 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -231,7 +232,7 @@ def get_nearby_restaurants():
         category = request.args.get('category', '').strip()
         
         if not lat or not lng:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': '위도와 경도가 필요합니다.'
             }), 400
@@ -260,7 +261,7 @@ def get_nearby_restaurants():
         # 결과 제한
         results = nearby_restaurants[:limit]
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': f'반경 {radius}km 내 식당 조회 성공',
             'data': {
@@ -273,7 +274,7 @@ def get_nearby_restaurants():
         
     except Exception as e:
         logger.error(f"Error in get_nearby_restaurants: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '근처 식당 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -289,7 +290,7 @@ def add_restaurant_visit(restaurant_id):
         data = request.get_json()
         
         if not data:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': '요청 데이터가 필요합니다.'
             }), 400
@@ -298,7 +299,7 @@ def add_restaurant_visit(restaurant_id):
         required_fields = ['user_id', 'visit_date']
         for field in required_fields:
             if field not in data:
-                return jsonify({
+                return safe_jsonify({
                     'success': False,
                     'error': f'{field} 필드가 필요합니다.'
                 }), 400
@@ -319,21 +320,21 @@ def add_restaurant_visit(restaurant_id):
         db.session.add(visit)
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '방문 기록이 추가되었습니다.',
             'data': visit.to_dict()
         })
         
     except ValueError as e:
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD, HH:MM)'
         }), 400
     except Exception as e:
         logger.error(f"Error in add_restaurant_visit: {e}")
         db.session.rollback()
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '방문 기록 추가 중 오류가 발생했습니다.',
             'details': str(e)
@@ -349,7 +350,7 @@ def add_restaurant_review(restaurant_id):
         data = request.get_json()
         
         if not data:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': '요청 데이터가 필요합니다.'
             }), 400
@@ -358,14 +359,14 @@ def add_restaurant_review(restaurant_id):
         required_fields = ['user_id', 'rating']
         for field in required_fields:
             if field not in data:
-                return jsonify({
+                return safe_jsonify({
                     'success': False,
                     'error': f'{field} 필드가 필요합니다.'
                 }), 400
         
         # 평점 범위 검증
         if not (1 <= data['rating'] <= 5):
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': '평점은 1-5 사이의 값이어야 합니다.'
             }), 400
@@ -393,21 +394,21 @@ def add_restaurant_review(restaurant_id):
         
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '리뷰가 추가되었습니다.',
             'data': review.to_dict()
         })
         
     except ValueError as e:
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'
         }), 400
     except Exception as e:
         logger.error(f"Error in add_restaurant_review: {e}")
         db.session.rollback()
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '리뷰 추가 중 오류가 발생했습니다.',
             'details': str(e)
@@ -437,7 +438,7 @@ def get_restaurant_stats():
         categories = [{'name': cat[0], 'count': cat[1]} for cat in category_stats]
         categories.sort(key=lambda x: x['count'], reverse=True)
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': '식당 통계 조회 성공',
             'data': {
@@ -450,7 +451,7 @@ def get_restaurant_stats():
         
     except Exception as e:
         logger.error(f"Error in get_restaurant_stats: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '통계 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -466,7 +467,7 @@ def toggle_restaurant_recommend(restaurant_id):
         data = request.get_json()
         
         if not data or 'user_id' not in data:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
@@ -502,7 +503,7 @@ def toggle_restaurant_recommend(restaurant_id):
         # 추천 수 계산
         recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': message,
             'action': action,
@@ -512,7 +513,7 @@ def toggle_restaurant_recommend(restaurant_id):
     except Exception as e:
         logger.error(f"Error in toggle_restaurant_recommend: {e}")
         db.session.rollback()
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '오찬추천 처리 중 오류가 발생했습니다.',
             'details': str(e)
@@ -528,7 +529,7 @@ def toggle_restaurant_save(restaurant_id):
         data = request.get_json()
         
         if not data or 'user_id' not in data:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
@@ -564,7 +565,7 @@ def toggle_restaurant_save(restaurant_id):
         # 저장 수 계산
         saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'message': message,
             'action': action,
@@ -574,7 +575,7 @@ def toggle_restaurant_save(restaurant_id):
     except Exception as e:
         logger.error(f"Error in toggle_restaurant_save: {e}")
         db.session.rollback()
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '저장 처리 중 오류가 발생했습니다.',
             'details': str(e)
@@ -590,7 +591,7 @@ def get_restaurant_recommend_status(restaurant_id):
         user_id = request.args.get('user_id')
         
         if not user_id:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
@@ -607,7 +608,7 @@ def get_restaurant_recommend_status(restaurant_id):
         # 전체 추천 수
         recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'data': {
                 'is_recommended': is_recommended,
@@ -617,7 +618,7 @@ def get_restaurant_recommend_status(restaurant_id):
         
     except Exception as e:
         logger.error(f"Error in get_restaurant_recommend_status: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '추천 상태 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -633,7 +634,7 @@ def get_restaurant_save_status(restaurant_id):
         user_id = request.args.get('user_id')
         
         if not user_id:
-            return jsonify({
+            return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
@@ -650,7 +651,7 @@ def get_restaurant_save_status(restaurant_id):
         # 전체 저장 수
         saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'data': {
                 'is_saved': is_saved,
@@ -660,7 +661,7 @@ def get_restaurant_save_status(restaurant_id):
         
     except Exception as e:
         logger.error(f"Error in get_restaurant_save_status: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '저장 상태 조회 중 오류가 발생했습니다.',
             'details': str(e)
@@ -681,7 +682,7 @@ def get_restaurant_reviews(restaurant_id):
             RestaurantReviewV2.created_at.desc()
         ).all()
         
-        return jsonify({
+        return safe_jsonify({
             'success': True,
             'data': {
                 'restaurant_id': restaurant_id,
@@ -693,7 +694,7 @@ def get_restaurant_reviews(restaurant_id):
         
     except Exception as e:
         logger.error(f"Error in get_restaurant_reviews: {e}")
-        return jsonify({
+        return safe_jsonify({
             'success': False,
             'error': '리뷰 조회 중 오류가 발생했습니다.',
             'details': str(e)
