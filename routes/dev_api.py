@@ -104,8 +104,8 @@ def get_dev_users_list():
     except Exception as e:
         return jsonify({"error": "임시 유저 목록 조회 중 오류가 발생했습니다."}), 500
 
-    @dev_bp.route('/schedules', methods=['GET', 'POST'])
-    def dev_schedules():
+@dev_bp.route('/schedules', methods=['GET', 'POST'])
+def dev_schedules():
         """개발용 일정 조회/생성 API - 인증 없이 테스트 가능"""
         if request.method == 'GET':
             # GET: 일정 조회
@@ -305,8 +305,8 @@ def get_dev_users_list():
                     'message': str(e)
                 }), 500
 
-    @dev_bp.route('/schedules/<int:schedule_id>', methods=['PUT'])
-    def update_dev_schedule(schedule_id):
+@dev_bp.route('/schedules/<int:schedule_id>', methods=['PUT'])
+def update_dev_schedule(schedule_id):
         """개발용 일정 수정 API - 인증 없이 테스트 가능"""
         try:
             from models.schedule_models import PersonalSchedule
@@ -383,8 +383,8 @@ def get_dev_users_list():
                 'message': str(e)
             }), 500
 
-    @dev_bp.route('/schedules/<int:schedule_id>', methods=['DELETE'])
-    def delete_dev_schedule(schedule_id):
+@dev_bp.route('/schedules/<int:schedule_id>', methods=['DELETE'])
+def delete_dev_schedule(schedule_id):
         """개발용 일정 삭제 API - 인증 없이 테스트 가능"""
         try:
             from models.schedule_models import PersonalSchedule
@@ -417,8 +417,8 @@ def get_dev_users_list():
                     'message': str(e)
                 }), 500
 
-    @dev_bp.route('/users/<employee_id>/lunch-history', methods=['GET'])
-    def get_dev_lunch_history(employee_id):
+@dev_bp.route('/users/<employee_id>/lunch-history', methods=['GET'])
+def get_dev_lunch_history(employee_id):
         """개발용 점심 약속 히스토리 API - 인증 없이 테스트 가능"""
         try:
             # 가상 점심 약속 히스토리 생성 (실제로는 데이터베이스에서 조회)
@@ -461,8 +461,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/parties', methods=['GET'])
-    def get_dev_parties():
+@dev_bp.route('/parties', methods=['GET'])
+def get_dev_parties():
         """개발용 파티 목록 API - 인증 없이 테스트 가능"""
         try:
             # 개발용 샘플 파티 데이터
@@ -515,8 +515,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/restaurants', methods=['GET'])
-    def get_dev_restaurants():
+@dev_bp.route('/restaurants', methods=['GET'])
+def get_dev_restaurants():
         """개발용 식당 목록 API - 실제 데이터베이스에서 조회"""
         try:
             from models.restaurant_models import RestaurantV2
@@ -605,8 +605,8 @@ def get_dev_users_list():
 
     # ===== 실제 API 엔드포인트들을 개발용으로 추가 =====
 
-    @dev_bp.route('/api/users/profile', methods=['GET'])
-    def get_dev_user_profile():
+@dev_bp.route('/api/users/profile', methods=['GET'])
+def get_dev_user_profile():
         """개발용 사용자 프로필 API - 인증 없이 테스트 가능"""
         try:
             # 임시 사용자 프로필 데이터
@@ -630,8 +630,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({'error': '사용자 프로필 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-    @dev_bp.route('/api/users/activity-stats', methods=['GET'])
-    def get_dev_user_activity_stats():
+@dev_bp.route('/api/users/activity-stats', methods=['GET'])
+def get_dev_user_activity_stats():
         """개발용 사용자 활동 통계 API - 인증 없이 테스트 가능"""
         try:
             period = request.args.get('period', 'month')
@@ -669,8 +669,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({'error': '활동 통계 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-    @dev_bp.route('/api/users/dashboard', methods=['GET'])
-    def get_dev_user_dashboard():
+@dev_bp.route('/api/users/dashboard', methods=['GET'])
+def get_dev_user_dashboard():
         """개발용 사용자 대시보드 API - 인증 없이 테스트 가능"""
         try:
             dashboard_data = {
@@ -695,8 +695,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({'error': '대시보드 데이터 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-    @dev_bp.route('/api/users/appointments', methods=['GET'])
-    def get_dev_user_appointments():
+@dev_bp.route('/api/users/appointments', methods=['GET'])
+def get_dev_user_appointments():
         """개발용 사용자 약속 목록 API - 인증 없이 테스트 가능"""
         try:
             status = request.args.get('status', 'all')
@@ -772,8 +772,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({'error': '약속 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-    @dev_bp.route('/api/users/points', methods=['GET'])
-    def get_dev_user_points():
+@dev_bp.route('/api/users/points', methods=['GET'])
+def get_dev_user_points():
         """개발용 사용자 포인트 API - 인증 없이 테스트 가능"""
         try:
             points_data = {
@@ -793,8 +793,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({'error': '포인트 정보 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-    @dev_bp.route('/api/users/badges', methods=['GET'])
-    def get_dev_user_badges():
+@dev_bp.route('/api/users/badges', methods=['GET'])
+def get_dev_user_badges():
         """개발용 사용자 배지 API - 인증 없이 테스트 가능"""
         try:
             badges = [
@@ -837,8 +837,8 @@ def get_dev_users_list():
 
     # ===== 추가 API 엔드포인트들 =====
 
-    @dev_bp.route('/api/v2/restaurants', methods=['GET'])
-    def get_dev_restaurants_v2():
+@dev_bp.route('/api/v2/restaurants', methods=['GET'])
+def get_dev_restaurants_v2():
         """개발용 식당 목록 v2 API - 실제 데이터베이스에서 조회"""
         try:
             from models.restaurant_models import RestaurantV2
@@ -917,8 +917,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/api/restaurants/search', methods=['GET'])
-    def get_dev_restaurants_search():
+@dev_bp.route('/api/restaurants/search', methods=['GET'])
+def get_dev_restaurants_search():
         """개발용 식당 검색 API - 인증 없이 테스트 가능"""
         try:
             query = request.args.get('q', '').strip()
@@ -988,8 +988,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/api/restaurants/frequent', methods=['GET'])
-    def get_dev_frequent_restaurants():
+@dev_bp.route('/api/restaurants/frequent', methods=['GET'])
+def get_dev_frequent_restaurants():
         """개발용 자주 가는 식당 API - 인증 없이 테스트 가능"""
         try:
             # 개발용 자주 가는 식당 데이터
@@ -1023,8 +1023,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/api/v2/restaurants/categories', methods=['GET'])
-    def get_dev_restaurant_categories():
+@dev_bp.route('/api/v2/restaurants/categories', methods=['GET'])
+def get_dev_restaurant_categories():
         """개발용 식당 카테고리 API - 인증 없이 테스트 가능"""
         try:
             categories = [
@@ -1050,8 +1050,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route('/friends/<employee_id>', methods=['GET'])
-    def get_dev_friends(employee_id):
+@dev_bp.route('/friends/<employee_id>', methods=['GET'])
+def get_dev_friends(employee_id):
         """개발용 친구 목록 API - 인증 없이 테스트 가능"""
         try:
             friends = [
@@ -1103,8 +1103,8 @@ def get_dev_users_list():
             }), 500
 
 
-    @dev_bp.route('/my_dangolpots/<employee_id>', methods=['GET'])
-    def get_dev_my_dangolpots(employee_id):
+@dev_bp.route('/my_dangolpots/<employee_id>', methods=['GET'])
+def get_dev_my_dangolpots(employee_id):
         """개발용 내 단골파티 목록 API - 인증 없이 접근 가능"""
         try:
             # 더미 단골파티 데이터
@@ -1139,8 +1139,8 @@ def get_dev_users_list():
 
     # === 개발용 고급 채팅 API들 ===
 
-    @dev_bp.route("/dev/chat/messages/<int:message_id>/read", methods=["POST"])
-    def dev_mark_message_read(message_id):
+@dev_bp.route("/dev/chat/messages/<int:message_id>/read", methods=["POST"])
+def dev_mark_message_read(message_id):
         """개발용: 메시지를 읽음으로 표시"""
         try:
             data = request.get_json()
@@ -1175,8 +1175,8 @@ def get_dev_users_list():
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/messages/<int:message_id>/reaction", methods=["POST"])
-    def dev_add_message_reaction(message_id):
+@dev_bp.route("/dev/chat/messages/<int:message_id>/reaction", methods=["POST"])
+def dev_add_message_reaction(message_id):
         """개발용: 메시지에 반응 추가"""
         try:
             data = request.get_json()
@@ -1214,8 +1214,8 @@ def get_dev_users_list():
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["PUT"])
-    def dev_edit_message(message_id):
+@dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["PUT"])
+def dev_edit_message(message_id):
         """개발용: 메시지 수정"""
         try:
             data = request.get_json()
@@ -1251,8 +1251,8 @@ def get_dev_users_list():
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["DELETE"])
-    def dev_delete_message(message_id):
+@dev_bp.route("/dev/chat/messages/<int:message_id>", methods=["DELETE"])
+def dev_delete_message(message_id):
         """개발용: 메시지 삭제"""
         try:
             data = request.get_json()
@@ -1278,8 +1278,8 @@ def get_dev_users_list():
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/search", methods=["GET"])
-    def dev_search_messages():
+@dev_bp.route("/dev/chat/search", methods=["GET"])
+def dev_search_messages():
         """개발용: 메시지 검색"""
         try:
             chat_type = request.args.get('chat_type')
@@ -1336,8 +1336,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/members", methods=["GET"])
-    def dev_get_chat_room_members(chat_type, chat_id):
+@dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/members", methods=["GET"])
+def dev_get_chat_room_members(chat_type, chat_id):
         """개발용: 채팅방 멤버 목록 조회"""
         try:
             members = ChatRoomMember.query.filter_by(
@@ -1365,8 +1365,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/settings", methods=["GET"])
-    def dev_get_chat_room_settings(chat_type, chat_id):
+@dev_bp.route("/dev/chat/rooms/<chat_type>/<int:chat_id>/settings", methods=["GET"])
+def dev_get_chat_room_settings(chat_type, chat_id):
         """개발용: 채팅방 설정 조회"""
         try:
             settings = ChatRoomSettings.query.filter_by(
@@ -1401,8 +1401,8 @@ def get_dev_users_list():
 
     # === 개발용 파일 업로드 API들 ===
 
-    @dev_bp.route("/dev/files/upload", methods=["POST"])
-    def dev_upload_file():
+@dev_bp.route("/dev/files/upload", methods=["POST"])
+def dev_upload_file():
         """개발용: 파일 업로드"""
         try:
             from utils.file_manager import file_manager
@@ -1432,8 +1432,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"파일 업로드 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/files/storage/info", methods=["GET"])
-    def dev_get_storage_info():
+@dev_bp.route("/dev/files/storage/info", methods=["GET"])
+def dev_get_storage_info():
         """개발용: 저장소 정보 조회"""
         try:
             from utils.file_manager import file_manager
@@ -1450,8 +1450,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"저장소 정보 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/files/cleanup", methods=["POST"])
-    def dev_cleanup_files():
+@dev_bp.route("/dev/files/cleanup", methods=["POST"])
+def dev_cleanup_files():
         """개발용: 임시 파일 정리"""
         try:
             from utils.file_manager import file_manager
@@ -1469,8 +1469,8 @@ def get_dev_users_list():
 
     # === 개발용 알림 API들 ===
 
-    @dev_bp.route("/dev/notifications/send", methods=["POST"])
-    def dev_send_notification():
+@dev_bp.route("/dev/notifications/send", methods=["POST"])
+def dev_send_notification():
         """개발용: 알림 전송"""
         try:
             from utils.notification_manager import notification_manager
@@ -1503,8 +1503,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"알림 전송 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/notifications/user/<user_id>", methods=["GET"])
-    def dev_get_user_notifications(user_id):
+@dev_bp.route("/dev/notifications/user/<user_id>", methods=["GET"])
+def dev_get_user_notifications(user_id):
         """개발용: 사용자 알림 목록 조회"""
         try:
             from utils.notification_manager import notification_manager
@@ -1527,8 +1527,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"알림 목록 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/notifications/user/<user_id>/unread-count", methods=["GET"])
-    def dev_get_unread_count(user_id):
+@dev_bp.route("/dev/notifications/user/<user_id>/unread-count", methods=["GET"])
+def dev_get_unread_count(user_id):
         """개발용: 읽지 않은 알림 수 조회"""
         try:
             from utils.notification_manager import notification_manager
@@ -1547,8 +1547,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"읽지 않은 알림 수 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/notifications/settings/<user_id>", methods=["GET"])
-    def dev_get_notification_settings(user_id):
+@dev_bp.route("/dev/notifications/settings/<user_id>", methods=["GET"])
+def dev_get_notification_settings(user_id):
         """개발용: 알림 설정 조회"""
         try:
             from utils.notification_manager import notification_manager
@@ -1567,8 +1567,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"알림 설정 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/notifications/settings/<user_id>", methods=["PUT"])
-    def dev_update_notification_settings(user_id):
+@dev_bp.route("/dev/notifications/settings/<user_id>", methods=["PUT"])
+def dev_update_notification_settings(user_id):
         """개발용: 알림 설정 업데이트"""
         try:
             from utils.notification_manager import notification_manager
@@ -1590,8 +1590,8 @@ def get_dev_users_list():
         except Exception as e:
             return jsonify({"error": f"알림 설정 업데이트 중 오류가 발생했습니다: {str(e)}"}), 500
 
-    @dev_bp.route("/dev/notifications/types", methods=["GET"])
-    def dev_get_notification_types():
+@dev_bp.route("/dev/notifications/types", methods=["GET"])
+def dev_get_notification_types():
         """개발용: 알림 타입 목록 조회"""
         try:
             from utils.notification_manager import notification_manager
@@ -1608,8 +1608,8 @@ def get_dev_users_list():
 
     # 추가 개발용 API들 (app.py에서 이동)
 
-    @dev_bp.route("/dev/schedules", methods=["GET"])
-    def get_dev_schedules():
+@dev_bp.route("/dev/schedules", methods=["GET"])
+def get_dev_schedules():
         """개발용 일정 조회 API - 인증 없이 테스트 가능"""
         try:
             # 쿼리 파라미터 가져오기
@@ -1710,8 +1710,8 @@ def get_dev_users_list():
                 'message': str(e)
             }), 500
 
-    @dev_bp.route("/dev/chats/<employee_id>", methods=["GET"])
-    def get_dev_chats(employee_id):
+@dev_bp.route("/dev/chats/<employee_id>", methods=["GET"])
+def get_dev_chats(employee_id):
         """개발용 채팅 목록 조회 API"""
         try:
             # 실제 데이터베이스에서 채팅방 조회
@@ -1751,8 +1751,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
-    def get_dev_chat_room_members(chat_type, chat_id):
+@dev_bp.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_room_members(chat_type, chat_id):
         """개발용 채팅방 멤버 조회 API"""
         try:
             # 채팅방 멤버 조회
@@ -1783,8 +1783,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
-    def get_dev_chat_messages(chat_type, chat_id):
+@dev_bp.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
+def get_dev_chat_messages(chat_type, chat_id):
         """개발용 채팅 메시지 조회 API"""
         try:
             page = request.args.get('page', 1, type=int)
@@ -1829,8 +1829,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/chat/messages", methods=["POST"])
-    def send_dev_chat_message():
+@dev_bp.route("/dev/chat/messages", methods=["POST"])
+def send_dev_chat_message():
         """개발용 채팅 메시지 전송 API"""
         try:
             data = request.get_json()
@@ -1864,8 +1864,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/chat/create", methods=["POST"])
-    def create_dev_chat_room():
+@dev_bp.route("/dev/chat/create", methods=["POST"])
+def create_dev_chat_room():
         """개발용 채팅방 생성 API"""
         try:
             data = request.get_json()
@@ -1917,8 +1917,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/schedules/date", methods=["GET"])
-    def get_dev_schedules_by_date():
+@dev_bp.route("/dev/schedules/date", methods=["GET"])
+def get_dev_schedules_by_date():
         """개발용: 특정 날짜의 일정 조회"""
         try:
             date_str = request.args.get('date')
@@ -1965,8 +1965,8 @@ def get_dev_users_list():
                 'message': str(e)
             }), 500
 
-    @dev_bp.route("/dev/schedules", methods=["POST"])
-    def create_dev_schedule():
+@dev_bp.route("/dev/schedules", methods=["POST"])
+def create_dev_schedule():
         """개발용: 일정 생성 API"""
         try:
             data = request.get_json()
@@ -2011,8 +2011,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
-    def update_dev_schedule(schedule_id):
+@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
+def update_dev_schedule(schedule_id):
         """개발용: 일정 수정 API"""
         try:
             data = request.get_json()
@@ -2052,8 +2052,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
-    def delete_dev_schedule(schedule_id):
+@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
+def delete_dev_schedule(schedule_id):
         """개발용: 일정 삭제 API"""
         try:
             from models.schedule_models import PersonalSchedule
@@ -2077,8 +2077,8 @@ def get_dev_users_list():
                 "message": str(e)
             }), 500
 
-    @dev_bp.route("/dev/random-lunch/<employee_id>", methods=["GET"])
-    def get_dev_random_lunch(employee_id):
+@dev_bp.route("/dev/random-lunch/<employee_id>", methods=["GET"])
+def get_dev_random_lunch(employee_id):
         """개발용: 랜덤 런치 추천 API"""
         try:
             from utils.mock_data import get_all_mock_users
@@ -2122,7 +2122,7 @@ def get_dev_users_list():
             }), 500
 
     # 헬퍼 함수들
-    def get_nickname_by_id(employee_id):
+def get_nickname_by_id(employee_id):
         """직원 ID로 닉네임 조회"""
         try:
             from utils.mock_data import get_all_mock_users
