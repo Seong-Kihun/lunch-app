@@ -306,14 +306,16 @@ def get_dev_user(employee_id):
     
     user_data = {
         "employee_id": user.employee_id,
-        "name": user.name,
         "nickname": user.nickname,
         "email": user.email,
-        "department": user.department,
-        "position": user.position,
         "lunch_preference": user.lunch_preference,
         "main_dish_genre": user.main_dish_genre,
         "matching_status": user.matching_status,
+        "points": user.points,
+        "total_points": user.total_points,
+        "current_level": user.current_level,
+        "gender": user.gender,
+        "age_group": user.age_group,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "visits": visit_data,
         "reviews": review_data
