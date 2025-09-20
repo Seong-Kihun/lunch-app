@@ -4,7 +4,7 @@ from extensions import db
 from models.app_models import User, UserPreference, RestaurantVisit, Review
 from datetime import datetime, timedelta
 import random
-from auth.utils import require_auth
+from auth.middleware import check_authentication
 
 # Blueprint 생성
 users_bp = Blueprint('users', __name__)
@@ -16,7 +16,7 @@ def _users_guard():
     if request.endpoint in ['users.public_info']:
         return None
     # 프로덕션 환경에서는 모든 API에 인증 적용
-    return require_auth()()
+    return check_authentication()
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
