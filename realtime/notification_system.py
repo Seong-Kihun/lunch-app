@@ -61,7 +61,7 @@ class NotificationSystem:
         """Socket.IO 이벤트 핸들러 설정"""
         
         @self.socketio.on('connect')
-        def handle_connect():
+        def handle_connect(*args, **kwargs):
             """클라이언트 연결 시"""
             session_id = request.sid
             logger.info(f"🔌 클라이언트 연결: {session_id}")
