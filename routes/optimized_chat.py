@@ -9,11 +9,17 @@ from models.app_models import ChatMessage, MessageStatus, MessageReaction, ChatR
 from utils.cache_manager import chat_cache_manager
 from utils.query_optimizer import query_optimizer
 from utils.performance_monitor import performance_monitor, monitor_performance
+from auth.utils import require_auth
 from datetime import datetime, timedelta
 import time
 
 # Blueprint 생성
 optimized_chat_bp = Blueprint('optimized_chat', __name__, url_prefix='/api/optimized/chat')
+
+# 인증 미들웨어 적용
+@optimized_chat_bp.before_request
+def _optimized_chat_guard():
+    return require_auth()()
 
 @optimized_chat_bp.route('/messages/<chat_type>/<int:chat_id>', methods=['GET'])
 @monitor_performance('get_messages_optimized')
