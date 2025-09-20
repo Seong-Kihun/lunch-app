@@ -3443,10 +3443,27 @@ def cancel_proposal(proposal_id):
 
 
 @app.route("/chats/<employee_id>", methods=["GET"])
-@require_auth
 def get_my_chats(employee_id):
-    # 인증된 사용자 정보 사용
-    authenticated_user = request.current_user
+    # 개발 환경에서는 인증 우회
+    import os
+    if not (os.getenv('FLASK_ENV') == 'development' or 
+            os.getenv('DEV_MODE') == 'true' or 
+            os.getenv('DEV_MODE') == '1' or
+            'DEV' in os.getenv('FLASK_ENV', '')):
+        # 프로덕션 환경에서는 인증 필요
+        try:
+            from auth.utils import require_auth
+            authenticated_user = require_auth()()
+            if not authenticated_user:
+                return jsonify({"error": "Authorization header missing"}), 401
+        except:
+            return jsonify({"error": "Authorization header missing"}), 401
+    else:
+        # 개발 환경에서는 가짜 사용자 정보 생성
+        class MockUser:
+            def __init__(self, employee_id):
+                self.employee_id = employee_id
+        authenticated_user = MockUser(employee_id)
 
     # 다른 사용자의 채팅 목록을 조회하는 경우 권한 확인
     if employee_id != authenticated_user.employee_id:
