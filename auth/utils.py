@@ -78,7 +78,8 @@ class AuthUtils:
     def verify_magic_link_token(token: str) -> Optional[Dict[str, Any]]:
         """매직링크 토큰 검증"""
         # 지연 import로 순환 참조 방지
-        from .models import MagicLinkToken, User
+        from .models import MagicLinkToken
+        from models.app_models import User
         
         # 토큰 해시화
         token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -146,7 +147,8 @@ class AuthUtils:
     def verify_refresh_token(token: str) -> Optional[Dict[str, Any]]:
         """리프레시 토큰 검증"""
         # 지연 import로 순환 참조 방지
-        from .models import RefreshToken, User
+        from .models import RefreshToken
+        from models.app_models import User
         
         # 토큰 해시화
         token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -207,7 +209,7 @@ class AuthUtils:
     def generate_employee_id() -> str:
         """고유한 직원 ID 생성"""
         # 지연 import로 순환 참조 방지
-        from .models import User
+        from models.app_models import User
         import random
         import string
         
@@ -234,7 +236,7 @@ def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # 지연 import로 순환 참조 방지
-        from .models import User
+        from models.app_models import User
         
         auth_header = request.headers.get('Authorization')
         
