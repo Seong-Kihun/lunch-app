@@ -1723,7 +1723,7 @@ def get_dev_schedules():
                 'message': str(e)
             }), 500
 
-@dev_bp.route("/dev/chats/<employee_id>", methods=["GET"])
+@dev_bp.route("/chats/<employee_id>", methods=["GET"])
 def get_dev_chats(employee_id):
     """개발용 채팅 목록 조회 API"""
     try:
@@ -1764,7 +1764,7 @@ def get_dev_chats(employee_id):
             "message": str(e)
         }), 500
 
-@dev_bp.route("/dev/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+@dev_bp.route("/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
 def get_dev_chat_room_members(chat_type, chat_id):
         """개발용 채팅방 멤버 조회 API"""
         try:
@@ -1796,7 +1796,7 @@ def get_dev_chat_room_members(chat_type, chat_id):
                 "message": str(e)
             }), 500
 
-@dev_bp.route("/dev/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
+@dev_bp.route("/chat/messages/<chat_type>/<int:chat_id>", methods=["GET"])
 def get_dev_chat_messages(chat_type, chat_id):
         """개발용 채팅 메시지 조회 API"""
         try:
@@ -1842,7 +1842,7 @@ def get_dev_chat_messages(chat_type, chat_id):
                 "message": str(e)
             }), 500
 
-@dev_bp.route("/dev/chat/messages", methods=["POST"])
+@dev_bp.route("/chat/messages", methods=["POST"])
 def send_dev_chat_message():
         """개발용 채팅 메시지 전송 API"""
         try:
@@ -1877,7 +1877,7 @@ def send_dev_chat_message():
                 "message": str(e)
             }), 500
 
-@dev_bp.route("/dev/chat/create", methods=["POST"])
+@dev_bp.route("/chat/create", methods=["POST"])
 def create_dev_chat_room():
         """개발용 채팅방 생성 API"""
         try:
