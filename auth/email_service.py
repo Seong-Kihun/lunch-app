@@ -18,6 +18,12 @@ class EmailService:
     
     def send_magic_link_email(self, email: str, token: str, nickname: Optional[str] = None) -> bool:
         """매직링크 이메일 발송"""
+        # 개발 환경에서는 이메일 발송을 모킹
+        import os
+        if os.getenv('FLASK_ENV') == 'development' or os.getenv('DEV_MODE') == 'true':
+            print(f"[DEV] 매직링크 이메일 모킹: {email} -> {token}")
+            return True
+            
         try:
             # 이메일 내용 구성
             subject = f'[밥플떼기] 시작하기'
