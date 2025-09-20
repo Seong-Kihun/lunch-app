@@ -291,13 +291,8 @@ def create_app(config_name=None):
     except Exception as e:
         print(f"[ERROR] 매칭 관리 Blueprint 등록 실패: {e}")
 
-    # 개발용 API 등록 (개발 환경에서만)
-    try:
-        from routes.dev_api import dev_bp
-        app.register_blueprint(dev_bp)
-        print("[SUCCESS] 개발용 API Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 개발용 API Blueprint 등록 실패: {e}")
+    # 개발용 API는 제거됨 - 프로덕션 환경으로 전환
+    print("[INFO] 프로덕션 환경: 개발용 API Blueprint 제거됨")
 
     print("[SUCCESS] 모든 Blueprint 등록 완료")
 
