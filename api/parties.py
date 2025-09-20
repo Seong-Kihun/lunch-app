@@ -18,7 +18,24 @@ parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
 # 인증 미들웨어 적용
 @parties_bp.before_request
 def _parties_guard():
-    return require_auth()
+    from flask import request, jsonify
+    from auth.utils import AuthUtils
+    
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({'error': '인증이 필요합니다.'}), 401
+    
+    try:
+        token = auth_header.split(' ')[1] if auth_header.startswith('Bearer ') else auth_header
+        payload = AuthUtils.verify_jwt_token(token)
+        if not payload:
+            return jsonify({'error': '유효하지 않은 토큰입니다.'}), 401
+        
+        # 사용자 정보를 request에 저장
+        request.current_user = payload
+        return None
+    except Exception as e:
+        return jsonify({'error': '인증 처리 중 오류가 발생했습니다.', 'details': str(e)}), 401
 
 # 모델 import
 from flask import current_app
