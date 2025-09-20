@@ -13,12 +13,10 @@ users_bp = Blueprint('users', __name__)
 @users_bp.before_request
 def _users_guard():
     # 공개 엔드포인트는 인증 제외
-    if request.endpoint in ['users.public_info', 'users.get_dev_user', 'users.get_all_dev_users']:
+    if request.endpoint in ['users.public_info']:
         return None
-    # 개발용 API는 인증 우회
-    if request.endpoint and request.endpoint.startswith('users.get_dev_'):
-        return None
-    return None  # 임시로 모든 인증 우회
+    # 프로덕션 환경에서는 모든 API에 인증 적용
+    return require_auth()()
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
