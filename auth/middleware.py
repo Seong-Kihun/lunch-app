@@ -7,11 +7,36 @@ from functools import wraps
 def check_authentication():
     """공통 인증 검사 함수"""
     from auth.utils import AuthUtils
+    import os
     
-    # 인증 헤더 확인
+    # 개발 환경에서는 특별한 테스트 토큰으로 인증 우회
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         return jsonify({'error': 'Authorization header missing'}), 401
+    
+    # 개발 환경에서 테스트 토큰 처리
+    if (os.getenv('FLASK_ENV') == 'development' or 
+        os.getenv('DEV_MODE') == 'true' or 
+        os.getenv('DEV_MODE') == '1'):
+        
+        token = auth_header.split(' ')[1] if ' ' in auth_header else auth_header
+        
+        # 테스트용 특별 토큰들 처리
+        if token.startswith('test_'):
+            # test_EMP001, test_EMP002 등의 형식
+            employee_id = token.replace('test_', '')
+            
+            # 테스트용 사용자 객체 생성
+            class TestUser:
+                def __init__(self, employee_id):
+                    self.employee_id = employee_id
+                    self.id = int(employee_id.replace('EMP', ''))
+                    self.email = f"{employee_id.lower()}@koica.go.kr"
+                    self.nickname = f"테스트사용자{employee_id.replace('EMP', '')}"
+                    self.is_active = True
+            
+            request.current_user = TestUser(employee_id)
+            return None  # 인증 성공
     
     try:
         # Bearer 토큰 추출
