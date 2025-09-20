@@ -8,11 +8,17 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models.app_models import MessageAttachment, ChatMessage
 from utils.file_manager import file_manager
+from auth.utils import require_auth
 from datetime import datetime
 import os
 
 # Blueprint 생성
 file_upload_bp = Blueprint('file_upload', __name__, url_prefix='/api/files')
+
+# 인증 미들웨어 적용
+@file_upload_bp.before_request
+def _file_upload_guard():
+    return require_auth()()
 
 @file_upload_bp.route('/upload', methods=['POST'])
 def upload_file():
