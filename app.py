@@ -6,6 +6,8 @@ from flask_cors import CORS
 from flask_socketio import emit, join_room, leave_room
 from sqlalchemy import desc, or_, and_, func, text
 import os
+import json
+from utils.json_encoder import CustomJSONEncoder
 # APScheduler는 Celery Beat로 대체됨
 
 # 구조화된 로깅 시스템 import
@@ -48,6 +50,9 @@ if GROUP_MATCHING_AVAILABLE:
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+# 커스텀 JSON 인코더 설정
+app.json_encoder = CustomJSONEncoder
 
 # 데이터베이스 URI 설정 - Render 환경 고려
 database_url = os.getenv("DATABASE_URL")
