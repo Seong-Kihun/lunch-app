@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import random
 import os
 from auth.utils import require_auth
+from app import safe_jsonify
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
@@ -81,7 +82,7 @@ def sync_excel_data():
         # 프론트엔드에서 Excel/CSV 데이터를 전송받아 처리
         data = request.get_json()
         if not data or "restaurants" not in data:
-            return jsonify({"error": "식당 데이터가 제공되지 않았습니다."}), 400
+            return safe_jsonify({"error": "식당 데이터가 제공되지 않았습니다."}), 400
 
         restaurants_data = data["restaurants"]
         print(f"Excel/CSV에서 {len(restaurants_data)}개의 식당 데이터 수신")
@@ -122,7 +123,7 @@ def sync_excel_data():
     except Exception as e:
         db.session.rollback()
         print(f"Excel/CSV 데이터 동기화 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants", methods=["GET"])
 def get_restaurants():
@@ -235,7 +236,7 @@ def get_restaurants():
 def search_restaurants():
     query = request.args.get("q", "")
     if not query:
-        return jsonify({"error": "검색어가 필요합니다."}), 400
+        return safe_jsonify({"error": "검색어가 필요합니다."}), 400
     
     restaurants = Restaurant.query.filter(
         or_(
@@ -283,7 +284,7 @@ def request_restaurant():
     data = request.get_json()
     
     if not data.get("name") or not data.get("address"):
-        return jsonify({"error": "식당명과 주소는 필수입니다."}), 400
+        return safe_jsonify({"error": "식당명과 주소는 필수입니다."}), 400
     
     try:
         new_request = RestaurantRequest(
@@ -298,7 +299,7 @@ def request_restaurant():
         db.session.add(new_request)
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "식당 추가 요청이 등록되었습니다!",
             "request_id": new_request.id
         }), 201
@@ -306,7 +307,7 @@ def request_restaurant():
     except Exception as e:
         db.session.rollback()
         print(f"식당 요청 등록 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/requests/my/<employee_id>", methods=["GET"])
 def get_my_restaurant_requests(employee_id):
@@ -349,7 +350,7 @@ def approve_restaurant_request(request_id):
     request_obj = RestaurantRequest.query.get_or_404(request_id)
     
     if request_obj.status != "pending":
-        return jsonify({"error": "이미 처리된 요청입니다."}), 400
+        return safe_jsonify({"error": "이미 처리된 요청입니다."}), 400
     
     try:
         # 식당 추가
@@ -369,7 +370,7 @@ def approve_restaurant_request(request_id):
         
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "식당 추가 요청이 승인되었습니다!",
             "restaurant_id": new_restaurant.id
         })
@@ -377,27 +378,27 @@ def approve_restaurant_request(request_id):
     except Exception as e:
         db.session.rollback()
         print(f"식당 요청 승인 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/requests/<int:request_id>/reject", methods=["PUT"])
 def reject_restaurant_request(request_id):
     request_obj = RestaurantRequest.query.get_or_404(request_id)
     
     if request_obj.status != "pending":
-        return jsonify({"error": "이미 처리된 요청입니다."}), 400
+        return safe_jsonify({"error": "이미 처리된 요청입니다."}), 400
     
     try:
         request_obj.status = "rejected"
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "식당 추가 요청이 거부되었습니다."
         })
         
     except Exception as e:
         db.session.rollback()
         print(f"식당 요청 거부 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 # Restaurant Favorites 관련 API들
 @restaurants_bp.route("/restaurants/favorites", methods=["POST"])
@@ -405,7 +406,7 @@ def add_favorite_restaurant():
     data = request.get_json()
     
     if not data.get("user_id") or not data.get("restaurant_id"):
-        return jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
+        return safe_jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
     
     # 이미 즐겨찾기에 있는지 확인
     existing_favorite = RestaurantFavorite.query.filter_by(
@@ -414,7 +415,7 @@ def add_favorite_restaurant():
     ).first()
     
     if existing_favorite:
-        return jsonify({"error": "이미 즐겨찾기에 추가된 식당입니다."}), 400
+        return safe_jsonify({"error": "이미 즐겨찾기에 추가된 식당입니다."}), 400
     
     try:
         new_favorite = RestaurantFavorite(
@@ -425,7 +426,7 @@ def add_favorite_restaurant():
         db.session.add(new_favorite)
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "즐겨찾기에 추가되었습니다!",
             "favorite_id": new_favorite.id
         }), 201
@@ -433,7 +434,7 @@ def add_favorite_restaurant():
     except Exception as e:
         db.session.rollback()
         print(f"즐겨찾기 추가 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/favorites/<user_id>", methods=["GET"])
 def get_user_favorites(user_id):
@@ -464,21 +465,21 @@ def remove_favorite_restaurant(favorite_id):
         db.session.delete(favorite)
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "즐겨찾기에서 제거되었습니다."
         })
         
     except Exception as e:
         db.session.rollback()
         print(f"즐겨찾기 제거 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/favorites/check", methods=["POST"])
 def check_favorite_restaurant():
     data = request.get_json()
     
     if not data.get("user_id") or not data.get("restaurant_id"):
-        return jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
+        return safe_jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
     
     favorite = RestaurantFavorite.query.filter_by(
         user_id=data["user_id"],
@@ -496,7 +497,7 @@ def record_restaurant_visit():
     data = request.get_json()
     
     if not data.get("user_id") or not data.get("restaurant_id"):
-        return jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
+        return safe_jsonify({"error": "사용자 ID와 식당 ID가 필요합니다."}), 400
     
     try:
         new_visit = RestaurantVisit(
@@ -510,7 +511,7 @@ def record_restaurant_visit():
         db.session.add(new_visit)
         db.session.commit()
         
-        return jsonify({
+        return safe_jsonify({
             "message": "방문 기록이 등록되었습니다!",
             "visit_id": new_visit.id
         }), 201
@@ -518,7 +519,7 @@ def record_restaurant_visit():
     except Exception as e:
         db.session.rollback()
         print(f"방문 기록 등록 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 @restaurants_bp.route("/restaurants/popular", methods=["GET"])
 def get_popular_restaurants():
@@ -568,7 +569,7 @@ def get_user_visit_stats(user_id):
     visits = RestaurantVisit.query.filter_by(user_id=user_id).all()
     
     if not visits:
-        return jsonify({
+        return safe_jsonify({
             "total_visits": 0,
             "unique_restaurants": 0,
             "favorite_categories": [],
@@ -628,7 +629,7 @@ def get_restaurant_recommendations(user_id):
                 "address": restaurant.address,
                 "reason": "인기 식당"
             })
-        return jsonify({"recommendations": recommendations})
+        return safe_jsonify({"recommendations": recommendations})
     
     # 사용자가 선호하는 카테고리 찾기
     category_preferences = {}
@@ -695,14 +696,14 @@ def get_frequent_restaurants(employee_id):
             }
         ]
         
-        return jsonify({
+        return safe_jsonify({
             "frequent_restaurants": frequent_restaurants,
             "message": "자주 가는 식당 목록을 조회했습니다."
         })
         
     except Exception as e:
         print(f"자주 가는 식당 조회 오류: {e}")
-        return jsonify({"error": "자주 가는 식당을 조회할 수 없습니다."}), 500
+        return safe_jsonify({"error": "자주 가는 식당을 조회할 수 없습니다."}), 500
 
 @restaurants_bp.route("/restaurants/nearby", methods=["GET"])
 def get_nearby_restaurants():
@@ -712,7 +713,7 @@ def get_nearby_restaurants():
     radius = request.args.get("radius", 1000, type=int)  # 기본 1km
     
     if not latitude or not longitude:
-        return jsonify({"error": "위도와 경도가 필요합니다."}), 400
+        return safe_jsonify({"error": "위도와 경도가 필요합니다."}), 400
     
     try:
         # 간단한 거리 계산 (실제로는 Haversine 공식 사용)
@@ -737,21 +738,21 @@ def get_nearby_restaurants():
         # 거리순으로 정렬
         nearby_restaurants.sort(key=lambda x: x["distance"])
         
-        return jsonify({
+        return safe_jsonify({
             "nearby_restaurants": nearby_restaurants[:20],  # 최대 20개
             "total_found": len(nearby_restaurants)
         })
         
     except Exception as e:
         print(f"근처 식당 조회 오류: {e}")
-        return jsonify({"error": "근처 식당을 조회할 수 없습니다."}), 500
+        return safe_jsonify({"error": "근처 식당을 조회할 수 없습니다."}), 500
 
 @restaurants_bp.route("/restaurants/recommend", methods=["GET"])
 def recommend_restaurants():
     """사용자 기반 식당 추천"""
     employee_id = request.args.get("employee_id")
     if not employee_id:
-        return jsonify({"message": "사용자 ID가 필요합니다."}), 400
+        return safe_jsonify({"message": "사용자 ID가 필요합니다."}), 400
     
     try:
         # 간단한 추천 로직 (실제로는 더 정교한 알고리즘 필요)
@@ -767,14 +768,14 @@ def recommend_restaurants():
                 "reason": "인기 식당"
             })
         
-        return jsonify({
+        return safe_jsonify({
             "recommendations": recommendations,
             "message": "추천 식당 목록을 조회했습니다."
         })
         
     except Exception as e:
         print(f"식당 추천 오류: {e}")
-        return jsonify({"error": "식당 추천을 할 수 없습니다."}), 500
+        return safe_jsonify({"error": "식당 추천을 할 수 없습니다."}), 500
 
 # 리뷰 키워드 추출 함수
 def extract_keywords_from_reviews(reviews):
@@ -853,7 +854,7 @@ def _process_review_rewards(user_id, has_photo, restaurant):
 def get_restaurant_detail(restaurant_id):
     restaurant = Restaurant.query.get(restaurant_id)
     if not restaurant:
-        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
+        return safe_jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
     
     # 평균 평점과 리뷰 수 계산
     avg_rating = 0
@@ -886,16 +887,16 @@ def add_restaurant_review(restaurant_id):
     
     # 필수 필드 검증
     if not data.get("rating") or not data.get("comment"):
-        return jsonify({"error": "평점과 코멘트는 필수입니다."}), 400
+        return safe_jsonify({"error": "평점과 코멘트는 필수입니다."}), 400
     
     # 평점 범위 검증
     rating = data["rating"]
     if not (1 <= rating <= 5):
-        return jsonify({"error": "평점은 1-5 사이여야 합니다."}), 400
+        return safe_jsonify({"error": "평점은 1-5 사이여야 합니다."}), 400
     
     restaurant = Restaurant.query.get(restaurant_id)
     if not restaurant:
-        return jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
+        return safe_jsonify({"message": "맛집을 찾을 수 없습니다."}), 404
     
     try:
         new_review = Review(
@@ -917,7 +918,7 @@ def add_restaurant_review(restaurant_id):
         has_photo = bool(data.get("photo_url"))
         _process_review_rewards(user_id, has_photo, restaurant)
         
-        return jsonify({
+        return safe_jsonify({
             "message": "리뷰가 등록되었습니다!",
             "review_id": new_review.id
         }), 201
@@ -925,7 +926,7 @@ def add_restaurant_review(restaurant_id):
     except Exception as e:
         db.session.rollback()
         print(f"리뷰 등록 오류: {e}")
-        return jsonify({"error": str(e)}), 500
+        return safe_jsonify({"error": str(e)}), 500
 
 # 기존 get_restaurant_reviews 함수 개선
 @restaurants_bp.route("/restaurants/<int:restaurant_id>/reviews", methods=["GET"])
