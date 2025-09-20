@@ -1729,7 +1729,7 @@ def get_dev_chats(employee_id):
     try:
         # 실제 데이터베이스에서 채팅방 조회
         chat_rooms = ChatRoom.query.join(ChatParticipant).filter(
-            ChatParticipant.employee_id == employee_id
+            ChatParticipant.user_id == employee_id
         ).all()
         
         chat_list = []
