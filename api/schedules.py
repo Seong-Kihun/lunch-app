@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 from typing import Dict, Any
 import logging
+from auth.utils import require_auth
 
 # 지연 import로 순환 참조 방지
 def get_schedule_service():
@@ -25,6 +26,11 @@ logger = logging.getLogger(__name__)
 
 # Blueprint 생성
 schedules_bp = Blueprint('schedules', __name__, url_prefix='/api/schedules')
+
+# 인증 미들웨어 적용
+@schedules_bp.before_request
+def _schedules_guard():
+    return require_auth()()
 
 @schedules_bp.route('/', methods=['GET'])
 def get_schedules():
