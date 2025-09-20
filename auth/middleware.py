@@ -2,6 +2,7 @@
 인증 미들웨어 공통 함수
 """
 from flask import request, jsonify
+from functools import wraps
 
 def check_authentication():
     """공통 인증 검사 함수"""
@@ -39,3 +40,22 @@ def check_authentication():
         return jsonify({'error': 'Invalid authorization header format'}), 401
     except Exception as e:
         return jsonify({'error': 'Authentication failed'}), 401
+
+def require_auth_decorator(f):
+    """인증이 필요한 엔드포인트용 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_result = check_authentication()
+        if auth_result:
+            return auth_result
+        return f(*args, **kwargs)
+    return decorated_function
+
+def optional_auth():
+    """선택적 인증 (토큰이 있으면 검증, 없으면 통과)"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        request.current_user = None
+        return None
+    
+    return check_authentication()
