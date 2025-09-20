@@ -3748,13 +3748,9 @@ def get_my_chats(employee_id):
 
 
 # --- WebSocket 이벤트 ---
-# @socketio.on("connect")
-# def handle_connect(employee_id=None, **kwargs):
-#     print("Client connected")
-#     if employee_id:
-#         print(f"Client connected with employee_id: {employee_id}")
-#     else:
-#         print("Client connected without employee_id")
+@socketio.on("connect")
+def handle_connect():
+    print("Client connected")
 
 
 @socketio.on("disconnect")
@@ -6497,7 +6493,7 @@ def get_dev_user_data(employee_id):
 def create_default_users():
     """기본 사용자들을 생성합니다."""
     try:
-        from models.app_models import User
+        from auth.models import User
 
         # 가상 사용자 데이터
         default_users = [
