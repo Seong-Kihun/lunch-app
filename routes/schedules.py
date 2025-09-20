@@ -3,9 +3,15 @@
 """
 
 from flask import Blueprint
+from auth.utils import require_auth
 
 # 일정 관리 Blueprint 생성
 schedules_bp = Blueprint('schedules', __name__, url_prefix='/api/schedules')
+
+# 인증 미들웨어 적용
+@schedules_bp.before_request
+def _schedules_guard():
+    return require_auth()()
 
 @schedules_bp.route('/')
 def schedules_home():
