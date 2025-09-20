@@ -51,17 +51,18 @@ def get_user_chats(employee_id):
             chat_info = {
                 "id": chat.id,
                 "type": chat.type,
-                "title": chat.title,
-                "last_message": last_message.content if last_message else "",
-                "last_message_time": last_message.created_at.isoformat() if last_message else None,
+                "name": chat.name,
+                "last_message_content": last_message.message if last_message else "",
+                "last_message_sender": last_message.sender_employee_id if last_message else None,
+                "last_message_timestamp": last_message.created_at.isoformat() if last_message else None,
                 "participant_count": participant_count,
                 "created_at": chat.created_at.isoformat() if chat.created_at else None
             }
             chats_data.append(chat_info)
         
         return jsonify({
-            "chats": chats_data,
-            "total": len(chats_data)
+            "success": True,
+            "chats": chats_data
         })
         
     except Exception as e:
@@ -85,16 +86,23 @@ def get_chat_messages(chat_type, chat_id):
         
         messages_data = []
         for message in messages:
+            # 발신자 정보 조회
+            sender = User.query.filter_by(employee_id=message.sender_employee_id).first()
+            
             message_info = {
                 "id": message.id,
-                "sender_id": message.sender_id,
-                "content": message.content,
-                "message_type": message.message_type,
-                "created_at": message.created_at.isoformat() if message.created_at else None
+                "content": message.message,
+                "sender": {
+                    "employee_id": message.sender_employee_id,
+                    "nickname": message.sender_nickname if message.sender_nickname else (sender.nickname if sender else "알 수 없음")
+                },
+                "created_at": message.created_at.isoformat() if message.created_at else None,
+                "message_type": message.message_type or "text"
             }
             messages_data.append(message_info)
         
         return jsonify({
+            "success": True,
             "messages": messages_data,
             "pagination": {
                 "page": page,
