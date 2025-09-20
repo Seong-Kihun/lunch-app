@@ -6,9 +6,15 @@
 from flask import Blueprint, request, jsonify
 from utils.error_monitor import record_error
 from utils.logger import logger, log_api_call
+from auth.utils import require_auth
 
 # 사용자 Blueprint 생성
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
+
+# 인증 미들웨어 적용
+@users_bp.before_request
+def _users_guard():
+    return require_auth()()
 
 @users_bp.route('/profile', methods=['GET'])
 @log_api_call
