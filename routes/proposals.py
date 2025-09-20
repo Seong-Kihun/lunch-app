@@ -3,7 +3,7 @@
 """
 
 from flask import Blueprint
-from auth.utils import require_auth
+from auth.middleware import check_authentication
 
 # 제안 관리 Blueprint 생성
 proposals_bp = Blueprint('proposals', __name__, url_prefix='/api/proposals')
@@ -11,7 +11,7 @@ proposals_bp = Blueprint('proposals', __name__, url_prefix='/api/proposals')
 # 인증 미들웨어 적용
 @proposals_bp.before_request
 def _proposals_guard():
-    return require_auth()()
+    return check_authentication()
 
 @proposals_bp.route('/')
 def proposals_home():
