@@ -22,7 +22,7 @@ def run_migrations():
     모든 마이그레이션 파일을 순차적으로 실행하고 오류를 처리합니다.
     """
     try:
-        logger.info("🔄 데이터베이스 마이그레이션 시작...")
+        logger.info("[PROCESS] 데이터베이스 마이그레이션 시작...")
         
         # 현재 디렉토리를 프로젝트 루트로 변경
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,16 +31,16 @@ def run_migrations():
         
         try:
             # 1. 먼저 기본 테이블 생성
-            logger.info("🔧 기본 테이블 생성 중...")
+            logger.info("[CONFIG] 기본 테이블 생성 중...")
             try:
                 with current_app.app_context():
                     db.create_all()
-                    logger.info("✅ 기본 테이블 생성 완료")
+                    logger.info("[SUCCESS] 기본 테이블 생성 완료")
             except Exception as e:
-                logger.warning(f"⚠️ 기본 테이블 생성 중 오류: {e}")
+                logger.warning(f"[WARNING] 기본 테이블 생성 중 오류: {e}")
             
             # 2. 마이그레이션 상태 확인
-            logger.info("📋 마이그레이션 상태 확인 중...")
+            logger.info("[CHECK] 마이그레이션 상태 확인 중...")
             status_result = subprocess.run([
                 sys.executable, '-m', 'alembic', 'current'
             ], capture_output=True, text=True, timeout=30)
@@ -48,7 +48,7 @@ def run_migrations():
             logger.info(f"현재 마이그레이션 상태: {status_result.stdout}")
             
             # 3. 마이그레이션 실행 시도
-            logger.info("🚀 마이그레이션 실행 중...")
+            logger.info("[START] 마이그레이션 실행 중...")
             
             # 먼저 merge 마이그레이션 실행
             try:
@@ -57,11 +57,11 @@ def run_migrations():
                 ], capture_output=True, text=True, timeout=60)
                 
                 if merge_result.returncode == 0:
-                    logger.info("✅ 마이그레이션 머지 완료")
+                    logger.info("[SUCCESS] 마이그레이션 머지 완료")
                 else:
-                    logger.warning(f"⚠️ 마이그레이션 머지 실패: {merge_result.stderr}")
+                    logger.warning(f"[WARNING] 마이그레이션 머지 실패: {merge_result.stderr}")
             except Exception as e:
-                logger.warning(f"⚠️ 마이그레이션 머지 중 오류: {e}")
+                logger.warning(f"[WARNING] 마이그레이션 머지 중 오류: {e}")
             
             # 그 다음 head까지 실행
             upgrade_result = subprocess.run([
@@ -69,11 +69,11 @@ def run_migrations():
             ], capture_output=True, text=True, timeout=120)
             
             if upgrade_result.returncode == 0:
-                logger.info("✅ 데이터베이스 마이그레이션 완료")
+                logger.info("[SUCCESS] 데이터베이스 마이그레이션 완료")
                 logger.info(f"마이그레이션 출력: {upgrade_result.stdout}")
                 return True
             else:
-                logger.error(f"❌ 마이그레이션 실패: {upgrade_result.stderr}")
+                logger.error(f"[ERROR] 마이그레이션 실패: {upgrade_result.stderr}")
                 
                 # 실패한 경우 개별 마이그레이션 시도
                 return run_individual_migrations()
@@ -82,10 +82,10 @@ def run_migrations():
             os.chdir(original_cwd)
             
     except subprocess.TimeoutExpired:
-        logger.error("❌ 마이그레이션 타임아웃")
+        logger.error("[ERROR] 마이그레이션 타임아웃")
         return False
     except Exception as e:
-        logger.error(f"❌ 마이그레이션 실행 중 오류: {e}")
+        logger.error(f"[ERROR] 마이그레이션 실행 중 오류: {e}")
         return False
 
 def run_individual_migrations():
@@ -94,16 +94,16 @@ def run_individual_migrations():
     테이블이 존재하지 않는 경우를 고려하여 안전하게 실행합니다.
     """
     try:
-        logger.info("🔄 개별 마이그레이션 실행 시도...")
+        logger.info("[PROCESS] 개별 마이그레이션 실행 시도...")
         
         # 먼저 테이블 생성
-        logger.info("🔧 기본 테이블 생성 중...")
+        logger.info("[CONFIG] 기본 테이블 생성 중...")
         try:
             with current_app.app_context():
                 db.create_all()
-                logger.info("✅ 기본 테이블 생성 완료")
+                logger.info("[SUCCESS] 기본 테이블 생성 완료")
         except Exception as e:
-            logger.warning(f"⚠️ 기본 테이블 생성 중 오류 (건너뜀): {e}")
+            logger.warning(f"[WARNING] 기본 테이블 생성 중 오류 (건너뜀): {e}")
         
         # 마이그레이션 파일 목록 (테이블 생성 후 실행)
         migration_files = [
@@ -115,24 +115,24 @@ def run_individual_migrations():
         
         for migration in migration_files:
             try:
-                logger.info(f"🔄 마이그레이션 실행: {migration}")
+                logger.info(f"[PROCESS] 마이그레이션 실행: {migration}")
                 result = subprocess.run([
                     sys.executable, '-m', 'alembic', 'upgrade', migration
                 ], capture_output=True, text=True, timeout=60)
                 
                 if result.returncode == 0:
-                    logger.info(f"✅ {migration} 완료")
+                    logger.info(f"[SUCCESS] {migration} 완료")
                 else:
-                    logger.warning(f"⚠️ {migration} 건너뜀: {result.stderr}")
+                    logger.warning(f"[WARNING] {migration} 건너뜀: {result.stderr}")
                     
             except Exception as e:
-                logger.warning(f"⚠️ {migration} 실행 중 오류 (건너뜀): {e}")
+                logger.warning(f"[WARNING] {migration} 실행 중 오류 (건너뜀): {e}")
                 continue
         
         return True
         
     except Exception as e:
-        logger.error(f"❌ 개별 마이그레이션 실행 중 오류: {e}")
+        logger.error(f"[ERROR] 개별 마이그레이션 실행 중 오류: {e}")
         return False
 
 def check_and_fix_database_schema():
@@ -142,7 +142,7 @@ def check_and_fix_database_schema():
     """
     try:
         with current_app.app_context():
-            logger.info("🔍 데이터베이스 스키마 확인 중...")
+            logger.info("[SEARCH] 데이터베이스 스키마 확인 중...")
             
             # 데이터베이스 엔진 타입 확인
             inspector = inspect(db.engine)
@@ -159,7 +159,7 @@ def check_and_fix_database_schema():
             
             missing_tables = [table for table in required_tables if table not in existing_tables]
             if missing_tables:
-                logger.warning(f"⚠️ 누락된 테이블들: {missing_tables}")
+                logger.warning(f"[WARNING] 누락된 테이블들: {missing_tables}")
             
             # chat_room 테이블 스키마 확인 및 수정
             if 'chat_room' in existing_tables:
@@ -171,15 +171,15 @@ def check_and_fix_database_schema():
                     
                     # title 컬럼이 없으면 추가
                     if 'title' not in column_names:
-                        logger.info("🔧 chat_room 테이블에 title 컬럼 추가 중...")
+                        logger.info("[CONFIG] chat_room 테이블에 title 컬럼 추가 중...")
                         db.session.execute(text("ALTER TABLE chat_room ADD COLUMN title VARCHAR(100)"))
                         db.session.commit()
-                        logger.info("✅ title 컬럼 추가 완료")
+                        logger.info("[SUCCESS] title 컬럼 추가 완료")
                     else:
-                        logger.info("✅ chat_room 테이블에 title 컬럼이 이미 존재합니다")
+                        logger.info("[SUCCESS] chat_room 테이블에 title 컬럼이 이미 존재합니다")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ chat_room 스키마 확인 중 오류 (건너뜀): {e}")
+                    logger.warning(f"[WARNING] chat_room 스키마 확인 중 오류 (건너뜀): {e}")
             
             # users 테이블 스키마 확인
             if 'users' in existing_tables:
@@ -190,13 +190,13 @@ def check_and_fix_database_schema():
                     
                     # test_field가 있으면 제거 (이미 마이그레이션으로 처리됨)
                     if 'test_field' in column_names:
-                        logger.info("🔧 users 테이블에서 test_field 컬럼 제거 중...")
+                        logger.info("[CONFIG] users 테이블에서 test_field 컬럼 제거 중...")
                         db.session.execute(text("ALTER TABLE users DROP COLUMN test_field"))
                         db.session.commit()
-                        logger.info("✅ test_field 컬럼 제거 완료")
+                        logger.info("[SUCCESS] test_field 컬럼 제거 완료")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ users 스키마 확인 중 오류 (건너뜀): {e}")
+                    logger.warning(f"[WARNING] users 스키마 확인 중 오류 (건너뜀): {e}")
             
             # personal_schedules 테이블 스키마 확인
             if 'personal_schedules' in existing_tables:
@@ -210,16 +210,16 @@ def check_and_fix_database_schema():
                     missing_columns = [col for col in required_columns if col not in column_names]
                     
                     if missing_columns:
-                        logger.warning(f"⚠️ personal_schedules 누락된 컬럼들: {missing_columns}")
+                        logger.warning(f"[WARNING] personal_schedules 누락된 컬럼들: {missing_columns}")
                     
                 except Exception as e:
-                    logger.warning(f"⚠️ personal_schedules 스키마 확인 중 오류 (건너뜀): {e}")
+                    logger.warning(f"[WARNING] personal_schedules 스키마 확인 중 오류 (건너뜀): {e}")
             
-            logger.info("✅ 데이터베이스 스키마 확인 완료")
+            logger.info("[SUCCESS] 데이터베이스 스키마 확인 완료")
             return True
             
     except Exception as e:
-        logger.error(f"❌ 데이터베이스 스키마 확인/수정 중 오류: {e}")
+        logger.error(f"[ERROR] 데이터베이스 스키마 확인/수정 중 오류: {e}")
         try:
             db.session.rollback()
         except:
@@ -232,41 +232,41 @@ def initialize_database():
     모든 마이그레이션 파일을 자동으로 실행하고 스키마를 최신 상태로 유지합니다.
     """
     try:
-        logger.info("🚀 데이터베이스 초기화 시작...")
+        logger.info("[START] 데이터베이스 초기화 시작...")
         
         # 1. 데이터베이스 연결 테스트
         try:
             with current_app.app_context():
                 db.session.execute(text("SELECT 1"))
-                logger.info("✅ 데이터베이스 연결 확인")
+                logger.info("[SUCCESS] 데이터베이스 연결 확인")
         except Exception as e:
-            logger.error(f"❌ 데이터베이스 연결 실패: {e}")
+            logger.error(f"[ERROR] 데이터베이스 연결 실패: {e}")
             return False
         
         # 2. 마이그레이션 실행
-        logger.info("🔄 마이그레이션 실행 중...")
+        logger.info("[PROCESS] 마이그레이션 실행 중...")
         migration_success = run_migrations()
         
         # 3. 스키마 확인 및 수정
-        logger.info("🔍 스키마 확인 및 수정 중...")
+        logger.info("[SEARCH] 스키마 확인 및 수정 중...")
         schema_success = check_and_fix_database_schema()
         
         # 4. 최종 검증
-        logger.info("🔍 최종 검증 중...")
+        logger.info("[SEARCH] 최종 검증 중...")
         validation_success = validate_database_integrity()
         
         if migration_success and schema_success and validation_success:
-            logger.info("✅ 데이터베이스 초기화 완료")
+            logger.info("[SUCCESS] 데이터베이스 초기화 완료")
             return True
         else:
-            logger.warning("⚠️ 데이터베이스 초기화에 일부 문제가 있었습니다")
-            logger.warning(f"마이그레이션: {'✅' if migration_success else '❌'}")
-            logger.warning(f"스키마: {'✅' if schema_success else '❌'}")
-            logger.warning(f"검증: {'✅' if validation_success else '❌'}")
+            logger.warning("[WARNING] 데이터베이스 초기화에 일부 문제가 있었습니다")
+            logger.warning(f"마이그레이션: {'[SUCCESS]' if migration_success else '[ERROR]'}")
+            logger.warning(f"스키마: {'[SUCCESS]' if schema_success else '[ERROR]'}")
+            logger.warning(f"검증: {'[SUCCESS]' if validation_success else '[ERROR]'}")
             return False
             
     except Exception as e:
-        logger.error(f"❌ 데이터베이스 초기화 중 오류: {e}")
+        logger.error(f"[ERROR] 데이터베이스 초기화 중 오류: {e}")
         return False
 
 def validate_database_integrity():
@@ -275,7 +275,7 @@ def validate_database_integrity():
     """
     try:
         with current_app.app_context():
-            logger.info("🔍 데이터베이스 무결성 검증 중...")
+            logger.info("[SEARCH] 데이터베이스 무결성 검증 중...")
             
             # 필수 테이블 존재 확인
             inspector = inspect(db.engine)
@@ -285,7 +285,7 @@ def validate_database_integrity():
             missing_critical = [table for table in critical_tables if table not in existing_tables]
             
             if missing_critical:
-                logger.error(f"❌ 필수 테이블 누락: {missing_critical}")
+                logger.error(f"[ERROR] 필수 테이블 누락: {missing_critical}")
                 return False
             
             # chat_room 테이블에 title 컬럼 확인
@@ -293,14 +293,14 @@ def validate_database_integrity():
                 columns = inspector.get_columns('chat_room')
                 column_names = [col['name'] for col in columns]
                 if 'title' not in column_names:
-                    logger.error("❌ chat_room 테이블에 title 컬럼이 없습니다")
+                    logger.error("[ERROR] chat_room 테이블에 title 컬럼이 없습니다")
                     return False
             
-            logger.info("✅ 데이터베이스 무결성 검증 완료")
+            logger.info("[SUCCESS] 데이터베이스 무결성 검증 완료")
             return True
             
     except Exception as e:
-        logger.error(f"❌ 데이터베이스 무결성 검증 중 오류: {e}")
+        logger.error(f"[ERROR] 데이터베이스 무결성 검증 중 오류: {e}")
         return False
 
 def create_tables_if_not_exist():
@@ -310,14 +310,14 @@ def create_tables_if_not_exist():
     """
     try:
         with current_app.app_context():
-            logger.info("🔧 데이터베이스 테이블 생성/확인 중...")
+            logger.info("[CONFIG] 데이터베이스 테이블 생성/확인 중...")
             
             # 모든 테이블 생성
             db.create_all()
             
             # 인덱스 생성 (성능 최적화)
             try:
-                logger.info("🔧 데이터베이스 인덱스 생성 중...")
+                logger.info("[CONFIG] 데이터베이스 인덱스 생성 중...")
                 
                 # personal_schedules 테이블 인덱스
                 db.session.execute(text("""
@@ -338,17 +338,17 @@ def create_tables_if_not_exist():
                 """))
                 
                 db.session.commit()
-                logger.info("✅ 데이터베이스 인덱스 생성 완료")
+                logger.info("[SUCCESS] 데이터베이스 인덱스 생성 완료")
                 
             except Exception as e:
-                logger.warning(f"⚠️ 인덱스 생성 중 오류 (건너뜀): {e}")
+                logger.warning(f"[WARNING] 인덱스 생성 중 오류 (건너뜀): {e}")
                 db.session.rollback()
             
-            logger.info("✅ 데이터베이스 테이블 생성/확인 완료")
+            logger.info("[SUCCESS] 데이터베이스 테이블 생성/확인 완료")
             return True
             
     except Exception as e:
-        logger.error(f"❌ 테이블 생성 중 오류: {e}")
+        logger.error(f"[ERROR] 테이블 생성 중 오류: {e}")
         try:
             db.session.rollback()
         except:
@@ -361,7 +361,7 @@ def reset_database_if_needed():
     """
     try:
         with current_app.app_context():
-            logger.warning("⚠️ 데이터베이스 초기화가 필요할 수 있습니다...")
+            logger.warning("[WARNING] 데이터베이스 초기화가 필요할 수 있습니다...")
             
             # 백업 생성
             logger.info("💾 데이터베이스 백업 생성 중...")
@@ -374,16 +374,16 @@ def reset_database_if_needed():
                 db_path = str(db.engine.url).replace('sqlite:///', '')
                 if os.path.exists(db_path):
                     shutil.copy2(db_path, backup_path)
-                    logger.info(f"✅ 백업 생성 완료: {backup_path}")
+                    logger.info(f"[SUCCESS] 백업 생성 완료: {backup_path}")
             
             # 테이블 재생성
-            logger.info("🔄 데이터베이스 테이블 재생성 중...")
+            logger.info("[PROCESS] 데이터베이스 테이블 재생성 중...")
             db.drop_all()
             db.create_all()
             
-            logger.info("✅ 데이터베이스 초기화 완료")
+            logger.info("[SUCCESS] 데이터베이스 초기화 완료")
             return True
             
     except Exception as e:
-        logger.error(f"❌ 데이터베이스 초기화 중 오류: {e}")
+        logger.error(f"[ERROR] 데이터베이스 초기화 중 오류: {e}")
         return False
