@@ -147,7 +147,7 @@ def register_blueprints(app):
         ('routes.voting', 'voting_bp', '/api'),
         ('routes.matching', 'matching_bp', '/api'),
         ('routes.points', 'points_bp', '/api'),
-        ('routes.dev_api', 'dev_bp', ''),
+        # 개발용 API는 제거됨 - 프로덕션 환경으로 전환
     ]
     
     for module_path, blueprint_name, url_prefix in blueprints:
