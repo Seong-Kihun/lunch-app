@@ -11,7 +11,7 @@ import random
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from auth.utils import require_auth
+from auth.middleware import check_authentication
 
 # Blueprint 생성
 chats_bp = Blueprint('chats', __name__)
@@ -20,7 +20,7 @@ chats_bp = Blueprint('chats', __name__)
 @chats_bp.before_request
 def _chats_guard():
     # 프로덕션 환경에서는 모든 API에 인증 적용
-    return require_auth()()
+    return check_authentication()
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
