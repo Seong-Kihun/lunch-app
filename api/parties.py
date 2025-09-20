@@ -546,8 +546,8 @@ def get_parties():
             "title": party.title,
             "restaurant_name": party.restaurant_name,
             "restaurant_address": party.restaurant_address,
-            "party_date": party.party_date,
-            "party_time": party.party_time,
+            "party_date": party.party_date.isoformat() if party.party_date else None,
+            "party_time": party.party_time.isoformat() if party.party_time else None,
             "meeting_location": party.meeting_location,
             "max_members": party.max_members,
             "current_members": member_count + 1,  # 호스트 포함
@@ -601,10 +601,10 @@ def get_my_regular_parties(employee_id):
     # 패턴 분석 (같은 시간대, 같은 장소 등)
     patterns = {}
     for party in all_parties:
-        key = f"{party.party_time}_{party.restaurant_name}"
+        key = f"{party.party_time.isoformat() if party.party_time else 'None'}_{party.restaurant_name}"
         if key not in patterns:
             patterns[key] = {
-                "party_time": party.party_time,
+                "party_time": party.party_time.isoformat() if party.party_time else None,
                 "restaurant_name": party.restaurant_name,
                 "count": 0,
                 "last_date": party.party_date
