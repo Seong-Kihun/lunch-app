@@ -6780,11 +6780,11 @@ with app.app_context():
     except Exception as e:
         print(f"[ERROR] 사용자 관리 Blueprint 등록 실패: {e}")
 
-    # API 사용자 Blueprint 등록
+    # API 사용자 Blueprint 등록 (고유한 이름으로 등록)
     try:
         from api.users import users_bp as api_users_bp
 
-        app.register_blueprint(api_users_bp)
+        app.register_blueprint(api_users_bp, name='api_users')
         print("[SUCCESS] API 사용자 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] API 사용자 Blueprint 등록 실패: {e}")
