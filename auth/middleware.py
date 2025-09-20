@@ -26,7 +26,7 @@ def check_authentication():
             return jsonify({'error': 'Invalid token type'}), 401
         
         # 사용자 조회
-        from models.app_models import User as AuthUser
+        from auth.models import User as AuthUser
         user = AuthUser.query.get(payload['user_id'])
         if not user or not user.is_active:
             return jsonify({'error': 'User not found or inactive'}), 401
