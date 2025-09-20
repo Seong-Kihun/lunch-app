@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from extensions import db
 from app import app
-from models.app_models import User, Friendship
+from auth.models import User, Friendship
 from models.app_models import Party, PartyMember, Restaurant, Review
 
 def cleanup_invalid_references():
