@@ -2024,46 +2024,6 @@ def create_dev_schedule():
                 "message": str(e)
             }), 500
 
-@dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["PUT"])
-def update_dev_schedule(schedule_id):
-        """개발용: 일정 수정 API"""
-        try:
-            data = request.get_json()
-            
-            from models.schedule_models import PersonalSchedule
-            from datetime import datetime
-            
-            schedule = PersonalSchedule.query.get(schedule_id)
-            if not schedule:
-                return jsonify({"error": "일정을 찾을 수 없습니다."}), 404
-            
-            # 일정 수정
-            if 'title' in data:
-                schedule.title = data['title']
-            if 'start_date' in data:
-                schedule.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-            if 'time' in data:
-                schedule.time = data['time']
-            if 'description' in data:
-                schedule.description = data['description']
-            if 'location' in data:
-                schedule.location = data['location']
-            if 'restaurant' in data:
-                schedule.restaurant = data['restaurant']
-            
-            db.session.commit()
-            
-            return jsonify({
-                "success": True,
-                "message": "일정이 수정되었습니다."
-            })
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                "error": "개발용 일정 수정 중 오류가 발생했습니다",
-                "message": str(e)
-            }), 500
 
 @dev_bp.route("/dev/schedules/<int:schedule_id>", methods=["DELETE"])
 def delete_dev_schedule(schedule_id):
