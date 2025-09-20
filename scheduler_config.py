@@ -42,7 +42,7 @@ def setup_scheduler(app):
                 },
             }
             
-            print("✅ Celery Beat 스케줄러가 설정되었습니다.")
+            print("[SUCCESS] Celery Beat 스케줄러가 설정되었습니다.")
             print("   - 일일 추천 생성")
             print("   - 추천 캐시 생성")
             print("   - 데이터 정리")
@@ -52,13 +52,13 @@ def setup_scheduler(app):
             
             return celery_app
         else:
-            print("⚠️ Celery 앱 생성 실패")
+            print("[WARNING] Celery 앱 생성 실패")
             return None
             
     except ImportError as e:
-        print(f"⚠️ Celery Beat 설정 실패: {e}")
+        print(f"[WARNING] Celery Beat 설정 실패: {e}")
         print("   스케줄러는 비활성화됩니다.")
         return None
     except Exception as e:
-        print(f"❌ 스케줄러 설정 중 오류: {e}")
+        print(f"[ERROR] 스케줄러 설정 중 오류: {e}")
         return None
