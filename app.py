@@ -60,17 +60,58 @@ app.config['JSON_SORT_KEYS'] = False
 app.config['JSON_AS_ASCII'] = False
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
+# Flask의 jsonify 함수를 커스텀 인코더로 오버라이드
+from flask import json as flask_json
+from utils.json_encoder import safe_jsonify
+
+def custom_jsonify(*args, **kwargs):
+    """커스텀 JSON 직렬화 함수"""
+    if args:
+        data = args[0]
+        # CustomJSONEncoder로 직렬화
+        json_str = safe_jsonify(data)
+        response = app.response_class(
+            json_str,
+            mimetype='application/json'
+        )
+        return response
+    return flask_json.jsonify(*args, **kwargs)
+
+# jsonify 함수 교체
+import flask
+flask.jsonify = custom_jsonify
+
 # JSON 직렬화 오류 처리
 @app.errorhandler(500)
 def handle_json_error(e):
     """JSON 직렬화 오류 처리"""
-    if 'JSON' in str(e) or 'serializable' in str(e).lower():
+    error_msg = str(e)
+    if 'JSON' in error_msg or 'serializable' in error_msg.lower():
+        logger.error(f"JSON 직렬화 오류: {error_msg}")
         return jsonify({
             'error': '데이터 직렬화 오류',
             'message': '서버에서 데이터를 처리하는 중 오류가 발생했습니다.',
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'details': error_msg
         }), 500
-    return jsonify({'error': '서버 내부 오류'}), 500
+    logger.error(f"서버 내부 오류: {error_msg}")
+    return jsonify({'error': '서버 내부 오류', 'details': error_msg}), 500
+
+# JSON 직렬화 강제 적용
+@app.after_request
+def after_request(response):
+    """응답 후 JSON 직렬화 강제 적용"""
+    if response.content_type == 'application/json':
+        try:
+            # 응답 데이터를 다시 직렬화하여 확인
+            data = response.get_json()
+            if data:
+                # CustomJSONEncoder로 다시 직렬화
+                from utils.json_encoder import safe_jsonify
+                response.data = safe_jsonify(data).encode('utf-8')
+        except Exception as e:
+            logger.warning(f"JSON 재직렬화 실패: {e}")
+    return response
 
 # 데이터베이스 URI 설정 - Render 환경 고려
 database_url = os.getenv("DATABASE_URL")
