@@ -31,7 +31,7 @@ def get_user_profile():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 사용자 프로필 조회
-        from models.schemas import User
+        from auth.models import User
         from app import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
@@ -77,7 +77,7 @@ def update_user_profile():
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
         
         # 데이터베이스에서 사용자 조회
-        from models.schemas import User
+        from auth.models import User
         from app import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
@@ -339,7 +339,7 @@ def get_user_dashboard():
                 break
         
         # 7. 랭킹 (전체 사용자 중 포인트 기준)
-        from models.schemas import User
+        from auth.models import User
         user = User.query.filter_by(employee_id=employee_id).first()
         user_points = user.total_points if user else 0
         
@@ -502,7 +502,7 @@ def get_user_points():
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
-        from models.schemas import User
+        from auth.models import User
         
         user = User.query.filter_by(employee_id=employee_id).first()
         if not user:
