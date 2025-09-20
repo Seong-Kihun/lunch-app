@@ -663,6 +663,13 @@ if module_loader.is_loaded('api'):
     except ImportError as e:
         print(f"[WARNING] API Blueprint 등록 실패: {e}")
 
+# 데이터베이스 초기화 (인증 시스템 초기화 전에 실행)
+try:
+    db.init_app(app)
+    print("[SUCCESS] 데이터베이스가 연결되었습니다.")
+except Exception as e:
+    print(f"[ERROR] 데이터베이스 초기화 실패: {e}")
+
 # 인증 시스템 초기화
 if AUTH_AVAILABLE:
     try:
@@ -673,13 +680,6 @@ if AUTH_AVAILABLE:
     except Exception as e:
         print(f"[WARNING] 인증 시스템 초기화 실패: {e}")
         AUTH_AVAILABLE = False
-
-# 데이터베이스 초기화
-try:
-    db.init_app(app)
-    print("[SUCCESS] 데이터베이스가 연결되었습니다.")
-except Exception as e:
-    print(f"[ERROR] 데이터베이스 초기화 실패: {e}")
 
 
 # Root route to handle base URL requests
