@@ -8,7 +8,7 @@ from models.app_models import (
 from datetime import datetime, timedelta
 import random
 import os
-from auth.utils import require_auth
+from auth.middleware import check_authentication
 from utils.safe_jsonify import safe_jsonify
 
 def get_seoul_today():
@@ -32,7 +32,7 @@ def _restaurants_guard():
     if request.endpoint in public_endpoints:
         return None
     # 쓰기 작업은 인증 필요
-    return require_auth()()
+    return check_authentication()
 
 def geocode_address(address):
     """주소를 좌표로 변환하는 함수 (가상 구현)"""
