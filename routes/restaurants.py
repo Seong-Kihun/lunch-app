@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import random
 import os
 from auth.utils import require_auth
-from app import safe_jsonify
+from utils.safe_jsonify import safe_jsonify
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""
