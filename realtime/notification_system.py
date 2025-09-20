@@ -60,18 +60,18 @@ class NotificationSystem:
     def setup_socket_events(self):
         """Socket.IO 이벤트 핸들러 설정"""
         
-        @self.socketio.on('connect')
-        def handle_connect(*args, **kwargs):
-            """클라이언트 연결 시"""
-            session_id = request.sid
-            logger.info(f"🔌 클라이언트 연결: {session_id}")
-            
-            # 연결 확인 응답
-            emit('connection_established', {
-                'status': 'connected',
-                'session_id': session_id,
-                'timestamp': datetime.now().isoformat()
-            })
+        # @self.socketio.on('connect')
+        # def handle_connect(*args, **kwargs):
+        #     """클라이언트 연결 시"""
+        #     session_id = request.sid
+        #     logger.info(f"🔌 클라이언트 연결: {session_id}")
+        #     
+        #     # 연결 확인 응답
+        #     emit('connection_established', {
+        #         'status': 'connected',
+        #         'session_id': session_id,
+        #         'timestamp': datetime.now().isoformat()
+        #     })
         
         @self.socketio.on('authenticate')
         def handle_authentication(data):
