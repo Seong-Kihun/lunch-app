@@ -3749,8 +3749,12 @@ def get_my_chats(employee_id):
 
 # --- WebSocket 이벤트 ---
 @socketio.on("connect")
-def handle_connect():
+def handle_connect(*args, **kwargs):
     print("Client connected")
+    if 'employee_id' in kwargs:
+        print(f"Client connected with employee_id: {kwargs['employee_id']}")
+    else:
+        print("Client connected without employee_id")
 
 
 @socketio.on("disconnect")
