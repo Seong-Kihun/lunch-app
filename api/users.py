@@ -6,7 +6,7 @@
 from flask import Blueprint, request, jsonify
 from utils.error_monitor import record_error
 from utils.logger import logger, log_api_call
-from auth.utils import require_auth
+from auth.middleware import check_authentication
 
 # 사용자 Blueprint 생성
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -14,7 +14,7 @@ users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 # 인증 미들웨어 적용
 @users_bp.before_request
 def _users_guard():
-    return require_auth()()
+    return check_authentication()
 
 @users_bp.route('/profile', methods=['GET'])
 @log_api_call
@@ -26,7 +26,7 @@ def get_user_profile():
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
         # 인증된 사용자 ID 사용
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -56,7 +56,7 @@ def get_user_profile():
         })
         
     except Exception as e:
-        record_error(e, severity='medium', endpoint='get_user_profile', context={'user_id': request.current_user.get('employee_id') if hasattr(request, 'current_user') else None})
+        record_error(e, severity='medium', endpoint='get_user_profile', context={'user_id': getattr(request.current_user, 'employee_id', None) if hasattr(request, 'current_user') else None})
         return jsonify({'error': '사용자 프로필 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 @users_bp.route('/profile', methods=['PUT'])
@@ -68,7 +68,7 @@ def update_user_profile():
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
         # 인증된 사용자 ID 사용
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -118,7 +118,7 @@ def get_user_activity_stats():
         if not hasattr(request, 'current_user') or not request.current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -252,7 +252,7 @@ def get_user_dashboard():
         if not hasattr(request, 'current_user') or not request.current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -379,7 +379,7 @@ def get_user_appointments():
         if not hasattr(request, 'current_user') or not request.current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -498,7 +498,7 @@ def get_user_points():
         if not hasattr(request, 'current_user') or not request.current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
@@ -552,7 +552,7 @@ def get_user_badges():
         if not hasattr(request, 'current_user') or not request.current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
         
-        employee_id = request.current_user.get('employee_id')
+        employee_id = getattr(request.current_user, 'employee_id', None)
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
