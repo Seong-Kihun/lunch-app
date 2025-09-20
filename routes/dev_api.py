@@ -21,12 +21,25 @@ def patch_auth_functions():
     """인증 관련 함수들을 우회하도록 패치"""
     try:
         import sys
+        # auth.utils 모듈이 아직 로드되지 않았을 수 있으므로 직접 import
+        try:
+            from auth.utils import require_auth
+            # require_auth를 데코레이터로 사용할 수 있도록 수정
+            def bypass_auth(f):
+                return f
+            sys.modules['auth.utils'].require_auth = bypass_auth
+        except ImportError:
+            pass
+        
+        # 기존 모듈이 있다면 패치
         if 'auth.utils' in sys.modules:
             auth_utils = sys.modules['auth.utils']
             if hasattr(auth_utils, 'require_auth'):
-                auth_utils.require_auth = lambda f: f
-    except:
-        pass
+                def bypass_auth(f):
+                    return f
+                auth_utils.require_auth = bypass_auth
+    except Exception as e:
+        print(f"인증 패치 실패: {e}")
 
 # 패치 적용
 patch_auth_functions()
