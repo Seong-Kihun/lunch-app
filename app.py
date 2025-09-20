@@ -8,6 +8,7 @@ from sqlalchemy import desc, or_, and_, func, text
 import os
 import json
 from utils.json_encoder import CustomJSONEncoder
+from monitoring.production_monitor import monitor_api_call
 # APScheduler는 Celery Beat로 대체됨
 
 # 구조화된 로깅 시스템 import
@@ -690,6 +691,7 @@ if AUTH_AVAILABLE:
 # Root route to handle base URL requests
 @app.route("/")
 @log_api_call
+@monitor_api_call
 def root():
     logger.info("Root endpoint accessed")
     return jsonify({"message": "Lunch App API Server", "status": "running", "version": "1.0.0"})
@@ -6772,6 +6774,14 @@ with app.app_context():
         print("[SUCCESS] 데이터 정리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 데이터 정리 Blueprint 등록 실패: {e}")
+
+    # 모니터링 Blueprint 등록
+    try:
+        from monitoring.monitoring_routes import monitoring_bp
+        app.register_blueprint(monitoring_bp)
+        print("[SUCCESS] 모니터링 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"[ERROR] 모니터링 Blueprint 등록 실패: {e}")
 
     # 파일 업로드 Blueprint 등록
     try:
