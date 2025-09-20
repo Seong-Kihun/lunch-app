@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from extensions import db
 from models.app_models import Party, PartyMember
 from auth.utils import require_auth
+from utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result, optimize_json_response
 
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/api/parties')
@@ -122,6 +123,8 @@ def create_party():
         return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 @parties_bp.route('/', methods=['GET'])
+@measure_performance('get_all_parties')
+@cache_query_result('parties_list', ttl=60)  # 1분 캐시
 def get_all_parties():
     """파티 목록 조회"""
     try:
@@ -135,23 +138,25 @@ def get_all_parties():
         
         is_from_match = request.args.get('is_from_match')
         
-        # 데이터베이스에서 파티 조회
+        # 데이터베이스에서 파티 조회 (최적화된 쿼리)
         from models.app_models import Party, PartyMember
         from extensions import db
         
         print(f"🔍 [get_all_parties] is_from_match: {is_from_match}")
         
         if is_from_match:
-            # 특정 사용자의 랜덤런치 그룹 조회
+            # 특정 사용자의 랜덤런치 그룹 조회 (최적화)
             print("🔍 [get_all_parties] 랜덤런치 그룹 조회 경로")
-            parties = Party.query.join(PartyMember).filter(
+            query = Party.query.join(PartyMember).filter(
                 Party.is_from_match == True,
                 PartyMember.employee_id == employee_id
-            ).order_by(desc(Party.id)).all()
+            ).order_by(desc(Party.id))
+            parties = optimize_database_query(query).all()
         else:
-            # 일반 파티 조회 (랜덤런치 제외)
+            # 일반 파티 조회 (랜덤런치 제외, 최적화)
             print("🔍 [get_all_parties] 일반 파티 조회 경로")
-            parties = Party.query.filter_by(is_from_match=False).order_by(desc(Party.id)).all()
+            query = Party.query.filter_by(is_from_match=False).order_by(desc(Party.id))
+            parties = optimize_database_query(query).all()
         
         print(f"🔍 [get_all_parties] 조회된 파티 수: {len(parties)}")
         
@@ -192,14 +197,19 @@ def get_all_parties():
                 'member_count': len(member_ids)
             })
         
-        return jsonify({
+        # JSON 응답 최적화
+        response_data = {
             'success': True,
             'message': '파티 목록 조회 성공',
             'employee_id': employee_id,
             'is_from_match': bool(is_from_match),
             'total_parties': len(parties_data),
             'parties': parties_data
-        })
+        }
+        
+        # 최적화된 JSON 응답 반환
+        optimized_response = optimize_json_response(response_data)
+        return jsonify(optimized_response)
         
     except Exception as e:
         print(f"Error in get_all_parties: {e}")
