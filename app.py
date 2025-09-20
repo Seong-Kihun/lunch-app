@@ -61,20 +61,7 @@ app.config['JSON_AS_ASCII'] = False
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
 # JSON 직렬화를 위한 헬퍼 함수
-from utils.json_encoder import convert_to_serializable
-
-def safe_jsonify(data):
-    """안전한 JSON 직렬화 함수"""
-    try:
-        # 데이터를 직렬화 가능한 형태로 변환
-        serializable_data = convert_to_serializable(data)
-        return jsonify(serializable_data)
-    except Exception as e:
-        logger.error(f"JSON 직렬화 실패: {e}")
-        return jsonify({
-            'error': '데이터 직렬화 실패',
-            'message': str(e)
-        }), 500
+from utils.safe_jsonify import safe_jsonify
 
 # JSON 직렬화 오류 처리
 @app.errorhandler(500)
