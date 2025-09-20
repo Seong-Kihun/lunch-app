@@ -46,11 +46,8 @@ def get_user(employee_id):
     
     user_data = {
         "employee_id": user.employee_id,
-        "name": user.name,
         "nickname": user.nickname,
         "email": user.email,
-        "department": user.department,
-        "position": user.position,
         "lunch_preference": user.lunch_preference,
         "main_dish_genre": user.main_dish_genre,
         "matching_status": user.matching_status,
@@ -74,10 +71,7 @@ def get_users_batch():
     for user in users:
         user_info = {
             "employee_id": user.employee_id,
-            "name": user.name,
             "nickname": user.nickname,
-            "department": user.department,
-            "position": user.position,
             "lunch_preference": user.lunch_preference,
             "main_dish_genre": user.main_dish_genre
         }
