@@ -19,6 +19,10 @@ chats_bp = Blueprint('chats', __name__)
 # 인증 미들웨어 적용
 @chats_bp.before_request
 def _chats_guard():
+    # 개발 환경에서는 인증 우회
+    import os
+    if os.getenv('FLASK_ENV') == 'development' or os.getenv('DEV_MODE') == 'true':
+        return None
     return require_auth()()
 
 def get_seoul_today():
