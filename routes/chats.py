@@ -24,7 +24,8 @@ def _chats_guard():
     if (os.getenv('FLASK_ENV') == 'development' or 
         os.getenv('DEV_MODE') == 'true' or 
         os.getenv('DEV_MODE') == '1' or
-        'DEV' in os.getenv('FLASK_ENV', '')):
+        'DEV' in os.getenv('FLASK_ENV', '') or
+        os.getenv('FLASK_DEBUG') == '1'):
         return None
     return require_auth()()
 
