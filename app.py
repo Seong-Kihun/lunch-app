@@ -32,18 +32,18 @@ if AUTH_AVAILABLE:
     try:
         from auth.utils import require_auth
         from auth.models import Friendship, User
-        print("✅ 인증 시스템이 활성화되었습니다.")
+        print("[SUCCESS] 인증 시스템이 활성화되었습니다.")
     except ImportError as e:
-        print(f"⚠️ 인증 모듈 import 실패: {e}")
+        print(f"[WARNING] 인증 모듈 import 실패: {e}")
         AUTH_AVAILABLE = False
 
 # 그룹 매칭 관련 import
 if GROUP_MATCHING_AVAILABLE:
     try:
         from group_matching import calculate_group_score, get_virtual_users_data
-        print("✅ 그룹 매칭 시스템이 활성화되었습니다.")
+        print("[SUCCESS] 그룹 매칭 시스템이 활성화되었습니다.")
     except ImportError as e:
-        print(f"⚠️ 그룹 매칭 모듈 import 실패: {e}")
+        print(f"[WARNING] 그룹 매칭 모듈 import 실패: {e}")
         GROUP_MATCHING_AVAILABLE = False
 
 app = Flask(__name__)
@@ -65,7 +65,7 @@ if not secret_key:
         raise ValueError("프로덕션 환경에서는 SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
     else:
         secret_key = "dev-flask-secret-key-change-in-production"
-        print("⚠️ 개발 환경에서 기본 SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
+        print("[WARNING] 개발 환경에서 기본 SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
 
 app.config["SECRET_KEY"] = secret_key
 
@@ -101,7 +101,7 @@ from models.app_models import (
 # 스케줄 모델 import
 from models.schedule_models import PersonalSchedule, ScheduleException
 
-print("✅ extensions.py의 데이터베이스 객체를 import했습니다.")
+print("[SUCCESS] extensions.py의 데이터베이스 객체를 import했습니다.")
 
 # Flask-Migrate 초기화 (일시적으로 비활성화 - 스키마 불일치 문제 해결 후 활성화)
 # from flask_migrate import Migrate
@@ -112,16 +112,16 @@ try:
     from utils.error_handler import register_error_handlers
 
     register_error_handlers(app)
-    print("✅ 에러 핸들러가 성공적으로 등록되었습니다.")
+    print("[SUCCESS] 에러 핸들러가 성공적으로 등록되었습니다.")
 except ImportError as e:
-    print(f"⚠️ 에러 핸들러 등록 실패: {e}")
+    print(f"[WARNING] 에러 핸들러 등록 실패: {e}")
     print("   에러 핸들링 기능은 비활성화됩니다.")
 
 # Celery 백그라운드 작업 설정
 offline_mode = os.getenv('OFFLINE_MODE', 'false').lower() == 'true'
 
 if offline_mode:
-    print("🔧 오프라인 모드: Celery 백그라운드 작업이 비활성화됩니다.")
+    print("[CONFIG] 오프라인 모드: Celery 백그라운드 작업이 비활성화됩니다.")
     celery_app = None
 else:
     try:
@@ -130,11 +130,11 @@ else:
         celery_app = create_celery(app)
         if celery_app:
             setup_periodic_tasks(celery_app)
-            print("✅ Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
+            print("[SUCCESS] Celery 백그라운드 작업이 성공적으로 설정되었습니다.")
         else:
-            print("ℹ️ Celery가 비활성화되어 백그라운드 작업을 건너뜁니다.")
+            print("[INFO] Celery가 비활성화되어 백그라운드 작업을 건너뜁니다.")
     except ImportError as e:
-        print(f"⚠️ Celery 설정 실패: {e}")
+        print(f"[WARNING] Celery 설정 실패: {e}")
         print("   백그라운드 작업은 비활성화됩니다.")
         celery_app = None
 
@@ -143,9 +143,9 @@ try:
     from performance_monitor import setup_development_monitoring
 
     setup_development_monitoring(app)
-    print("✅ 성능 모니터링이 성공적으로 설정되었습니다.")
+    print("[SUCCESS] 성능 모니터링이 성공적으로 설정되었습니다.")
 except ImportError as e:
-    print(f"⚠️ 성능 모니터링 설정 실패: {e}")
+    print(f"[WARNING] 성능 모니터링 설정 실패: {e}")
     print("   성능 모니터링은 비활성화됩니다.")
 
 # 데이터베이스 최적화 도구 설정
@@ -157,17 +157,17 @@ try:
         try:
             return DatabaseOptimizer(db)
         except (ImportError, AttributeError, RuntimeError) as e:
-            print(f"⚠️ 데이터베이스 최적화 도구 초기화 실패: {e}")
+            print(f"[WARNING] 데이터베이스 최적화 도구 초기화 실패: {e}")
             return None
 
     db_optimizer = None  # 나중에 초기화
 
-    print("✅ 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
+    print("[SUCCESS] 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
     print("   - 인덱스 최적화")
     print("   - 쿼리 성능 분석")
 
 except ImportError as e:
-    print(f"⚠️ 데이터베이스 최적화 도구 설정 실패: {e}")
+    print(f"[WARNING] 데이터베이스 최적화 도구 설정 실패: {e}")
     print("   데이터베이스 최적화 기능은 비활성화됩니다.")
     db_optimizer = None
 
@@ -179,13 +179,13 @@ try:
     security_auditor = SecurityAuditor(app, db)
     security_auditor.setup_security_middleware()
 
-    print("✅ 보안 시스템이 성공적으로 설정되었습니다.")
+    print("[SUCCESS] 보안 시스템이 성공적으로 설정되었습니다.")
     print("   - 위협 패턴 스캔")
     print("   - Rate limiting")
     print("   - 보안 이벤트 로깅")
 
 except ImportError as e:
-    print(f"⚠️ 보안 시스템 설정 실패: {e}")
+    print(f"[WARNING] 보안 시스템 설정 실패: {e}")
     print("   보안 기능은 비활성화됩니다.")
     security_auditor = None
 
@@ -199,15 +199,15 @@ try:
     # 개발 환경에서 자동 모니터링 시작
     if app.config.get("DEBUG", False):
         app_monitor.start_monitoring()
-        print("✅ 애플리케이션 모니터링이 성공적으로 설정되었습니다.")
+        print("[SUCCESS] 애플리케이션 모니터링이 성공적으로 설정되었습니다.")
         print("   - 시스템 리소스 모니터링")
         print("   - 데이터베이스 상태 모니터링")
         print("   - 실시간 알림 시스템")
     else:
-        print("✅ 애플리케이션 모니터링이 설정되었습니다. (수동 시작 필요)")
+        print("[SUCCESS] 애플리케이션 모니터링이 설정되었습니다. (수동 시작 필요)")
 
 except ImportError as e:
-    print(f"⚠️ 모니터링 시스템 설정 실패: {e}")
+    print(f"[WARNING] 모니터링 시스템 설정 실패: {e}")
     print("   모니터링 기능은 비활성화됩니다.")
     app_monitor = None
 
@@ -617,11 +617,11 @@ try:
     from cache_manager import cache_manager
 
     if cache_manager.redis_client:
-        print("✅ Redis 캐싱이 성공적으로 설정되었습니다.")
+        print("[SUCCESS] Redis 캐싱이 성공적으로 설정되었습니다.")
     else:
-        print("⚠️ Redis 캐싱 설정 실패: Redis 연결 불가")
+        print("[WARNING] Redis 캐싱 설정 실패: Redis 연결 불가")
 except ImportError as e:
-    print(f"⚠️ Redis 캐싱 설정 실패: {e}")
+    print(f"[WARNING] Redis 캐싱 설정 실패: {e}")
     print("   캐싱은 비활성화됩니다.")
 
 # 실시간 통신 시스템 설정
@@ -642,9 +642,9 @@ if module_loader.is_loaded('realtime'):
         collaboration_system = CollaborationSystem(socketio, db)
         collaboration_system.setup_socket_events()
 
-        print("✅ 실시간 통신 시스템이 설정되었습니다.")
+        print("[SUCCESS] 실시간 통신 시스템이 설정되었습니다.")
     except ImportError as e:
-        print(f"⚠️ 실시간 통신 시스템 설정 실패: {e}")
+        print(f"[WARNING] 실시간 통신 시스템 설정 실패: {e}")
         socketio = None
         notification_system = None
         collaboration_system = None
@@ -658,9 +658,9 @@ if module_loader.is_loaded('api'):
     try:
         from api import init_app as init_api
         init_api(app)
-        print("✅ API Blueprint가 등록되었습니다.")
+        print("[SUCCESS] API Blueprint가 등록되었습니다.")
     except ImportError as e:
-        print(f"⚠️ API Blueprint 등록 실패: {e}")
+        print(f"[WARNING] API Blueprint 등록 실패: {e}")
 
 # 인증 시스템 초기화
 if AUTH_AVAILABLE:
@@ -668,17 +668,17 @@ if AUTH_AVAILABLE:
         from auth import init_auth
         app.require_auth = require_auth
         app = init_auth(app)
-        print("✅ 인증 시스템이 초기화되었습니다.")
+        print("[SUCCESS] 인증 시스템이 초기화되었습니다.")
     except Exception as e:
-        print(f"⚠️ 인증 시스템 초기화 실패: {e}")
+        print(f"[WARNING] 인증 시스템 초기화 실패: {e}")
         AUTH_AVAILABLE = False
 
 # 데이터베이스 초기화
 try:
     db.init_app(app)
-    print("✅ 데이터베이스가 연결되었습니다.")
+    print("[SUCCESS] 데이터베이스가 연결되었습니다.")
 except Exception as e:
-    print(f"❌ 데이터베이스 초기화 실패: {e}")
+    print(f"[ERROR] 데이터베이스 초기화 실패: {e}")
 
 
 # Root route to handle base URL requests
@@ -750,9 +750,9 @@ def health_check():
 try:
     setup_flask_error_handlers(app)
     create_error_monitoring_routes(app)
-    logger.info("✅ 에러 모니터링 시스템이 설정되었습니다")
+    logger.info("[SUCCESS] 에러 모니터링 시스템이 설정되었습니다")
 except Exception as e:
-    logger.error(f"❌ 에러 모니터링 시스템 설정 실패: {e}")
+    logger.error(f"[ERROR] 에러 모니터링 시스템 설정 실패: {e}")
 
 
 # API 테스트 엔드포인트
@@ -1279,10 +1279,10 @@ def get_notification_icon(notification_type):
     icons = {
         "party_invite": "🎉",
         "party_join": "👥",
-        "party_cancel": "❌",
+        "party_cancel": "[ERROR]",
         "party_reminder": "⏰",
         "friend_request": "👋",
-        "friend_accept": "✅",
+        "friend_accept": "[SUCCESS]",
         "chat_message": "💬",
         "points_earned": "⭐",
         "badge_earned": "🏆",
@@ -1307,11 +1307,11 @@ if AUTH_AVAILABLE:
     try:
         # User 모델의 테이블이 메타데이터에 등록되었는지 확인
         if "users" not in db.metadata.tables:
-            print("⚠️ users 테이블이 메타데이터에 등록되지 않았습니다.")
+            print("[WARNING] users 테이블이 메타데이터에 등록되지 않았습니다.")
         else:
-            print("✅ users 테이블이 메타데이터에 등록되었습니다.")
+            print("[SUCCESS] users 테이블이 메타데이터에 등록되었습니다.")
     except (AttributeError, KeyError) as e:
-        print(f"⚠️ User 모델 메타데이터 확인 실패: {e}")
+        print(f"[WARNING] User 모델 메타데이터 확인 실패: {e}")
 
 # PersonalSchedule 모델은 필요할 때만 import하여 사용
 
@@ -1323,7 +1323,7 @@ def initialize_database():
         try:
             # 데이터베이스 연결 테스트
             if not app.config.get("SQLALCHEMY_DATABASE_URI"):
-                print("❌ 데이터베이스 URI가 설정되지 않았습니다.")
+                print("[ERROR] 데이터베이스 URI가 설정되지 않았습니다.")
                 return False
                 
             # 데이터베이스 테이블 생성
@@ -1349,7 +1349,7 @@ def initialize_database():
                 except (AttributeError, KeyError, ValueError) as e:
                     print(f"DEBUG: 초기 데이터 생성 실패 (이미 존재할 수 있음): {e}")
             else:
-                print("ℹ️ 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
+                print("[INFO] 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
 
         except (AttributeError, KeyError, ImportError, RuntimeError) as e:
             print(f"ERROR: Database initialization failed: {e}")
@@ -1364,14 +1364,14 @@ def load_restaurant_data_if_needed():
         # 기존 데이터 확인
         existing_count = RestaurantV2.query.count()
         if existing_count > 0:
-            print(f"✅ 식당 데이터 {existing_count}개가 이미 있습니다.")
+            print(f"[SUCCESS] 식당 데이터 {existing_count}개가 이미 있습니다.")
             return True
         
         # 엑셀 파일 경로
         excel_file_path = "data/restaurants_707.xlsx"
         
         if not os.path.exists(excel_file_path):
-            print(f"⚠️ 엑셀 파일을 찾을 수 없습니다: {excel_file_path}")
+            print(f"[WARNING] 엑셀 파일을 찾을 수 없습니다: {excel_file_path}")
             return False
         
         print("📖 식당 데이터 자동 로드 시작...")
@@ -1434,12 +1434,12 @@ def load_restaurant_data_if_needed():
         
         db.session.commit()
         
-        print(f"✅ 식당 데이터 자동 로드 완료: 성공 {success_count}개, 실패 {error_count}개")
+        print(f"[SUCCESS] 식당 데이터 자동 로드 완료: 성공 {success_count}개, 실패 {error_count}개")
         return True
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ 식당 데이터 자동 로드 실패: {e}")
+        print(f"[ERROR] 식당 데이터 자동 로드 실패: {e}")
         return False
 
 def create_initial_data():
@@ -1495,7 +1495,7 @@ def create_initial_data():
                 db.session.add(user)
                 print(f"DEBUG: 사용자 {user_data['nickname']} 추가 완료")
             except Exception as e:
-                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
+                print(f"[WARNING] 사용자 {user_data['nickname']} 추가 중 오류: {e}")
                 # 트랜잭션 롤백 후 계속 진행
                 db.session.rollback()
                 continue
@@ -1635,7 +1635,7 @@ with app.app_context():
     try:
         initialize_database()
     except Exception as e:
-        print(f"⚠️ 데이터베이스 초기화 실패: {e}")
+        print(f"[WARNING] 데이터베이스 초기화 실패: {e}")
         print("   앱은 계속 실행되지만 일부 기능이 제한될 수 있습니다.")
 
 
@@ -3913,7 +3913,7 @@ def add_friend():
             return jsonify({"error": "인증이 필요합니다."}), 401
 
     if user_id == friend_id:
-        print(f"⚠️ [친구추가] 자기 자신 추가 시도: user_id={user_id}, friend_id={friend_id}")
+        print(f"[WARNING] [친구추가] 자기 자신 추가 시도: user_id={user_id}, friend_id={friend_id}")
         return jsonify({"message": "자기 자신을 친구로 추가할 수 없습니다."}), 400
 
     # 이미 친구인지 확인 (양방향 확인)
@@ -3926,7 +3926,7 @@ def add_friend():
     ).first()
 
     if existing_friendship1 or existing_friendship2:
-        print(f"⚠️ [친구추가] 이미 친구: {user_id}와 {friend_id}")
+        print(f"[WARNING] [친구추가] 이미 친구: {user_id}와 {friend_id}")
         return jsonify({"message": "이미 친구로 추가되어 있습니다."}), 400
 
     # 양방향 친구 관계 생성
@@ -3943,7 +3943,7 @@ def add_friend():
     db.session.add(new_friendship2)
     db.session.commit()
 
-    print(f"✅ [친구추가] 성공: {user_id}와 {friend_id}가 친구가 되었습니다.")
+    print(f"[SUCCESS] [친구추가] 성공: {user_id}와 {friend_id}가 친구가 되었습니다.")
 
     # 추가된 친구 관계 확인
     added_friendship1 = Friendship.query.filter_by(
@@ -3955,9 +3955,9 @@ def add_friend():
     ).first()
 
     if added_friendship1 and added_friendship2:
-        print(f"✅ [친구추가] 데이터베이스 확인: 양방향 친구 관계 생성 완료")
+        print(f"[SUCCESS] [친구추가] 데이터베이스 확인: 양방향 친구 관계 생성 완료")
     else:
-        print(f"⚠️ [친구추가] 데이터베이스 확인: 친구 관계 생성 실패")
+        print(f"[WARNING] [친구추가] 데이터베이스 확인: 친구 관계 생성 실패")
 
     return jsonify({"message": "친구가 추가되었습니다."}), 201
 
@@ -5038,20 +5038,20 @@ try:
 
     # FriendInviteSystem에 데이터베이스 객체 설정
     FriendInviteSystem.set_db(db)
-    print("✅ 포인트 시스템이 성공적으로 설정되었습니다.")
+    print("[SUCCESS] 포인트 시스템이 성공적으로 설정되었습니다.")
 
     # 포인트 시스템 API 블루프린트 등록
     try:
         from api.points_api import points_api
 
         app.register_blueprint(points_api, url_prefix="/api")
-        print("✅ 포인트 API가 성공적으로 등록되었습니다.")
+        print("[SUCCESS] 포인트 API가 성공적으로 등록되었습니다.")
     except ImportError as e:
-        print(f"⚠️ 포인트 API 등록 실패: {e}")
+        print(f"[WARNING] 포인트 API 등록 실패: {e}")
         print("   포인트 API는 비활성화됩니다.")
 
 except ImportError as e:
-    print(f"⚠️ 포인트 시스템 설정 실패: {e}")
+    print(f"[WARNING] 포인트 시스템 설정 실패: {e}")
     print("   포인트 시스템은 비활성화됩니다.")
 
 # 스케줄러는 Celery Beat로 통일됨 (celery_config.py에서 관리)
@@ -5178,7 +5178,7 @@ def delete_all_randomlunch():
         db.session.commit()
 
         print(
-            f"✅ [랜덤런치] 정리 완료: 파티{deleted_parties}개, 멤버{deleted_members}개, 제안{deleted_proposals}개, 채팅{deleted_chats}개"
+            f"[SUCCESS] [랜덤런치] 정리 완료: 파티{deleted_parties}개, 멤버{deleted_members}개, 제안{deleted_proposals}개, 채팅{deleted_chats}개"
         )
 
         return jsonify(
@@ -5193,7 +5193,7 @@ def delete_all_randomlunch():
         )
     except Exception as e:
         db.session.rollback()
-        print(f"❌ [랜덤런치] 데이터 정리 중 오류: {e}")
+        print(f"[ERROR] [랜덤런치] 데이터 정리 중 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -5208,7 +5208,7 @@ def create_recurring_instances(master_schedule):
         if not master_schedule.is_recurring or not master_schedule.recurrence_type:
             return
         
-        print(f"🔄 반복일정 인스턴스 생성 시작: {master_schedule.title}")
+        print(f"[PROCESS] 반복일정 인스턴스 생성 시작: {master_schedule.title}")
         
         # 시작 날짜와 종료 날짜 설정
         start_date = master_schedule.start_date
@@ -5267,10 +5267,10 @@ def create_recurring_instances(master_schedule):
             
             current_date = next_date
         
-        print(f"✅ 반복일정 인스턴스 생성 완료: {instance_count}개")
+        print(f"[SUCCESS] 반복일정 인스턴스 생성 완료: {instance_count}개")
         
     except Exception as e:
-        print(f"❌ 반복일정 인스턴스 생성 실패: {e}")
+        print(f"[ERROR] 반복일정 인스턴스 생성 실패: {e}")
         raise
 
 # 🚀 개발용 일정 조회 API (인증 없이 테스트 가능)
@@ -5350,7 +5350,7 @@ def get_nickname_by_id(employee_id):
             
             chats_data.append(chat_data)
         
-        print(f"✅ 사용자 {employee_id}의 채팅방 {len(chats_data)}개 조회 완료")
+        print(f"[SUCCESS] 사용자 {employee_id}의 채팅방 {len(chats_data)}개 조회 완료")
         return jsonify(chats_data)
     except Exception as e:
         print(f"개발용 채팅 목록 조회 오류: {e}")
@@ -5519,7 +5519,7 @@ def get_nickname_by_id(employee_id):
         
         db.session.commit()
         
-        print(f"✅ 채팅방 생성 완료: ID={new_chat.id}, 제목={title}")
+        print(f"[SUCCESS] 채팅방 생성 완료: ID={new_chat.id}, 제목={title}")
         
         return jsonify({
             "message": "채팅방이 생성되었습니다!",
@@ -5575,7 +5575,7 @@ def get_nickname_by_id(employee_id):
             }
             schedules_data.append(schedule_data)
         
-        print(f"✅ {date} 일정 조회 완료: {len(schedules_data)}개")
+        print(f"[SUCCESS] {date} 일정 조회 완료: {len(schedules_data)}개")
         return jsonify(schedules_data)
         
     except Exception as e:
@@ -5597,10 +5597,10 @@ def get_nickname_by_id(employee_id):
         required_fields = ['title', 'date', 'time', 'created_by', 'restaurant']
         for field in required_fields:
             if field not in data or not data[field]:
-                print(f"❌ [create_party_main] 필수 필드 누락: {field}, 값: {data.get(field)}")
+                print(f"[ERROR] [create_party_main] 필수 필드 누락: {field}, 값: {data.get(field)}")
                 return jsonify({'error': f'필수 필드가 누락되었습니다: {field}'}), 400
         
-        print(f"✅ [create_party_main] 필수 필드 검증 통과")
+        print(f"[SUCCESS] [create_party_main] 필수 필드 검증 통과")
         
         # 데이터베이스에서 파티 생성
         from models.app_models import Party, PartyMember
@@ -5659,7 +5659,7 @@ def get_nickname_by_id(employee_id):
         
         db.session.commit()
         
-        print(f"✅ [create_party_main] 파티 생성 성공: ID {new_party.id}")
+        print(f"[SUCCESS] [create_party_main] 파티 생성 성공: ID {new_party.id}")
         
         return jsonify({
             'success': True,
@@ -5682,7 +5682,7 @@ def get_nickname_by_id(employee_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ [create_party_main] 파티 생성 오류: {e}")
+        print(f"[ERROR] [create_party_main] 파티 생성 오류: {e}")
         return jsonify({'error': '파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/parties", methods=["GET"])
@@ -5693,7 +5693,7 @@ def get_nickname_by_id(employee_id):
         from api.parties import get_all_parties
         return get_all_parties()
     except Exception as e:
-        print(f"❌ [get_parties_main] 오류: {e}")
+        print(f"[ERROR] [get_parties_main] 오류: {e}")
         return jsonify({'error': '파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/parties/<int:party_id>", methods=["GET"])
@@ -5704,7 +5704,7 @@ def get_nickname_by_id(employee_id):
         from api.parties import get_party
         return get_party(party_id)
     except Exception as e:
-        print(f"❌ [get_party_main] 오류: {e}")
+        print(f"[ERROR] [get_party_main] 오류: {e}")
         return jsonify({'error': '파티 상세 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/parties/<int:party_id>/join", methods=["POST"])
@@ -5715,7 +5715,7 @@ def get_nickname_by_id(employee_id):
         from api.parties import join_party
         return join_party(party_id)
     except Exception as e:
-        print(f"❌ [join_party_main] 오류: {e}")
+        print(f"[ERROR] [join_party_main] 오류: {e}")
         return jsonify({'error': '파티 참여 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/parties/<int:party_id>/leave", methods=["POST"])
@@ -5726,7 +5726,7 @@ def get_nickname_by_id(employee_id):
         from api.parties import leave_party
         return leave_party(party_id)
     except Exception as e:
-        print(f"❌ [leave_party_main] 오류: {e}")
+        print(f"[ERROR] [leave_party_main] 오류: {e}")
         return jsonify({'error': '파티 나가기 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/parties/<int:party_id>", methods=["DELETE"])
@@ -5737,7 +5737,7 @@ def get_nickname_by_id(employee_id):
         from api.parties import delete_party
         return delete_party(party_id)
     except Exception as e:
-        print(f"❌ [delete_party_main] 오류: {e}")
+        print(f"[ERROR] [delete_party_main] 오류: {e}")
         return jsonify({'error': '파티 삭제 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
 # @app.route("/dev/parties", methods=["GET"])
@@ -5784,7 +5784,7 @@ def get_nickname_by_id(employee_id):
             }
             parties_data.append(party_data)
         
-        print(f"✅ 파티 목록 조회 완료: {len(parties_data)}개")
+        print(f"[SUCCESS] 파티 목록 조회 완료: {len(parties_data)}개")
         return jsonify({
             "success": True,
             "parties": parties_data,
@@ -5855,7 +5855,7 @@ def get_nickname_by_id(employee_id):
         
         db.session.commit()
         
-        print(f"✅ 일정 생성 완료: ID={new_schedule.id}, 제목={new_schedule.title}")
+        print(f"[SUCCESS] 일정 생성 완료: ID={new_schedule.id}, 제목={new_schedule.title}")
         
         return jsonify({
             "success": True,
@@ -5933,7 +5933,7 @@ def get_nickname_by_id(employee_id):
         
         db.session.commit()
         
-        print(f"✅ 일정 수정 완료: ID={schedule_id}, 제목={schedule.title}")
+        print(f"[SUCCESS] 일정 수정 완료: ID={schedule_id}, 제목={schedule.title}")
         
         return jsonify({
             "success": True,
@@ -5973,7 +5973,7 @@ def get_nickname_by_id(employee_id):
         db.session.delete(schedule)
         db.session.commit()
         
-        print(f"✅ 일정 삭제 완료: ID={schedule_id}")
+        print(f"[SUCCESS] 일정 삭제 완료: ID={schedule_id}")
         
         return jsonify({
             "success": True,
@@ -6074,7 +6074,7 @@ def get_nickname_by_id(employee_id):
                 return jsonify(friends_data)
 
         except (AttributeError, KeyError, TypeError) as db_error:
-            print(f"⚠️ [개발용] 데이터베이스 친구 관계 조회 실패, 가상 데이터 사용: {db_error}")
+            print(f"[WARNING] [개발용] 데이터베이스 친구 관계 조회 실패, 가상 데이터 사용: {db_error}")
 
         # 실제 친구 관계가 없으면 가상 친구 관계 생성 (각 유저당 3-5명의 친구)
         friend_relationships = {
@@ -6439,9 +6439,9 @@ def get_nickname_by_id(employee_id):
             str(current_user) in [user["employee_id"] for user in group["users"]] for group in groups
         )
         if current_user_in_groups:
-            print(f"⚠️ [경고] 현재 사용자 {current_user}가 그룹에 포함되어 있습니다!")
+            print(f"[WARNING] [경고] 현재 사용자 {current_user}가 그룹에 포함되어 있습니다!")
         else:
-            print(f"✅ [확인] 현재 사용자 {current_user}가 모든 그룹에서 제외되었습니다.")
+            print(f"[SUCCESS] [확인] 현재 사용자 {current_user}가 모든 그룹에서 제외되었습니다.")
 
         # 모든 그룹 반환 (무한 스크롤 지원)
 
@@ -6499,18 +6499,18 @@ def create_default_users():
                     user = User(**user_data)
                     db.session.add(user)
                     created_count += 1
-                    print(f"✅ 사용자 추가: {user_data['nickname']} ({user_data['employee_id']})")
+                    print(f"[SUCCESS] 사용자 추가: {user_data['nickname']} ({user_data['employee_id']})")
             except Exception as e:
-                print(f"⚠️ 사용자 {user_data['nickname']} 추가 중 오류: {e}")
+                print(f"[WARNING] 사용자 {user_data['nickname']} 추가 중 오류: {e}")
                 # 개별 사용자 실패 시에도 계속 진행
                 continue
 
         if created_count > 0:
             try:
                 db.session.commit()
-                print(f"✅ {created_count}명의 기본 사용자 생성 완료")
+                print(f"[SUCCESS] {created_count}명의 기본 사용자 생성 완료")
             except Exception as e:
-                print(f"❌ 사용자 커밋 실패: {e}")
+                print(f"[ERROR] 사용자 커밋 실패: {e}")
                 # 커밋 실패 시 개별 커밋 시도
                 db.session.rollback()
                 for user_data in default_users:
@@ -6520,15 +6520,15 @@ def create_default_users():
                             user = User(**user_data)
                             db.session.add(user)
                             db.session.commit()
-                            print(f"✅ 개별 커밋 성공: {user_data['nickname']}")
+                            print(f"[SUCCESS] 개별 커밋 성공: {user_data['nickname']}")
                     except Exception as e2:
-                        print(f"❌ 개별 커밋 실패 {user_data['nickname']}: {e2}")
+                        print(f"[ERROR] 개별 커밋 실패 {user_data['nickname']}: {e2}")
                         db.session.rollback()
         else:
-            print("ℹ️ 추가할 사용자가 없습니다 (이미 모두 존재)")
+            print("[INFO] 추가할 사용자가 없습니다 (이미 모두 존재)")
 
     except Exception as e:
-        print(f"❌ 기본 사용자 생성 실패: {e}")
+        print(f"[ERROR] 기본 사용자 생성 실패: {e}")
         try:
             db.session.rollback()
         except:
@@ -6571,7 +6571,7 @@ def init_database_on_startup():
         def force_create_tables():
             """강제로 테이블을 생성하고 확인"""
             try:
-                print("🔧 강제 테이블 생성 시작...")
+                print("[CONFIG] 강제 테이블 생성 시작...")
 
                 # 기존 세션 정리
                 db.session.rollback()
@@ -6579,7 +6579,7 @@ def init_database_on_startup():
 
                 # 테이블 생성
                 db.create_all()
-                print("✅ 강제 테이블 생성 완료")
+                print("[SUCCESS] 강제 테이블 생성 완료")
 
                 # PostgreSQL 특성상 약간의 대기 시간 필요
                 import time
@@ -6591,58 +6591,58 @@ def init_database_on_startup():
 
                 return True
             except Exception as e:
-                print(f"❌ 강제 테이블 생성 실패: {e}")
+                print(f"[ERROR] 강제 테이블 생성 실패: {e}")
                 db.session.rollback()
                 return False
 
         if not check_table_exists("users"):
-            print("🔧 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
+            print("[CONFIG] 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
 
             # 첫 번째 시도: 일반적인 방법
             try:
                 db.create_all()
-                print("✅ 데이터베이스 테이블 생성 완료")
+                print("[SUCCESS] 데이터베이스 테이블 생성 완료")
             except Exception as e:
-                print(f"⚠️ 일반 테이블 생성 실패: {e}")
+                print(f"[WARNING] 일반 테이블 생성 실패: {e}")
                 # 강제 생성 시도
                 if not force_create_tables():
-                    print("❌ 모든 테이블 생성 방법 실패")
+                    print("[ERROR] 모든 테이블 생성 방법 실패")
                     return
 
             # 테이블 생성 완료 확인 (1번만 시도)
             try:
                 if check_table_exists("users"):
-                    print("✅ 테이블 생성 확인 완료")
+                    print("[SUCCESS] 테이블 생성 확인 완료")
                 else:
-                    print("⚠️ 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
+                    print("[WARNING] 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
                     if not force_create_tables():
-                        print("❌ 강제 테이블 생성도 실패")
+                        print("[ERROR] 강제 테이블 생성도 실패")
                         return
             except Exception as e:
-                print(f"⚠️ 테이블 확인 중 오류: {e}, 강제 테이블 생성 시도...")
+                print(f"[WARNING] 테이블 확인 중 오류: {e}, 강제 테이블 생성 시도...")
                 if not force_create_tables():
-                    print("❌ 강제 테이블 생성도 실패")
+                    print("[ERROR] 강제 테이블 생성도 실패")
                     return
 
             # 기본 사용자 생성 (세션 재설정 후)
             try:
                 db.session.rollback()  # 세션 상태 초기화
                 create_default_users()
-                print("✅ 기본 사용자 생성 완료")
+                print("[SUCCESS] 기본 사용자 생성 완료")
             except Exception as e:
-                print(f"❌ 기본 사용자 생성 실패: {e}")
+                print(f"[ERROR] 기본 사용자 생성 실패: {e}")
                 # 마지막 시도: 세션 재설정 후 사용자 생성
                 try:
                     db.session.rollback()
                     db.session.close()
                     create_default_users()
-                    print("✅ 세션 재설정 후 사용자 생성 성공")
+                    print("[SUCCESS] 세션 재설정 후 사용자 생성 성공")
                 except Exception as e2:
-                    print(f"❌ 모든 사용자 생성 방법 실패: {e2}")
+                    print(f"[ERROR] 모든 사용자 생성 방법 실패: {e2}")
         else:
-            print("✅ 데이터베이스 테이블이 이미 존재합니다")
+            print("[SUCCESS] 데이터베이스 테이블이 이미 존재합니다")
     except Exception as e:
-        print(f"❌ 데이터베이스 초기화 실패: {e}")
+        print(f"[ERROR] 데이터베이스 초기화 실패: {e}")
         # 마지막 수단: 세션 재설정
         try:
             db.session.rollback()
@@ -6660,144 +6660,144 @@ with app.app_context():
         from auth.routes import auth_bp
 
         app.register_blueprint(auth_bp)
-        print("✅ 인증 Blueprint 등록 성공")
+        print("[SUCCESS] 인증 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 인증 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 인증 Blueprint 등록 실패: {e}")
 
     try:
         from api.schedules import schedules_bp, personal_schedules_bp
 
         app.register_blueprint(schedules_bp)
         app.register_blueprint(personal_schedules_bp)
-        print("✅ 일정 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 일정 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 일정 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 일정 관리 Blueprint 등록 실패: {e}")
 
     try:
         from api.proposals import proposals_bp
 
         app.register_blueprint(proposals_bp)
-        print("✅ 제안 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 제안 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 제안 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 제안 관리 Blueprint 등록 실패: {e}")
 
     # 식당 API v2 등록 (기존 v1은 제거됨)
     try:
         from api.restaurants_v2 import restaurants_v2_bp
 
         app.register_blueprint(restaurants_v2_bp)
-        print("✅ 식당 관리 Blueprint v2 등록 성공")
+        print("[SUCCESS] 식당 관리 Blueprint v2 등록 성공")
     except Exception as e:
-        print(f"❌ 식당 관리 Blueprint v2 등록 실패: {e}")
+        print(f"[ERROR] 식당 관리 Blueprint v2 등록 실패: {e}")
 
     # 식당 관련 API 등록 (routes/restaurants.py)
     try:
         from routes.restaurants import restaurants_bp
 
         app.register_blueprint(restaurants_bp)
-        print("✅ 식당 관련 Blueprint 등록 성공")
+        print("[SUCCESS] 식당 관련 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 식당 관련 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 식당 관련 Blueprint 등록 실패: {e}")
 
     try:
         from api.parties import parties_bp
 
         app.register_blueprint(parties_bp)
-        print("✅ 파티 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 파티 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 파티 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 파티 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.users import users_bp
 
         app.register_blueprint(users_bp)
-        print("✅ 사용자 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 사용자 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 사용자 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 사용자 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.chats import chats_bp
 
         app.register_blueprint(chats_bp)
-        print("✅ 채팅 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 채팅 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 채팅 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 채팅 관리 Blueprint 등록 실패: {e}")
 
     # 개발용 API 등록 (개발 환경에서만)
     if os.getenv("FLASK_ENV") != "production":
         try:
             from routes.dev_api import dev_bp
             app.register_blueprint(dev_bp)
-            print("✅ 개발용 API Blueprint 등록 성공")
+            print("[SUCCESS] 개발용 API Blueprint 등록 성공")
         except Exception as e:
-            print(f"❌ 개발용 API Blueprint 등록 실패: {e}")
+            print(f"[ERROR] 개발용 API Blueprint 등록 실패: {e}")
     else:
-        print("ℹ️ 프로덕션 환경: 개발용 API Blueprint 등록 건너뜀")
+        print("[INFO] 프로덕션 환경: 개발용 API Blueprint 등록 건너뜀")
 
     try:
         from routes.voting import voting_bp
 
         app.register_blueprint(voting_bp)
-        print("✅ 투표 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 투표 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 투표 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 투표 관리 Blueprint 등록 실패: {e}")
 
     try:
         from routes.matching import matching_bp
 
         app.register_blueprint(matching_bp)
-        print("✅ 매칭 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 매칭 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 매칭 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 매칭 관리 Blueprint 등록 실패: {e}")
 
     try:
         from api.clear_data import clear_data_bp
 
         app.register_blueprint(clear_data_bp)
-        print("✅ 데이터 정리 Blueprint 등록 성공")
+        print("[SUCCESS] 데이터 정리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 데이터 정리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 데이터 정리 Blueprint 등록 실패: {e}")
 
     # 파일 업로드 Blueprint 등록
     try:
         from routes.file_upload import file_upload_bp
         app.register_blueprint(file_upload_bp)
-        print("✅ 파일 업로드 Blueprint 등록 성공")
+        print("[SUCCESS] 파일 업로드 Blueprint 등록 성공")
     except ImportError as e:
         if "PIL" in str(e):
-            print("❌ 파일 업로드 Blueprint 등록 실패: Pillow 패키지가 설치되지 않았습니다.")
+            print("[ERROR] 파일 업로드 Blueprint 등록 실패: Pillow 패키지가 설치되지 않았습니다.")
             print("   requirements.txt에 Pillow>=10.0.0을 추가하고 재배포하세요.")
         else:
-            print(f"❌ 파일 업로드 Blueprint 등록 실패: {e}")
+            print(f"[ERROR] 파일 업로드 Blueprint 등록 실패: {e}")
     except Exception as e:
-        print(f"❌ 파일 업로드 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 파일 업로드 Blueprint 등록 실패: {e}")
 
     # 알림 관리 Blueprint 등록
     try:
         from routes.notifications import notifications_bp
         app.register_blueprint(notifications_bp)
-        print("✅ 알림 관리 Blueprint 등록 성공")
+        print("[SUCCESS] 알림 관리 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 알림 관리 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 알림 관리 Blueprint 등록 실패: {e}")
 
     # 최적화된 채팅 Blueprint 등록
     try:
         from routes.optimized_chat import optimized_chat_bp
         app.register_blueprint(optimized_chat_bp)
-        print("✅ 최적화된 채팅 Blueprint 등록 성공")
+        print("[SUCCESS] 최적화된 채팅 Blueprint 등록 성공")
     except Exception as e:
-        print(f"❌ 최적화된 채팅 Blueprint 등록 실패: {e}")
+        print(f"[ERROR] 최적화된 채팅 Blueprint 등록 실패: {e}")
 
-    print("✅ 모든 Blueprint 등록 완료")
+    print("[SUCCESS] 모든 Blueprint 등록 완료")
 
 # === 고급 실시간 채팅 시스템 ===
 try:
     from realtime.advanced_chat_system import AdvancedChatSystem
     advanced_chat_system = AdvancedChatSystem(socketio)
-    print("✅ 고급 실시간 채팅 시스템이 성공적으로 로드되었습니다.")
+    print("[SUCCESS] 고급 실시간 채팅 시스템이 성공적으로 로드되었습니다.")
     print(f"   - 시스템 정보: {advanced_chat_system.get_system_info()}")
 except Exception as e:
-    print(f"❌ 고급 실시간 채팅 시스템 로드 실패: {e}")
+    print(f"[ERROR] 고급 실시간 채팅 시스템 로드 실패: {e}")
     advanced_chat_system = None
 
 # 공통 로직은 group_matching.py 모듈로 이동
@@ -6812,7 +6812,7 @@ if __name__ == "__main__":
                 reset_database_if_needed
             )
             
-            print("🔄 데이터베이스 초기화 중...")
+            print("[PROCESS] 데이터베이스 초기화 중...")
             
             # 1. 데이터베이스 마이그레이션 실행
             db_init_success = initialize_database()
@@ -6821,38 +6821,38 @@ if __name__ == "__main__":
             table_creation_success = create_tables_if_not_exist()
             
             if db_init_success and table_creation_success:
-                print("✅ 데이터베이스 초기화 완료")
+                print("[SUCCESS] 데이터베이스 초기화 완료")
             else:
-                print("⚠️ 데이터베이스 초기화에 일부 문제가 있었습니다")
-                print("🔄 데이터베이스 재초기화를 시도합니다...")
+                print("[WARNING] 데이터베이스 초기화에 일부 문제가 있었습니다")
+                print("[PROCESS] 데이터베이스 재초기화를 시도합니다...")
                 
                 # 재초기화 시도
                 reset_success = reset_database_if_needed()
                 if reset_success:
-                    print("✅ 데이터베이스 재초기화 완료")
+                    print("[SUCCESS] 데이터베이스 재초기화 완료")
                 else:
-                    print("❌ 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
+                    print("[ERROR] 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
             
             # 3. 식당 데이터 자동 로드
             try:
                 load_restaurant_data_if_needed()
-                print("✅ 식당 데이터 로드 완료")
+                print("[SUCCESS] 식당 데이터 로드 완료")
             except Exception as e:
-                print(f"⚠️ 식당 데이터 로드 실패 (건너뜀): {e}")
+                print(f"[WARNING] 식당 데이터 로드 실패 (건너뜀): {e}")
             
         except Exception as e:
-            print(f"❌ 데이터베이스 초기화 중 오류 발생: {e}")
-            print("🔄 데이터베이스 재초기화를 시도합니다...")
+            print(f"[ERROR] 데이터베이스 초기화 중 오류 발생: {e}")
+            print("[PROCESS] 데이터베이스 재초기화를 시도합니다...")
             
             try:
                 reset_success = reset_database_if_needed()
                 if reset_success:
-                    print("✅ 데이터베이스 재초기화 완료")
+                    print("[SUCCESS] 데이터베이스 재초기화 완료")
                 else:
-                    print("❌ 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
+                    print("[ERROR] 데이터베이스 재초기화 실패 - 기본 모드로 실행합니다")
             except Exception as reset_error:
-                print(f"❌ 데이터베이스 재초기화 중 오류: {reset_error}")
-                print("⚠️ 오류가 있었지만 앱을 계속 실행합니다")
+                print(f"[ERROR] 데이터베이스 재초기화 중 오류: {reset_error}")
+                print("[WARNING] 오류가 있었지만 앱을 계속 실행합니다")
     
     if socketio:
         # Socket.IO와 함께 실행
