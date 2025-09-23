@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
 import re
-from config.auth_config import AuthConfig
+from backend.config.auth_config import AuthConfig
 
 # 인증 블루프린트 생성
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')

@@ -16,12 +16,12 @@ def init_auth(app):
     return app
 
 # db 객체를 모듈 레벨에서 사용할 수 있도록 설정
-from extensions import db
+from backend.app.extensions import db
 
 def create_tables():
     """데이터베이스 테이블 생성 (마이그레이션용)"""
     # 지연 import로 순환 참조 방지
-    from extensions import db
+    from backend.app.extensions import db
     db.create_all()
     print("✅ 인증 시스템 테이블이 생성되었습니다.")
 

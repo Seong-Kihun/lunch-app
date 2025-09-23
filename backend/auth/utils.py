@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from flask import current_app
-from config.auth_config import AuthConfig
+from backend.config.auth_config import AuthConfig
 # db 객체는 지연 import로 처리
 
 class AuthUtils:

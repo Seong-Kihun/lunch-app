@@ -4,7 +4,7 @@ import secrets
 import hashlib
 
 # 공통 db 객체 사용 (extensions.py에서)
-from extensions import db
+from backend.app.extensions import db
 
 class User(db.Model):
     """사용자 모델"""
