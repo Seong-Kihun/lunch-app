@@ -4,8 +4,8 @@ WebSocket을 사용한 고급 채팅 기능들을 제공합니다.
 """
 
 from flask_socketio import emit, join_room, leave_room
-from extensions import db
-from models.app_models import (
+from backend.app.extensions import db
+from backend.models.app_models import (
     MessageStatus, MessageReaction, MessageSearchIndex, ChatMessage, ChatRoomMember
 )
 from datetime import datetime

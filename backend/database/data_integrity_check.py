@@ -8,8 +8,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from extensions import db
-from app import app
+from backend.app.extensions import db
+from backend.app.app import app
 from auth.models import User, Friendship
 from models.app_models import Party, PartyMember, Restaurant, Review, UserActivity
 
@@ -132,8 +132,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from extensions import db
-from app import app
+from backend.app.extensions import db
+from backend.app.app import app
 from auth.models import User, Friendship
 from models.app_models import Party, PartyMember, Restaurant, Review
 

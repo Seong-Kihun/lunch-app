@@ -6,8 +6,8 @@
 from sqlalchemy import text, func, desc, asc
 from sqlalchemy.orm import joinedload, selectinload, subqueryload
 from sqlalchemy.exc import SQLAlchemyError
-from extensions import db
-from models.app_models import (
+from backend.app.extensions import db
+from backend.models.app_models import (
     ChatMessage, MessageStatus, MessageReaction, MessageAttachment,
     ChatRoomMember, ChatRoomSettings, NotificationSettings, ChatNotification
 )

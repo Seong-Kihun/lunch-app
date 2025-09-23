@@ -4,13 +4,14 @@
 필요한 테이블들을 생성합니다.
 """
 
-from app import app, db
+from backend.app.app import app
+from backend.app.extensions import db
 
 # 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
-from auth.models import User
+from backend.auth.models import User
 
 # 그 다음에 다른 모델들을 import
-from models.schedule_models import PersonalSchedule, ScheduleException
+from backend.models.schedule_models import PersonalSchedule, ScheduleException
 # 🚨 중요: app.py에 이미 정의된 모델들을 사용하므로 중복 import 제거
 # from models.app_models import Party, PartyMember, DangolPot, DangolPotMember, ChatRoom, ChatParticipant, LunchProposal, ProposalAcceptance, ChatMessage, Notification, UserAnalytics, RestaurantAnalytics, Restaurant, Review, Friendship, UserActivity, RestaurantVisit
 

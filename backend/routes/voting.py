@@ -1,10 +1,10 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
-from extensions import db
-from models.app_models import VotingSession, VotingOption, Vote, ChatRoom, ChatParticipant, User
+from backend.app.extensions import db
+from backend.models.app_models import VotingSession, VotingOption, Vote, ChatRoom, ChatParticipant, User
 from datetime import datetime, timedelta
 import random
-from auth.middleware import check_authentication
+from backend.auth.middleware import check_authentication
 
 # Blueprint 생성
 voting_bp = Blueprint('voting', __name__)

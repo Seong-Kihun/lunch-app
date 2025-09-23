@@ -6,9 +6,9 @@ import os
 from flask import Flask
 from flask_cors import CORS
 
-from config.module_loader import module_loader
-from config.env_loader import load_environment_variables
-from extensions import db
+from backend.config.module_loader import module_loader
+from backend.config.env_loader import load_environment_variables
+from backend.app.extensions import db
 
 
 def create_app(config_name=None):

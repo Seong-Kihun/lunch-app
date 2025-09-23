@@ -1,5 +1,5 @@
-from app import app
-from extensions import db
+from backend.app.app import app
+from backend.app.extensions import db
 
 with app.app_context():
     with db.engine.connect() as conn:

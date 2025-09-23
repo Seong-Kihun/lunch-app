@@ -18,8 +18,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app_factory import create_app
-from extensions import db
+from backend.app.app_factory import create_app
+from backend.app.extensions import db
 
 # Flask 앱 생성
 app = create_app()

@@ -1,10 +1,10 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
-from extensions import db
-from models.app_models import User, UserPreference, MatchRequest, Match
+from backend.app.extensions import db
+from backend.models.app_models import User, UserPreference, MatchRequest, Match
 from datetime import datetime, timedelta
 import random
-from auth.middleware import check_authentication
+from backend.auth.middleware import check_authentication
 
 # Blueprint 생성
 matching_bp = Blueprint('matching', __name__)

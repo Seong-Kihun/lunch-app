@@ -5,10 +5,10 @@
 
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
-from extensions import db
-from models.app_models import MessageAttachment, ChatMessage
-from utils.file_manager import file_manager
-from auth.middleware import check_authentication
+from backend.app.extensions import db
+from backend.models.app_models import MessageAttachment, ChatMessage
+from backend.utils.file_manager import file_manager
+from backend.auth.middleware import check_authentication
 from datetime import datetime
 import os
 

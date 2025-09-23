@@ -9,14 +9,14 @@ import sys
 import sqlite3
 from pathlib import Path
 from flask import Flask
-from extensions import db
-from models.app_models import *
-from auth.models import *
+from backend.app.extensions import db
+from backend.models.app_models import *
+from backend.auth.models import *
 
 def create_app_context():
     """Flask 앱 컨텍스트 생성"""
     try:
-        from app import app
+        from backend.app.app import app
         return app
     except Exception as e:
         print(f"❌ 앱 컨텍스트 생성 실패: {e}")

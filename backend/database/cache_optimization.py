@@ -12,9 +12,9 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from cache_manager import cache_manager
-from extensions import db
-from app import app
+from backend.app.cache_manager import cache_manager
+from backend.app.extensions import db
+from backend.app.app import app
 
 class CacheOptimizer:
     def __init__(self):

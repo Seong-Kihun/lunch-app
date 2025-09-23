@@ -1,15 +1,15 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
-from extensions import db
-from models.app_models import (
+from backend.app.extensions import db
+from backend.models.app_models import (
     Restaurant, Review, RestaurantRequest, RestaurantFavorite, RestaurantVisit,
     UserFavorite, UserActivity, CategoryActivity, Badge, UserBadge
 )
 from datetime import datetime, timedelta
 import random
 import os
-from auth.middleware import check_authentication
-from utils.safe_jsonify import safe_jsonify
+from backend.auth.middleware import check_authentication
+from backend.utils.safe_jsonify import safe_jsonify
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""

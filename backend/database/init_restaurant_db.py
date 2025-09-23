@@ -2,9 +2,9 @@
 새로운 식당 데이터베이스 초기화 스크립트
 """
 
-from app import app
-from extensions import db
-from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
+from backend.app.app import app
+from backend.app.extensions import db
+from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
 
 def init_restaurant_database():
     """

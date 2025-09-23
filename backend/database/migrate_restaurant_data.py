@@ -6,8 +6,8 @@
 import pandas as pd
 import os
 from datetime import datetime
-from extensions import db
-from models.restaurant_models import RestaurantV2
+from backend.app.extensions import db
+from backend.models.restaurant_models import RestaurantV2
 import logging
 
 logger = logging.getLogger(__name__)

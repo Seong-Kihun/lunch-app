@@ -11,10 +11,10 @@ import psutil
 import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask
-from extensions import db
-from models.app_models import User, Party, PartyMember
-from models.restaurant_models import RestaurantV2, RestaurantVisitV2
-from models.schedule_models import PersonalSchedule
+from backend.app.extensions import db
+from backend.models.app_models import User, Party, PartyMember
+from backend.models.restaurant_models import RestaurantV2, RestaurantVisitV2
+from backend.models.schedule_models import PersonalSchedule
 
 class PerformanceOptimizer:
     def __init__(self):
@@ -24,7 +24,7 @@ class PerformanceOptimizer:
     def create_app_context(self):
         """Flask 앱 컨텍스트 생성"""
         try:
-            from app import app
+            from backend.app.app import app
             self.app = app
             return True
         except Exception as e:

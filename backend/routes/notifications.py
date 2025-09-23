@@ -4,10 +4,10 @@
 """
 
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models.app_models import ChatNotification, NotificationSettings, User
-from utils.notification_manager import notification_manager
-from auth.middleware import check_authentication
+from backend.app.extensions import db
+from backend.models.app_models import ChatNotification, NotificationSettings, User
+from backend.utils.notification_manager import notification_manager
+from backend.auth.middleware import check_authentication
 from datetime import datetime, timedelta
 import json
 

@@ -10,7 +10,7 @@ import sys
 import time
 from datetime import datetime
 from flask import current_app
-from extensions import db
+from backend.app.extensions import db
 from sqlalchemy import text, inspect
 import logging
 

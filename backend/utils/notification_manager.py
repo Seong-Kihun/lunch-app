@@ -4,8 +4,8 @@
 """
 
 from datetime import datetime, timedelta
-from extensions import db
-from models.app_models import ChatNotification, NotificationSettings, User
+from backend.app.extensions import db
+from backend.models.app_models import ChatNotification, NotificationSettings, User
 from flask_socketio import emit
 import json
 

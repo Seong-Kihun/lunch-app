@@ -3,7 +3,7 @@
 707개 식당 데이터를 위한 깔끔한 구조
 """
 
-from extensions import db
+from backend.app.extensions import db
 from datetime import datetime
 from sqlalchemy import Index
 

@@ -4,12 +4,12 @@
 """
 
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models.app_models import ChatMessage, MessageStatus, MessageReaction, ChatRoomMember
-from utils.cache_manager import chat_cache_manager
-from utils.query_optimizer import query_optimizer
-from utils.performance_monitor import performance_monitor, monitor_performance
-from auth.middleware import check_authentication
+from backend.app.extensions import db
+from backend.models.app_models import ChatMessage, MessageStatus, MessageReaction, ChatRoomMember
+from backend.utils.cache_manager import chat_cache_manager
+from backend.utils.query_optimizer import query_optimizer
+from backend.utils.performance_monitor import performance_monitor, monitor_performance
+from backend.auth.middleware import check_authentication
 from datetime import datetime, timedelta
 import time
 

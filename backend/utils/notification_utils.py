@@ -2,8 +2,8 @@
 알림 관련 유틸리티 함수들
 """
 from datetime import datetime, timedelta
-from extensions import db
-from models.app_models import Notification
+from backend.app.extensions import db
+from backend.models.app_models import Notification
 
 
 def create_notification(

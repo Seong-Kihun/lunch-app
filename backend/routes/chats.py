@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
-from extensions import db
-from models.app_models import (
+from backend.app.extensions import db
+from backend.models.app_models import (
     ChatRoom, ChatMessage, ChatParticipant, Party, PartyMember, User,
     MessageStatus, MessageReaction, MessageAttachment, ChatRoomMember,
     ChatRoomSettings, NotificationSettings, ChatNotification, MessageSearchIndex
@@ -11,7 +11,7 @@ import random
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from auth.middleware import check_authentication
+from backend.auth.middleware import check_authentication
 
 # Blueprint 생성
 chats_bp = Blueprint('chats', __name__)

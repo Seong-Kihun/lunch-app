@@ -3,7 +3,7 @@
 app_factory.py를 사용하여 앱을 생성합니다.
 """
 
-from app_factory import create_app
+from backend.app.app_factory import create_app
 
 # Flask 앱 생성
 app = create_app()

@@ -11,10 +11,10 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from extensions import db
-from app import app
-from auth.models import User, Friendship
-from models.app_models import Party, PartyMember, Restaurant, Review, UserActivity
+from backend.app.extensions import db
+from backend.app.app import app
+from backend.auth.models import User, Friendship
+from backend.models.app_models import Party, PartyMember, Restaurant, Review, UserActivity
 
 class DatabaseOptimizer:
     def __init__(self):
