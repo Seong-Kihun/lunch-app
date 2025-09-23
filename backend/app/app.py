@@ -10,18 +10,18 @@ import json
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.json_encoder import CustomJSONEncoder
-from monitoring.production_monitor import monitor_api_call
+from backend.utils.json_encoder import CustomJSONEncoder
+from backend.monitoring.production_monitor import monitor_api_call
 # APScheduler는 Celery Beat로 대체됨
 
 # 구조화된 로깅 시스템 import
-from utils.logger import logger, log_startup, log_shutdown, log_api_call
+from backend.utils.logger import logger, log_startup, log_shutdown, log_api_call
 # 에러 모니터링 시스템 import
-from utils.error_monitor import setup_flask_error_handlers, create_error_monitoring_routes
+from backend.utils.error_monitor import setup_flask_error_handlers, create_error_monitoring_routes
 
 # 환경변수 로드
-from config.env_loader import load_environment_variables
-from config.module_loader import module_loader
+from backend.config.env_loader import load_environment_variables
+from backend.config.module_loader import module_loader
 
 load_environment_variables()
 
@@ -64,7 +64,7 @@ app.config['JSON_AS_ASCII'] = False
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
 # JSON 직렬화를 위한 헬퍼 함수
-from utils.safe_jsonify import safe_jsonify
+from backend.utils.safe_jsonify import safe_jsonify
 
 # JSON 직렬화 오류 처리
 @app.errorhandler(500)
@@ -126,10 +126,10 @@ if not secret_key:
 app.config["SECRET_KEY"] = secret_key
 
 # 데이터베이스 객체 import (extensions.py에서)
-from extensions import db
+from backend.app.extensions import db
 
 # 모델 import
-from models.app_models import (
+from backend.models.app_models import (
     Party,
     PartyMember,
     DangolPot,
@@ -156,7 +156,7 @@ from models.app_models import (
 )
 
 # 스케줄 모델 import
-from models.schedule_models import PersonalSchedule, ScheduleException
+from backend.models.schedule_models import PersonalSchedule, ScheduleException
 
 print("[SUCCESS] extensions.py의 데이터베이스 객체를 import했습니다.")
 
@@ -898,7 +898,7 @@ CACHE_GENERATION_DATE = None
 
 # --- 유틸리티 함수 ---
 # 날짜/시간 유틸리티는 utils/datetime_utils.py로 이동됨
-from utils.datetime_utils import get_seoul_today
+from backend.utils.datetime_utils import get_seoul_today
 
 
 def _should_use_existing_cache():
@@ -1228,7 +1228,7 @@ def calculate_pattern_score_cached(user1, user2):
 
 
 # 날짜/시간 유틸리티는 utils/datetime_utils.py로 이동됨
-from utils.datetime_utils import get_korean_time, format_korean_time
+from backend.utils.datetime_utils import get_korean_time, format_korean_time
 
 
 def get_restaurant_recommend_count(restaurant_id):
