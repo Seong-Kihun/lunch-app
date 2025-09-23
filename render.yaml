@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: lunch-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend/app && python app.py
+    pythonVersion: 3.13.4
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        value: sqlite:///lunch_app.db
+      - key: SECRET_KEY
+        value: your-secret-key-here
+      - key: JWT_SECRET_KEY
+        value: your-jwt-secret-key-here
