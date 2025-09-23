@@ -13,12 +13,7 @@ backend_path = os.path.join(project_root, 'backend')
 sys.path.insert(0, backend_path)
 
 # 백엔드 앱 import
-try:
-    from app.app import app  # type: ignore
-except ImportError:
-    # 대안 경로로 시도
-    sys.path.insert(0, os.path.join(backend_path, 'app'))
-    from app import app  # type: ignore
+from backend.app.app import app
 
 # Render 환경에서 실행
 if __name__ == '__main__':
