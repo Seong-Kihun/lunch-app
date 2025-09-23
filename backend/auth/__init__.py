@@ -3,7 +3,7 @@ def init_auth(app):
     
     # 지연 import로 순환 참조 방지
     from .utils import require_auth
-    from extensions import db
+    from backend.app.extensions import db
     
     # 데이터베이스 테이블 생성 (db는 이미 app.py에서 연결됨)
     with app.app_context():
