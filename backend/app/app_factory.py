@@ -124,7 +124,7 @@ def create_app(config_name=None):
 
     # 성능 모니터링 설정 (개발 환경에서만)
     try:
-        from performance_monitor import setup_development_monitoring
+        from backend.utils.performance_monitor import setup_development_monitoring
         setup_development_monitoring(app)
         print("[SUCCESS] 성능 모니터링이 성공적으로 설정되었습니다.")
     except ImportError as e:
@@ -162,7 +162,7 @@ def create_app(config_name=None):
 
     # 캐시 관리자 설정
     try:
-        from cache_manager import setup_cache_manager
+        from backend.app.cache_manager import setup_cache_manager
         setup_cache_manager(app)
         print("[SUCCESS] 캐시 관리자가 성공적으로 설정되었습니다.")
     except ImportError as e:

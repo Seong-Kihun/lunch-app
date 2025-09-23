@@ -197,7 +197,7 @@ else:
 
 # 성능 모니터링 설정 (개발 환경에서만)
 try:
-    from utils.performance_monitor import setup_development_monitoring
+    from backend.utils.performance_monitor import setup_development_monitoring
 
     setup_development_monitoring(app)
     print("[SUCCESS] 성능 모니터링이 성공적으로 설정되었습니다.")
@@ -671,7 +671,7 @@ if app.config.get("DEBUG", False):
 
 # Redis 캐싱 설정
 try:
-    from cache_manager import cache_manager
+    from backend.app.cache_manager import cache_manager
 
     if cache_manager.redis_client:
         print("[SUCCESS] Redis 캐싱이 성공적으로 설정되었습니다.")
@@ -792,7 +792,7 @@ def health_check():
         
         # Redis 연결 상태 확인
         try:
-            from cache_manager import cache_manager
+            from backend.app.cache_manager import cache_manager
             if cache_manager.redis_client:
                 cache_manager.redis_client.ping()
                 health_status["redis"] = "connected"
