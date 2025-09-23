@@ -1,0 +1,126 @@
+{
+  "total_tests": 17,
+  "passed_tests": 4,
+  "failed_tests": 13,
+  "test_details": [
+    {
+      "test_name": "채팅 목록 조회",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.01373434066772461,
+      "timestamp": "2025-09-22T22:19:38.631690"
+    },
+    {
+      "test_name": "메시지 조회",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.011178731918334961,
+      "timestamp": "2025-09-22T22:19:38.643620"
+    },
+    {
+      "test_name": "메시지 전송",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.013360023498535156,
+      "timestamp": "2025-09-22T22:19:38.658647"
+    },
+    {
+      "test_name": "저장소 정보 조회",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.013565540313720703,
+      "timestamp": "2025-09-22T22:19:38.683623"
+    },
+    {
+      "test_name": "파일 정리",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.011441469192504883,
+      "timestamp": "2025-09-22T22:19:38.695769"
+    },
+    {
+      "test_name": "알림 타입 조회",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.0178225040435791,
+      "timestamp": "2025-09-22T22:19:38.727485"
+    },
+    {
+      "test_name": "알림 전송",
+      "success": false,
+      "message": "Status: 404, Expected: 200",
+      "duration": 0.013058185577392578,
+      "timestamp": "2025-09-22T22:19:38.741840"
+    },
+    {
+      "test_name": "최적화된 메시지 조회",
+      "success": false,
+      "message": "Status: 401, Expected: 200",
+      "duration": 0.013990640640258789,
+      "timestamp": "2025-09-22T22:19:38.761507"
+    },
+    {
+      "test_name": "최적화된 읽지 않은 메시지 수 조회",
+      "success": false,
+      "message": "Status: 403, Expected: 200",
+      "duration": 0.02665114402770996,
+      "timestamp": "2025-09-22T22:19:38.789957"
+    },
+    {
+      "test_name": "최적화된 채팅방 목록 조회",
+      "success": false,
+      "message": "Status: 401, Expected: 200",
+      "duration": 0.0226137638092041,
+      "timestamp": "2025-09-22T22:19:38.817352"
+    },
+    {
+      "test_name": "메시지 검색",
+      "success": false,
+      "message": "Status: 403, Expected: 200",
+      "duration": 0.019263505935668945,
+      "timestamp": "2025-09-22T22:19:38.845087"
+    },
+    {
+      "test_name": "성능 통계 조회",
+      "success": false,
+      "message": "Status: 401, Expected: 200",
+      "duration": 0.015357017517089844,
+      "timestamp": "2025-09-22T22:19:38.872652"
+    },
+    {
+      "test_name": "WebSocket 연결",
+      "success": true,
+      "message": "WebSocket 서버에 성공적으로 연결되었습니다.",
+      "duration": null,
+      "timestamp": "2025-09-22T22:19:38.969124"
+    },
+    {
+      "test_name": "WebSocket 연결 해제",
+      "success": true,
+      "message": "WebSocket 연결이 해제되었습니다.",
+      "duration": null,
+      "timestamp": "2025-09-22T22:19:40.973052"
+    },
+    {
+      "test_name": "WebSocket 전체 테스트",
+      "success": true,
+      "message": "WebSocket 연결, 메시지 전송, 타이핑 상태 테스트 완료",
+      "duration": 0.0907142162322998,
+      "timestamp": "2025-09-22T22:19:41.981174"
+    },
+    {
+      "test_name": "동시 요청 테스트",
+      "success": false,
+      "message": "10개 요청 중 0개 성공, 소요시간: 0.091초",
+      "duration": 0.09067416191101074,
+      "timestamp": "2025-09-22T22:19:42.076934"
+    },
+    {
+      "test_name": "응답 시간 테스트",
+      "success": true,
+      "message": "응답 시간: 0.012초",
+      "duration": 0.011534690856933594,
+      "timestamp": "2025-09-22T22:19:42.089598"
+    }
+  ]
+}

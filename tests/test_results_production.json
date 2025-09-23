@@ -1,0 +1,79 @@
+[
+  {
+    "test_name": "인증 필수 - /api/users/profile",
+    "success": false,
+    "message": "예상: 401, 실제: 404",
+    "timestamp": 1758548704.5874484,
+    "response_time": 2062.772035598755
+  },
+  {
+    "test_name": "인증 필수 - /api/parties/",
+    "success": true,
+    "message": "401 Unauthorized 반환",
+    "timestamp": 1758548706.6321626,
+    "response_time": 2044.3365573883057
+  },
+  {
+    "test_name": "인증 필수 - /api/optimized/chat/rooms/1",
+    "success": true,
+    "message": "401 Unauthorized 반환",
+    "timestamp": 1758548708.6822188,
+    "response_time": 2049.72767829895
+  },
+  {
+    "test_name": "인증 필수 - /api/v2/restaurants/",
+    "success": true,
+    "message": "401 Unauthorized 반환",
+    "timestamp": 1758548710.7102318,
+    "response_time": 2027.5537967681885
+  },
+  {
+    "test_name": "인증 필수 - /api/schedules/",
+    "success": true,
+    "message": "401 Unauthorized 반환",
+    "timestamp": 1758548712.7473977,
+    "response_time": 2036.6976261138916
+  },
+  {
+    "test_name": "공개 엔드포인트 - /",
+    "success": true,
+    "message": "응답: 200",
+    "timestamp": 1758548714.785877,
+    "response_time": 2037.877082824707
+  },
+  {
+    "test_name": "공개 엔드포인트 - /api/auth/magic-link",
+    "success": true,
+    "message": "응답: 200",
+    "timestamp": 1758548716.8438318,
+    "response_time": 2056.917428970337
+  },
+  {
+    "test_name": "사용자 프로필 조회",
+    "success": false,
+    "message": "응답: 400",
+    "timestamp": 1758548736.6957712,
+    "response_time": 2042.0331954956055
+  },
+  {
+    "test_name": "식당 목록 조회",
+    "success": false,
+    "message": "응답: 400",
+    "timestamp": 1758548738.7372403,
+    "response_time": 2041.1098003387451
+  },
+  {
+    "test_name": "성능 테스트 - /",
+    "success": true,
+    "message": "평균: 2041.93ms, 최대: 2058.57ms, 최소: 2024.76ms",
+    "timestamp": 1758548748.947708,
+    "response_time": null
+  },
+  {
+    "test_name": "성능 테스트 - /api/v2/restaurants/",
+    "success": true,
+    "message": "평균: 2040.23ms, 최대: 2046.84ms, 최소: 2027.22ms",
+    "timestamp": 1758548759.1491053,
+    "response_time": null
+  }
+]

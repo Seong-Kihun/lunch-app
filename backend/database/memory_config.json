@@ -1,0 +1,28 @@
+{
+  "memory_optimization": {
+    "python": {
+      "gc_threshold": [
+        700,
+        10,
+        10
+      ],
+      "gc_enabled": true
+    },
+    "database": {
+      "pool_size": 5,
+      "max_overflow": 10,
+      "pool_recycle": 3600,
+      "pool_pre_ping": true
+    },
+    "caching": {
+      "max_size": 100,
+      "ttl": 300,
+      "memory_limit": "100MB"
+    },
+    "logging": {
+      "level": "WARNING",
+      "max_size": "10MB",
+      "backup_count": 3
+    }
+  }
+}

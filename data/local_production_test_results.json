@@ -1,0 +1,58 @@
+[
+  {
+    "name": "서버 응답",
+    "success": true,
+    "message": "HTTP 200",
+    "response_time": 2077.247381210327,
+    "timestamp": "2025-09-22T23:52:08.429943"
+  },
+  {
+    "name": "헬스 체크",
+    "success": true,
+    "message": "HTTP 200",
+    "response_time": 2046.5235710144043,
+    "timestamp": "2025-09-22T23:52:10.477044"
+  },
+  {
+    "name": "사용자 프로필 API",
+    "success": true,
+    "message": "HTTP 401",
+    "response_time": 2039.5216941833496,
+    "timestamp": "2025-09-22T23:52:12.516946"
+  },
+  {
+    "name": "파티 목록 API",
+    "success": true,
+    "message": "HTTP 401",
+    "response_time": 2035.0401401519775,
+    "timestamp": "2025-09-22T23:52:14.552306"
+  },
+  {
+    "name": "식당 목록 API",
+    "success": true,
+    "message": "HTTP 401",
+    "response_time": 2026.172161102295,
+    "timestamp": "2025-09-22T23:52:16.580074"
+  },
+  {
+    "name": "일정 관리 API",
+    "success": true,
+    "message": "HTTP 401",
+    "response_time": 2048.090934753418,
+    "timestamp": "2025-09-22T23:52:18.628856"
+  },
+  {
+    "name": "매직링크 API",
+    "success": true,
+    "message": "HTTP 200",
+    "response_time": 5677.263498306274,
+    "timestamp": "2025-09-22T23:52:24.306347"
+  },
+  {
+    "name": "데이터베이스 연결",
+    "success": true,
+    "message": "매직링크 API 응답: 200",
+    "response_time": 6140.361070632935,
+    "timestamp": "2025-09-22T23:52:30.447172"
+  }
+]
