@@ -36,8 +36,8 @@ AUTH_USER_AVAILABLE = AUTH_AVAILABLE
 # 인증 관련 import
 if AUTH_AVAILABLE:
     try:
-        from auth.utils import require_auth
-        from auth.models import Friendship, User
+        from backend.auth.utils import require_auth
+        from backend.auth.models import Friendship, User
         print("[SUCCESS] 인증 시스템이 활성화되었습니다.")
     except ImportError as e:
         print(f"[WARNING] 인증 모듈 import 실패: {e}")
@@ -46,7 +46,7 @@ if AUTH_AVAILABLE:
 # 그룹 매칭 관련 import
 if GROUP_MATCHING_AVAILABLE:
     try:
-        from group_matching import calculate_group_score, get_virtual_users_data
+        from backend.app.group_matching import calculate_group_score, get_virtual_users_data
         print("[SUCCESS] 그룹 매칭 시스템이 활성화되었습니다.")
     except ImportError as e:
         print(f"[WARNING] 그룹 매칭 모듈 import 실패: {e}")

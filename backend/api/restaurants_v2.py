@@ -4,12 +4,12 @@
 """
 
 from flask import Blueprint, request, jsonify
-from utils.safe_jsonify import safe_jsonify
+from backend.utils.safe_jsonify import safe_jsonify
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from extensions import db
-from models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
-from auth.middleware import check_authentication
+from backend.app.extensions import db
+from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
+from backend.auth.middleware import check_authentication
 import logging
 import math
 

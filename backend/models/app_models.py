@@ -4,10 +4,10 @@
 """
 
 from datetime import datetime, timedelta
-from extensions import db
+from backend.app.extensions import db
 
 # 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
-from auth.models import User
+from backend.auth.models import User
 
 class Party(db.Model):
     """파티 모델"""

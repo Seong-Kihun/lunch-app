@@ -6,11 +6,11 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import desc, or_, and_
 from datetime import datetime, timedelta
-from extensions import db
-from models.app_models import Party, PartyMember
-from auth.utils import require_auth
-from utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result, optimize_json_response
-from utils.safe_jsonify import safe_jsonify
+from backend.app.extensions import db
+from backend.models.app_models import Party, PartyMember
+from backend.auth.utils import require_auth
+from backend.utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result, optimize_json_response
+from backend.utils.safe_jsonify import safe_jsonify
 
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/parties')

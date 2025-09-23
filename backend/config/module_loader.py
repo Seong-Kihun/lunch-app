@@ -14,42 +14,42 @@ class ModuleLoader:
             'auth': {
                 'env_var': 'ENABLE_AUTH',
                 'default': True,
-                'import_path': 'auth',
+                'import_path': 'backend.auth',
                 'init_function': 'init_auth',
                 'description': '인증 시스템'
             },
             'group_matching': {
                 'env_var': 'ENABLE_GROUP_MATCHING',
                 'default': True,
-                'import_path': 'group_matching',
+                'import_path': 'backend.app.group_matching',
                 'init_function': None,
                 'description': '그룹 매칭 시스템'
             },
             'realtime': {
                 'env_var': 'ENABLE_REALTIME',
                 'default': True,
-                'import_path': 'realtime.notification_system',
+                'import_path': 'backend.realtime.notification_system',
                 'init_function': 'NotificationSystem',
                 'description': '실시간 통신 시스템'
             },
             'points': {
                 'env_var': 'ENABLE_POINTS',
                 'default': True,
-                'import_path': 'points_system',
+                'import_path': 'backend.app.points_system',
                 'init_function': 'setup_points_system',
                 'description': '포인트 시스템'
             },
             'scheduler': {
                 'env_var': 'ENABLE_SCHEDULER',
                 'default': True,
-                'import_path': 'scheduler_config',
+                'import_path': 'backend.app.scheduler_config',
                 'init_function': 'setup_scheduler',
                 'description': '스케줄러 시스템'
             },
             'api': {
                 'env_var': 'ENABLE_API',
                 'default': True,
-                'import_path': 'api',
+                'import_path': 'backend.api',
                 'init_function': 'init_app',
                 'description': 'API Blueprint'
             }
