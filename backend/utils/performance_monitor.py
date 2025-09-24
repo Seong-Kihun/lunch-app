@@ -311,3 +311,20 @@ def monitor_performance(endpoint: str = None):
 
 # 전역 성능 모니터 인스턴스
 performance_monitor = PerformanceMonitor()
+
+def setup_development_monitoring(app):
+    """개발 환경용 성능 모니터링 설정"""
+    try:
+        # Flask 앱에 성능 모니터링 설정
+        app.performance_monitor = performance_monitor
+        
+        # 개발 환경에서만 활성화
+        if app.config.get('ENV') == 'development' or app.config.get('FLASK_ENV') == 'development':
+            print("[SUCCESS] 개발 환경 성능 모니터링이 활성화되었습니다.")
+        else:
+            print("[INFO] 프로덕션 환경: 성능 모니터링이 제한적으로 활성화됩니다.")
+        
+        return True
+    except Exception as e:
+        print(f"[WARNING] 성능 모니터링 설정 실패: {e}")
+        return False
