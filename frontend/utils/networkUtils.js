@@ -25,15 +25,14 @@ export const getServerURL = async () => {
         // 개발 환경인지 확인
         const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
         
-        // 개발 환경에서는 네트워크 IP 사용
-        if (isDevelopment) {
-            console.log('🔧 [NetworkUtils] 네트워크 IP 사용');
-            return 'http://172.30.1.43:5000';
+        if (!isDevelopment) {
+            // 프로덕션 환경에서는 Render 서버 사용
+            console.log('🔧 [NetworkUtils] 프로덕션 환경: Render 서버 사용');
+            return 'https://lunch-app-backend-ra12.onrender.com';
         }
         
-        // 프로덕션 환경에서는 Render 서버 사용
-        console.log('🔧 [NetworkUtils] Render 서버 사용');
-        return 'https://lunch-app-backend-ra12.onrender.com';
+        // 개발 환경에서는 동적 IP 감지
+        console.log('🔧 [NetworkUtils] 개발 환경: 동적 IP 감지 시작');
         
         // 1. 환경변수에서 서버 URL 확인
         const envServerURL = process.env.REACT_APP_SERVER_URL || process.env.EXPO_PUBLIC_SERVER_URL;

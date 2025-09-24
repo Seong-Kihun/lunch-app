@@ -28,13 +28,15 @@ export const detectServerURL = () => {
       return `http://${hostUri}:5000`;
     }
 
-    // 3. Metro bundler의 기본 IP들 시도
+    // 3. Metro bundler의 기본 IP들 시도 (더 포괄적인 범위)
     const commonIPs = [
       '192.168.1.1',
       '192.168.0.1', 
+      '192.168.45.177', // 현재 백엔드가 실행 중인 IP
       '10.0.0.1',
       '172.16.0.1',
       '172.20.10.1', // iPhone 핫스팟
+      '172.30.1.43', // 이전에 사용되던 IP
       '192.168.43.1', // Android 핫스팟
       'localhost',
       '127.0.0.1'

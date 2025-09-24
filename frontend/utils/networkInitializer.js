@@ -55,15 +55,44 @@ class NetworkInitializer {
       console.log('🔍 [NetworkInitializer] 사용 가능한 URL 목록에서 시도...');
       const availableURLs = getAvailableServerURLs();
       
+      // 현재 백엔드가 실행 중인 IP를 우선적으로 시도
+      const priorityURLs = [
+        'http://192.168.45.177:5000', // 현재 백엔드 실행 IP
+        'http://127.0.0.1:5000',      // localhost
+        'http://localhost:5000'       // localhost 대안
+      ];
+      
+      // 우선순위 URL들을 먼저 시도
+      for (const url of priorityURLs) {
+        if (availableURLs.includes(url)) {
+          console.log(`🔍 [NetworkInitializer] 우선순위 URL 테스트 중: ${url}`);
+          const isWorking = await this.testConnection(url);
+          if (isWorking) {
+            console.log(`✅ [NetworkInitializer] 우선순위 URL 연결 성공: ${url}`);
+            this.currentServerURL = url;
+            await this.saveServerURL(url);
+            this.isInitialized = true;
+            return;
+          } else {
+            console.log(`❌ [NetworkInitializer] 우선순위 URL 연결 실패: ${url}`);
+          }
+        }
+      }
+      
+      // 나머지 URL들 시도
       for (const url of availableURLs) {
-        console.log(`🔍 [NetworkInitializer] URL 테스트 중: ${url}`);
-        const isWorking = await this.testConnection(url);
-        if (isWorking) {
-          console.log(`✅ [NetworkInitializer] 연결 성공: ${url}`);
-          this.currentServerURL = url;
-          await this.saveServerURL(url);
-          this.isInitialized = true;
-          return;
+        if (!priorityURLs.includes(url)) {
+          console.log(`🔍 [NetworkInitializer] URL 테스트 중: ${url}`);
+          const isWorking = await this.testConnection(url);
+          if (isWorking) {
+            console.log(`✅ [NetworkInitializer] 연결 성공: ${url}`);
+            this.currentServerURL = url;
+            await this.saveServerURL(url);
+            this.isInitialized = true;
+            return;
+          } else {
+            console.log(`❌ [NetworkInitializer] 연결 실패: ${url}`);
+          }
         }
       }
 

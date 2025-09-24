@@ -123,15 +123,11 @@ const initializeServerURL = async () => {
     }
 
     try {
-        // 개발 환경에서는 네트워크 IP 사용
-        if (isDevelopment) {
-            dynamicServerURL = 'http://172.30.1.43:5000';
-        } else {
-            // 프로덕션 환경에서는 Render 서버 사용
-            dynamicServerURL = 'https://lunch-app-backend-ra12.onrender.com';
-        }
+        // 동적 서버 URL 감지 사용
+        const { getServerURL } = await import('../../utils/networkUtils');
+        dynamicServerURL = await getServerURL();
         
-        console.log('🔧 [Utils] 서버 URL 설정:', dynamicServerURL);
+        console.log('🔧 [Utils] 동적 서버 URL 설정:', dynamicServerURL);
         console.log('🔧 [Utils] 개발 환경:', isDevelopment);
         
         return dynamicServerURL;
