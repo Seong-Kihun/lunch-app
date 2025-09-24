@@ -1394,35 +1394,16 @@ def safe_import_models():
     global User, Friendship
     
     try:
-        # 1. 메타데이터에서 모델 가져오기 시도 (충돌 방지)
-        if 'users' in db.metadata.tables:
-            User = db.metadata.tables['users'].class_
-            print("[SUCCESS] User 모델을 메타데이터에서 가져왔습니다.")
-        else:
-            # 2. 직접 import (fallback)
-            from backend.auth.models import User as UserModel
-            User = UserModel
-            print("[SUCCESS] User 모델을 직접 import했습니다.")
-            
-        if 'friendships' in db.metadata.tables:
-            Friendship = db.metadata.tables['friendships'].class_
-            print("[SUCCESS] Friendship 모델을 메타데이터에서 가져왔습니다.")
-        else:
-            # 2. 직접 import (fallback)
-            from backend.auth.models import Friendship as FriendshipModel
-            Friendship = FriendshipModel
-            print("[SUCCESS] Friendship 모델을 직접 import했습니다.")
+        # 근본적 해결: 직접 import만 사용 (메타데이터 접근 방식 문제 해결)
+        from backend.auth.models import User as UserModel, Friendship as FriendshipModel
+        User = UserModel
+        Friendship = FriendshipModel
+        print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
             
     except Exception as e:
         print(f"[ERROR] 모델 import 실패: {e}")
-        # 최후의 수단: 직접 import
-        try:
-            from backend.auth.models import User as UserModel, Friendship as FriendshipModel
-            User = UserModel
-            Friendship = FriendshipModel
-            print("[SUCCESS] 모델들을 최후의 수단으로 import했습니다.")
-        except Exception as e2:
-            print(f"[ERROR] 최후의 수단도 실패: {e2}")
+        User = None
+        Friendship = None
 
 # 모델 초기화
 if AUTH_AVAILABLE:

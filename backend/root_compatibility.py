@@ -30,15 +30,8 @@ def root_dev_user(employee_id):
         from backend.app.extensions import db
         from flask import current_app
         
-        # 메타데이터 충돌 방지를 위해 기존 User 모델 사용
-        # app_factory에서 이미 등록된 User 모델을 사용
-        with current_app.app_context():
-            # User 모델을 동적으로 가져오기 (메타데이터 충돌 방지)
-            if 'users' in db.metadata.tables:
-                # 기존 User 모델 사용
-                User = db.metadata.tables['users'].class_
-            else:
-                # fallback: 직접 import (최후의 수단)
+            # 근본적 해결: 직접 import만 사용 (메타데이터 접근 방식 문제 해결)
+            with current_app.app_context():
                 from backend.auth.models import User
             
             user = User.query.filter_by(employee_id=str(employee_id)).first()

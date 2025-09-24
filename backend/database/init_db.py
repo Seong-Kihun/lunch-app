@@ -20,15 +20,10 @@ def get_user_model():
         return User
         
     try:
-        # 1. 메타데이터에서 User 모델 가져오기 시도 (충돌 방지)
-        if 'users' in db.metadata.tables:
-            User = db.metadata.tables['users'].class_
-            print("[SUCCESS] User 모델을 메타데이터에서 가져왔습니다.")
-        else:
-            # 2. 직접 import (fallback)
-            from backend.auth.models import User as UserModel
-            User = UserModel
-            print("[SUCCESS] User 모델을 직접 import했습니다.")
+        # 근본적 해결: 직접 import만 사용 (메타데이터 접근 방식 문제 해결)
+        from backend.auth.models import User as UserModel
+        User = UserModel
+        print("[SUCCESS] User 모델을 직접 import했습니다.")
         return User
     except Exception as e:
         print(f"[ERROR] User 모델 가져오기 실패: {e}")
