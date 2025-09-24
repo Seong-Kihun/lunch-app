@@ -57,9 +57,7 @@ class NetworkInitializer {
       
       // 현재 백엔드가 실행 중인 IP를 우선적으로 시도
       const priorityURLs = [
-        'http://192.168.45.177:5000', // 현재 백엔드 실행 IP
-        'http://127.0.0.1:5000',      // localhost
-        'http://localhost:5000'       // localhost 대안
+        'https://lunch-app-backend-ra12.onrender.com' // Render 서버 우선 사용
       ];
       
       // 우선순위 URL들을 먼저 시도

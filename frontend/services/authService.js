@@ -13,7 +13,8 @@ const getApiBaseUrl = async () => {
     return await getServerURL();
   } catch (error) {
     console.error('❌ [AuthService] 서버 URL 가져오기 실패:', error);
-    return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+    // 근본적 해결: 항상 Render 서버 사용
+    return 'https://lunch-app-backend-ra12.onrender.com';
   }
 };
 

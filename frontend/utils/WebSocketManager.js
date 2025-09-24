@@ -25,7 +25,7 @@ class WebSocketManager {
       return await getServerURL();
     } catch (error) {
       console.error('❌ WebSocket 동적 서버 URL 감지 실패:', error);
-      return 'http://localhost:5000';
+      return 'https://lunch-app-backend-ra12.onrender.com';
     }
   }
 
@@ -43,7 +43,7 @@ class WebSocketManager {
       }).catch(error => {
         console.error('❌ WebSocket 서버 URL 감지 실패:', error);
         // fallback
-        this.connect('http://localhost:5000', options);
+        this.connect('https://lunch-app-backend-ra12.onrender.com', options);
       });
       return;
     }

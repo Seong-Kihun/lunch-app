@@ -6,7 +6,7 @@
 import tokenManager from '../auth/tokenManager';
 
 class ApiClient {
-    constructor(baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000') {
+    constructor(baseURL = process.env.REACT_APP_API_URL || 'https://lunch-app-backend-ra12.onrender.com') {
         this.baseURL = baseURL;
         this.defaultHeaders = {
             'Content-Type': 'application/json',

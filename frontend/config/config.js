@@ -2,7 +2,7 @@
 import { getServerURL } from '../utils/networkUtils';
 
 // 기본 서버 URL (동기 - 초기화용)
-export const SERVER_URL = __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+export const SERVER_URL = 'https://lunch-app-backend-ra12.onrender.com';
 
 // 동적 서버 URL 가져오기 (비동기)
 export const getDynamicServerURL = async () => {

@@ -51,16 +51,16 @@ export const detectServerURL = () => {
 
     // 4. 플랫폼별 기본값
     if (Platform.OS === 'web') {
-      return 'http://localhost:5000';
+      return 'https://lunch-app-backend-ra12.onrender.com';
     }
 
-    // 5. 기본값으로 localhost 사용
-    console.warn('⚠️ [NetworkDetector] 네트워크 자동 감지 실패, localhost 사용');
-    return 'http://localhost:5000';
+    // 5. 기본값으로 Render 서버 사용
+    console.warn('⚠️ [NetworkDetector] 네트워크 자동 감지 실패, Render 서버 사용');
+    return 'https://lunch-app-backend-ra12.onrender.com';
 
   } catch (error) {
     console.error('❌ [NetworkDetector] 서버 URL 감지 중 오류:', error);
-    return 'http://localhost:5000';
+    return 'https://lunch-app-backend-ra12.onrender.com';
   }
 };
 
@@ -89,9 +89,8 @@ export const checkNetworkConnection = async () => {
 export const getAvailableServerURLs = () => {
   const urls = [];
   
-  // localhost
-  urls.push('http://localhost:5000');
-  urls.push('http://127.0.0.1:5000');
+  // Render 서버
+  urls.push('https://lunch-app-backend-ra12.onrender.com');
   
   // Expo debuggerHost
   if (Constants.manifest && Constants.manifest.debuggerHost) {
