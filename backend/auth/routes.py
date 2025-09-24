@@ -45,7 +45,13 @@ def send_magic_link():
             
     except Exception as e:
         current_app.logger.error(f"매직링크 발송 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"매직링크 발송 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/test-login/<employee_id>', methods=['GET'])
 def test_login(employee_id):
@@ -74,7 +80,13 @@ def test_login(employee_id):
         
     except Exception as e:
         current_app.logger.error(f"테스트 로그인 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"테스트 로그인 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/verify-link', methods=['GET'])
 def verify_magic_link():
@@ -132,7 +144,13 @@ def verify_magic_link():
             
     except Exception as e:
         current_app.logger.error(f"매직링크 검증 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"매직링크 검증 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/register', methods=['POST'])
 def register_user():
@@ -201,7 +219,13 @@ def register_user():
         
     except Exception as e:
         current_app.logger.error(f"회원가입 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"회원가입 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/refresh', methods=['POST'])
 def refresh_access_token():
@@ -233,7 +257,13 @@ def refresh_access_token():
         
     except Exception as e:
         current_app.logger.error(f"토큰 갱신 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"토큰 갱신 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
@@ -257,7 +287,13 @@ def logout():
             
     except Exception as e:
         current_app.logger.error(f"로그아웃 실패: {str(e)}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        import traceback
+        current_app.logger.error(f"로그아웃 오류 상세: {traceback.format_exc()}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
 
 @auth_bp.route('/profile', methods=['GET'])
 def get_profile():
@@ -276,7 +312,13 @@ def get_profile():
             
         except Exception as e:
             current_app.logger.error(f"프로필 조회 실패: {str(e)}")
-            return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+            import traceback
+            current_app.logger.error(f"프로필 조회 오류 상세: {traceback.format_exc()}")
+            return jsonify({
+                'error': '서버 오류가 발생했습니다.',
+                'details': str(e),
+                'type': type(e).__name__
+            }), 500
     
     return protected_profile()
 
@@ -323,7 +365,13 @@ def update_profile():
             
         except Exception as e:
             current_app.logger.error(f"프로필 수정 실패: {str(e)}")
-            return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+            import traceback
+            current_app.logger.error(f"프로필 수정 오류 상세: {traceback.format_exc()}")
+            return jsonify({
+                'error': '서버 오류가 발생했습니다.',
+                'details': str(e),
+                'type': type(e).__name__
+            }), 500
     
     return protected_update()
 
@@ -354,7 +402,13 @@ def delete_account():
             
         except Exception as e:
             current_app.logger.error(f"계정 삭제 실패: {str(e)}")
-            return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+            import traceback
+            current_app.logger.error(f"계정 삭제 오류 상세: {traceback.format_exc()}")
+            return jsonify({
+                'error': '서버 오류가 발생했습니다.',
+                'details': str(e),
+                'type': type(e).__name__
+            }), 500
     
     return protected_delete()
 
