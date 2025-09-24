@@ -7,8 +7,32 @@
 from backend.app.app import app
 from backend.app.extensions import db
 
-# 🚨 중요: User 모델은 app_factory에서만 import하여 메타데이터 충돌 방지
-# User 모델은 이미 app_factory에서 메타데이터에 등록됨
+# 🚨 중요: 메타데이터 충돌 방지를 위한 동적 모델 접근
+# User 모델은 app_factory에서 이미 메타데이터에 등록됨
+
+# 전역 변수로 모델 저장
+User = None
+
+def get_user_model():
+    """User 모델을 동적으로 가져오는 함수"""
+    global User
+    if User is not None:
+        return User
+        
+    try:
+        # 1. 메타데이터에서 User 모델 가져오기 시도 (충돌 방지)
+        if 'users' in db.metadata.tables:
+            User = db.metadata.tables['users'].class_
+            print("[SUCCESS] User 모델을 메타데이터에서 가져왔습니다.")
+        else:
+            # 2. 직접 import (fallback)
+            from backend.auth.models import User as UserModel
+            User = UserModel
+            print("[SUCCESS] User 모델을 직접 import했습니다.")
+        return User
+    except Exception as e:
+        print(f"[ERROR] User 모델 가져오기 실패: {e}")
+        return None
 
 # 그 다음에 다른 모델들을 import
 from backend.models.schedule_models import PersonalSchedule, ScheduleException
@@ -84,6 +108,12 @@ def init_database():
 def create_default_users():
     """기본 사용자들을 생성합니다."""
     try:
+        # User 모델 동적 로드
+        User = get_user_model()
+        if User is None:
+            print("❌ User 모델을 로드할 수 없습니다.")
+            return
+            
         # 가상 사용자 데이터
         default_users = [
             {
