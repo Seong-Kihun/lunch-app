@@ -88,11 +88,8 @@ def create_app(config_name=None):
         info("인증 모델을 불러왔습니다.")
         
         # 모든 모델을 메타데이터에 등록 (한 번만)
-        try:
-            db.create_all()
-            info("모든 모델이 메타데이터에 등록되었습니다.")
-        except Exception as e:
-            warning(f"모델 메타데이터 등록 실패: {e}")
+        # import만으로도 메타데이터에 자동 등록되므로 db.create_all() 제거
+        info("모든 모델이 메타데이터에 등록되었습니다.")
             
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")

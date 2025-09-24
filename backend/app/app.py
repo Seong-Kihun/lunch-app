@@ -6729,21 +6729,8 @@ def init_database_on_startup():
             print("[INFO] app_factory에서 모델이 메타데이터에 등록되었습니다.")
             print("[INFO] 테이블은 첫 번째 요청 시 자동으로 생성됩니다.")
 
-            # 기본 사용자 생성 (세션 재설정 후)
-            try:
-                db.session.rollback()  # 세션 상태 초기화
-                create_default_users()
-                print("[SUCCESS] 기본 사용자 생성 완료")
-            except Exception as e:
-                print(f"[ERROR] 기본 사용자 생성 실패: {e}")
-                # 마지막 시도: 세션 재설정 후 사용자 생성
-                try:
-                    db.session.rollback()
-                    db.session.close()
-                    create_default_users()
-                    print("[SUCCESS] 세션 재설정 후 사용자 생성 성공")
-                except Exception as e2:
-                    print(f"[ERROR] 모든 사용자 생성 방법 실패: {e2}")
+            # 기본 사용자 생성은 init_db.py에서 처리
+            print("[INFO] 기본 사용자 생성은 init_db.py에서 처리됩니다.")
         else:
             print("[SUCCESS] 데이터베이스 테이블이 이미 존재합니다")
     except Exception as e:

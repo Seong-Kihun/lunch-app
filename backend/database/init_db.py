@@ -54,17 +54,17 @@ def init_database():
             # 2단계: 다른 모델들 확인 (app_factory에서 이미 등록됨)
             print("✅ 모든 모델이 app_factory에서 메타데이터에 등록되었습니다.")
             
-            # 모든 테이블 삭제 (기존 데이터 초기화)
-            db.drop_all()
-            print("✅ 기존 테이블 삭제 완료")
+            # app_factory에서 이미 모든 모델이 메타데이터에 등록됨
+            # db.create_all()은 메타데이터 충돌을 일으킬 수 있으므로 제거
+            print("✅ app_factory에서 모든 모델이 메타데이터에 등록되었습니다.")
             
-            # 모든 테이블 생성
-            db.create_all()
-            print("✅ 새 테이블 생성 완료")
-            
-            # 기본 사용자 생성
-            create_default_users()
-            print("✅ 기본 사용자 생성 완료")
+            # 기본 사용자 생성 (세션 재설정 후)
+            try:
+                db.session.rollback()  # 세션 상태 초기화
+                create_default_users()
+                print("✅ 기본 사용자 생성 완료")
+            except Exception as e:
+                print(f"[ERROR] 기본 사용자 생성 실패: {e}")
             
             print("🎉 데이터베이스 초기화 완료!")
             
