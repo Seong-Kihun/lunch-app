@@ -1394,31 +1394,26 @@ def safe_import_models():
     global User, Friendship
     
     try:
-        # 근본적 해결: app_factory에서 저장된 모델 사용
-        # 메타데이터 충돌을 완전히 방지하면서도 실제 사용 가능한 모델 제공
-        from flask import current_app
-        
-        with current_app.app_context():
-            User = current_app.config.get('USER_MODEL')
-            Friendship = current_app.config.get('FRIENDSHIP_MODEL')
-            
-            if User and Friendship:
-                print("[SUCCESS] User, Friendship 모델을 app_factory에서 가져왔습니다.")
-            else:
-                # 폴백: 직접 import
-                from backend.auth.models import User as UserModel, Friendship as FriendshipModel
-                User = UserModel
-                Friendship = FriendshipModel
-                print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
+        # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
+        # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
+        from backend.auth.models import User as UserModel, Friendship as FriendshipModel
+        User = UserModel
+        Friendship = FriendshipModel
+        print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
             
     except Exception as e:
         print(f"[ERROR] 모델 import 실패: {e}")
         User = None
         Friendship = None
 
-# 모델 초기화
+# 모델 초기화 - 애플리케이션 컨텍스트 내에서 실행
+def initialize_models():
+    """애플리케이션 컨텍스트 내에서 모델 초기화"""
+    with app.app_context():
+        safe_import_models()
+
 if AUTH_AVAILABLE:
-    safe_import_models()
+    initialize_models()
 
 # PersonalSchedule 모델은 필요할 때만 import하여 사용
 
