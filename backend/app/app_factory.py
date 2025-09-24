@@ -86,17 +86,28 @@ def create_app(config_name=None):
     try:
         print(f"[DEBUG] 메타데이터 상태 (User import 전): {list(db.metadata.tables.keys())}")
         
-        # 근본적 해결: 모델 등록 전 메타데이터 정리
-        if 'users' in db.metadata.tables:
-            print("[DEBUG] 기존 users 테이블 제거 중...")
-            db.metadata.remove(db.metadata.tables['users'])
+        # 근본적 해결: 안전한 모델 등록
+        from backend.app.extensions import register_model_safely
         
-        if 'friendships' in db.metadata.tables:
-            print("[DEBUG] 기존 friendships 테이블 제거 중...")
-            db.metadata.remove(db.metadata.tables['friendships'])
+        # 기존 메타데이터 완전 정리
+        tables_to_remove = []
+        for table_name in list(db.metadata.tables.keys()):
+            if table_name in ['users', 'friendships', 'magic_link_tokens', 'refresh_tokens', 'revoked_tokens']:
+                tables_to_remove.append(table_name)
         
-        from backend.auth.models import User, Friendship
+        for table_name in tables_to_remove:
+            print(f"[DEBUG] 기존 {table_name} 테이블 제거 중...")
+            db.metadata.remove(db.metadata.tables[table_name])
+        
+        from backend.auth.models import User, Friendship, MagicLinkToken, RefreshToken, RevokedToken
         info("인증 모델을 불러왔습니다.")
+        
+        # 안전한 모델 등록
+        register_model_safely(User)
+        register_model_safely(Friendship)
+        register_model_safely(MagicLinkToken)
+        register_model_safely(RefreshToken)
+        register_model_safely(RevokedToken)
         
         print(f"[DEBUG] 메타데이터 상태 (User import 후): {list(db.metadata.tables.keys())}")
         print(f"[DEBUG] User 테이블 정보: {db.metadata.tables.get('users')}")
