@@ -11,6 +11,7 @@ print(f"[DEBUG] auth/models.py 로드 시작 - 메타데이터 상태: {list(db.
 class User(db.Model):
     """사용자 모델"""
     __tablename__ = 'users'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
@@ -133,6 +134,7 @@ class User(db.Model):
 class MagicLinkToken(db.Model):
     """매직링크 토큰 모델"""
     __tablename__ = 'magic_link_tokens'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -161,6 +163,7 @@ class MagicLinkToken(db.Model):
 class RefreshToken(db.Model):
     """리프레시 토큰 모델"""
     __tablename__ = 'refresh_tokens'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -191,6 +194,7 @@ class RefreshToken(db.Model):
 class RevokedToken(db.Model):
     """무효화된 토큰 블랙리스트"""
     __tablename__ = 'revoked_tokens'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -205,6 +209,7 @@ class RevokedToken(db.Model):
 class Friendship(db.Model):
     """친구 관계 모델"""
     __tablename__ = 'friendships'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     requester_id = db.Column(db.String(50), nullable=False)
