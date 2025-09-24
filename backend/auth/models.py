@@ -12,6 +12,7 @@ class User(db.Model):
     """사용자 모델"""
     __tablename__ = 'users'
     __table_args__ = {'extend_existing': True}
+    __mapper_args__ = {'polymorphic_identity': 'user'}
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
@@ -135,6 +136,7 @@ class MagicLinkToken(db.Model):
     """매직링크 토큰 모델"""
     __tablename__ = 'magic_link_tokens'
     __table_args__ = {'extend_existing': True}
+    __mapper_args__ = {'polymorphic_identity': 'magic_link_token'}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -164,6 +166,7 @@ class RefreshToken(db.Model):
     """리프레시 토큰 모델"""
     __tablename__ = 'refresh_tokens'
     __table_args__ = {'extend_existing': True}
+    __mapper_args__ = {'polymorphic_identity': 'refresh_token'}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -195,6 +198,7 @@ class RevokedToken(db.Model):
     """무효화된 토큰 블랙리스트"""
     __tablename__ = 'revoked_tokens'
     __table_args__ = {'extend_existing': True}
+    __mapper_args__ = {'polymorphic_identity': 'revoked_token'}
     
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -210,6 +214,7 @@ class Friendship(db.Model):
     """친구 관계 모델"""
     __tablename__ = 'friendships'
     __table_args__ = {'extend_existing': True}
+    __mapper_args__ = {'polymorphic_identity': 'friendship'}
     
     id = db.Column(db.Integer, primary_key=True)
     requester_id = db.Column(db.String(50), nullable=False)

@@ -86,6 +86,15 @@ def create_app(config_name=None):
     try:
         print(f"[DEBUG] 메타데이터 상태 (User import 전): {list(db.metadata.tables.keys())}")
         
+        # 근본적 해결: 모델 등록 전 메타데이터 정리
+        if 'users' in db.metadata.tables:
+            print("[DEBUG] 기존 users 테이블 제거 중...")
+            db.metadata.remove(db.metadata.tables['users'])
+        
+        if 'friendships' in db.metadata.tables:
+            print("[DEBUG] 기존 friendships 테이블 제거 중...")
+            db.metadata.remove(db.metadata.tables['friendships'])
+        
         from backend.auth.models import User, Friendship
         info("인증 모델을 불러왔습니다.")
         
