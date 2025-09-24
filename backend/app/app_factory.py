@@ -9,17 +9,17 @@ from flask_cors import CORS
 def create_app(config_name=None):
     """Application Factory 패턴으로 Flask 앱 생성"""
     # 환경변수 로드
-    from config.env_loader import load_environment_variables
+    from backend.config.env_loader import load_environment_variables
     load_environment_variables()
     
     # 보안 키 검증 (프로덕션에서 기본 키 사용 시 부팅 차단)
-    from config.auth_config import AuthConfig
+    from backend.config.auth_config import AuthConfig
     AuthConfig.validate_jwt_secret()
     
     app = Flask(__name__)
     
     # 로깅 시스템 초기화
-    from utils.logging import init_app_logging
+    from backend.utils.logging import init_app_logging
     init_app_logging(app)
      
     # CORS 화이트리스트 설정
@@ -79,7 +79,7 @@ def create_app(config_name=None):
         UserFavorite,
     )
 
-    from utils.logging import info, warning
+    from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
     
     # 인증 모델 import (별도 처리)
@@ -101,7 +101,7 @@ def create_app(config_name=None):
 
     # 에러 핸들러 등록
     try:
-        from utils.error_handler import register_error_handlers
+        from backend.utils.error_handler import register_error_handlers
         register_error_handlers(app)
         print("[SUCCESS] 에러 핸들러가 성공적으로 등록되었습니다.")
     except ImportError as e:
@@ -110,7 +110,7 @@ def create_app(config_name=None):
 
     # Celery 백그라운드 작업 설정
     try:
-        from celery_config import create_celery, setup_periodic_tasks
+        from backend.app.celery_config import create_celery, setup_periodic_tasks
         celery_app = create_celery(app)
         if celery_app:
             setup_periodic_tasks(celery_app)
@@ -133,8 +133,8 @@ def create_app(config_name=None):
 
     # 데이터베이스 최적화 도구 설정
     try:
-        from database_optimizer import setup_database_optimization
-        setup_database_optimization(app)
+        from backend.database.database_optimization import DatabaseOptimizer
+        DatabaseOptimizer.setup_optimization(app)
         print("[SUCCESS] 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
         print("   - 인덱스 최적화")
         print("   - 쿼리 성능 분석")
@@ -143,7 +143,7 @@ def create_app(config_name=None):
 
     # 보안 시스템 설정
     try:
-        from security_system import setup_security
+        from backend.app.security_system import setup_security
         setup_security(app)
         print("[SUCCESS] 보안 시스템이 성공적으로 설정되었습니다.")
         print("   - 위협 패턴 스캔")
@@ -154,7 +154,7 @@ def create_app(config_name=None):
 
     # 애플리케이션 모니터링 설정
     try:
-        from app_monitor import setup_app_monitoring
+        from backend.app.app_monitor import setup_app_monitoring
         setup_app_monitoring(app)
         print("[SUCCESS] 애플리케이션 모니터링이 설정되었습니다. (수동 시작 필요)")
     except ImportError as e:
@@ -170,7 +170,7 @@ def create_app(config_name=None):
 
     # 실시간 통신 시스템 설정
     try:
-        from realtime_system import setup_realtime_communication
+        from backend.app.realtime_system import setup_realtime_communication
         setup_realtime_communication(app)
         print("[SUCCESS] 실시간 통신 시스템이 성공적으로 설정되었습니다.")
         print("   - WebSocket 알림 시스템")
@@ -180,7 +180,7 @@ def create_app(config_name=None):
 
     # API Blueprint 등록
     try:
-        from routes.api import api_bp
+        from backend.routes.api import api_bp
         app.register_blueprint(api_bp)
         print("[SUCCESS] API Blueprint가 성공적으로 등록되었습니다.")
     except Exception as e:
@@ -188,7 +188,7 @@ def create_app(config_name=None):
 
     # 인증 시스템 초기화
     try:
-        from auth.auth_system import init_auth_system
+        from backend.auth.auth_system import init_auth_system
         init_auth_system(app)
         print("[SUCCESS] 인증 시스템을 불러왔습니다.")
     except ImportError as e:
@@ -197,7 +197,7 @@ def create_app(config_name=None):
 
     # 데이터베이스 초기화
     try:
-        from database_init import init_database
+        from backend.database.init_db import init_database
         init_database(app)
         print("[SUCCESS] 데이터베이스가 Flask 앱과 연결되었습니다.")
     except ImportError as e:
@@ -205,7 +205,7 @@ def create_app(config_name=None):
 
     # 포인트 시스템 설정
     try:
-        from points_system import setup_points_system
+        from backend.app.points_system import setup_points_system
         setup_points_system(app)
         print("[SUCCESS] 포인트 시스템이 성공적으로 설정되었습니다.")
     except ImportError as e:
@@ -213,7 +213,7 @@ def create_app(config_name=None):
 
     # 포인트 API 등록
     try:
-        from routes.points import points_bp
+        from backend.routes.points import points_bp
         app.register_blueprint(points_bp)
         print("[SUCCESS] 포인트 API가 성공적으로 등록되었습니다.")
     except Exception as e:
@@ -221,7 +221,7 @@ def create_app(config_name=None):
 
     # 스케줄러 설정
     try:
-        from scheduler_config import setup_scheduler
+        from backend.app.scheduler_config import setup_scheduler
         setup_scheduler(app)
         print("[SUCCESS] 스케줄러가 성공적으로 설정되었습니다.")
     except ImportError as e:
@@ -229,63 +229,63 @@ def create_app(config_name=None):
 
     # Blueprint 등록
     try:
-        from routes.auth import auth_bp
+        from backend.routes.auth import auth_bp
         app.register_blueprint(auth_bp)
         print("[SUCCESS] 인증 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 인증 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.schedules import schedules_bp
+        from backend.routes.schedules import schedules_bp
         app.register_blueprint(schedules_bp)
         print("[SUCCESS] 일정 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 일정 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.proposals import proposals_bp
+        from backend.routes.proposals import proposals_bp
         app.register_blueprint(proposals_bp)
         print("[SUCCESS] 제안 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 제안 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.restaurants import restaurants_bp
+        from backend.routes.restaurants import restaurants_bp
         app.register_blueprint(restaurants_bp, url_prefix='/api')
         print("[SUCCESS] 식당 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 식당 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.parties import parties_bp
+        from backend.routes.parties import parties_bp
         app.register_blueprint(parties_bp, url_prefix='/api')
         print("[SUCCESS] 파티 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 파티 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.users import users_bp
+        from backend.routes.users import users_bp
         app.register_blueprint(users_bp, url_prefix='/api')
         print("[SUCCESS] 사용자 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 사용자 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.chats import chats_bp
+        from backend.routes.chats import chats_bp
         app.register_blueprint(chats_bp, url_prefix='/api')
         print("[SUCCESS] 채팅 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 채팅 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.voting import voting_bp
+        from backend.routes.voting import voting_bp
         app.register_blueprint(voting_bp, url_prefix='/api')
         print("[SUCCESS] 투표 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 투표 관리 Blueprint 등록 실패: {e}")
 
     try:
-        from routes.matching import matching_bp
+        from backend.routes.matching import matching_bp
         app.register_blueprint(matching_bp, url_prefix='/api')
         print("[SUCCESS] 매칭 관리 Blueprint 등록 성공")
     except Exception as e:
@@ -305,7 +305,7 @@ app = create_app()
 if __name__ == "__main__":
     # Socket.IO 설정 확인
     try:
-        from realtime_system import socketio
+        from backend.app.realtime_system import socketio
         if socketio:
             # Socket.IO와 함께 실행
             socketio.run(app, host="0.0.0.0", port=5000, debug=True)
