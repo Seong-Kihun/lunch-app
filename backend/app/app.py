@@ -1396,12 +1396,18 @@ def safe_import_models():
     try:
         print(f"[DEBUG] safe_import_models 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
         
-        # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
-        # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
-        from backend.auth.models import User as UserModel, Friendship as FriendshipModel
-        User = UserModel
-        Friendship = FriendshipModel
-        print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
+        # 근본적 해결: app.config에서 모델 가져오기 (중복 import 방지)
+        User = app.config.get('USER_MODEL')
+        Friendship = app.config.get('FRIENDSHIP_MODEL')
+        
+        if not User or not Friendship:
+            print("[WARNING] app.config에서 모델을 찾을 수 없습니다. 직접 import합니다.")
+            from backend.auth.models import User as UserModel, Friendship as FriendshipModel
+            User = UserModel
+            Friendship = FriendshipModel
+        else:
+            print("[SUCCESS] app.config에서 User, Friendship 모델을 가져왔습니다.")
+        
         print(f"[DEBUG] User 모델: {User}")
         print(f"[DEBUG] Friendship 모델: {Friendship}")
         print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")

@@ -23,14 +23,20 @@ def get_user_model():
     try:
         print(f"[DEBUG] get_user_model 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
         
-        # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
-        # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
-        from backend.auth.models import User as UserModel
-        User = UserModel
-        print("[SUCCESS] User 모델을 직접 import했습니다.")
-        print(f"[DEBUG] User 모델: {User}")
-        print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")
-        return User
+        # 근본적 해결: app.config에서 모델 가져오기 (중복 import 방지)
+        from flask import current_app
+        with current_app.app_context():
+            User = current_app.config.get('USER_MODEL')
+            if not User:
+                print("[WARNING] app.config에서 User 모델을 찾을 수 없습니다. 직접 import합니다.")
+                from backend.auth.models import User as UserModel
+                User = UserModel
+            else:
+                print("[SUCCESS] app.config에서 User 모델을 가져왔습니다.")
+            
+            print(f"[DEBUG] User 모델: {User}")
+            print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")
+            return User
     except Exception as e:
         print(f"[ERROR] User 모델 가져오기 실패: {e}")
         print(f"[ERROR] 오류 타입: {type(e)}")

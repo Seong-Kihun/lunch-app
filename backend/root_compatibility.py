@@ -32,13 +32,18 @@ def root_dev_user(employee_id):
         
         print(f"[DEBUG] root_dev_user 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
         
-        # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
+        # 근본적 해결: app.config에서 모델 가져오기 (중복 import 방지)
         with current_app.app_context():
             print(f"[DEBUG] 애플리케이션 컨텍스트 내 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
             
-            # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
-            from backend.auth.models import User
-            print(f"[DEBUG] User 모델 import 완료: {User}")
+            # 메타데이터 충돌 방지: app.config에서 모델 가져오기
+            User = current_app.config.get('USER_MODEL')
+            if not User:
+                print("[WARNING] app.config에서 User 모델을 찾을 수 없습니다. 직접 import합니다.")
+                from backend.auth.models import User
+            else:
+                print(f"[DEBUG] app.config에서 User 모델 가져옴: {User}")
+            
             print(f"[DEBUG] User 테이블 정보: {db.metadata.tables.get('users')}")
             
             user = User.query.filter_by(employee_id=str(employee_id)).first()
