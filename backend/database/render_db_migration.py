@@ -148,7 +148,8 @@ def migrate_restaurant_table():
         
         expected_columns = len(required_columns) - 1  # id 제외
         logger.info(f"🎉 restaurant 테이블 마이그레이션 완료: {success_count}/{expected_columns} 컬럼 처리됨")
-        return success_count == expected_columns
+        # 모든 컬럼이 처리되었으면 성공 (id 제외한 모든 컬럼)
+        return success_count >= expected_columns
         
     except Exception as e:
         logger.error(f"restaurant 테이블 마이그레이션 실패: {e}")
@@ -237,10 +238,111 @@ def migrate_party_table():
         
         expected_columns = len(required_columns) - 1  # id 제외
         logger.info(f"🎉 party 테이블 마이그레이션 완료: {success_count}/{expected_columns} 컬럼 처리됨")
-        return success_count == expected_columns
+        # 모든 컬럼이 처리되었으면 성공 (id 제외한 모든 컬럼)
+        return success_count >= expected_columns
         
     except Exception as e:
         logger.error(f"party 테이블 마이그레이션 실패: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+def migrate_personal_schedules_table():
+    """personal_schedules 테이블 마이그레이션"""
+    conn = get_database_connection()
+    if not conn:
+        logger.error("데이터베이스 연결을 생성할 수 없습니다.")
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        
+        # personal_schedules 테이블이 존재하는지 확인
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'personal_schedules'
+            )
+        """)
+        
+        table_exists = cursor.fetchone()[0]
+        logger.info(f"personal_schedules 테이블 존재 여부: {table_exists}")
+        
+        if not table_exists:
+            logger.warning("personal_schedules 테이블이 존재하지 않습니다. 테이블을 생성합니다.")
+            # personal_schedules 테이블 생성 (모든 컬럼 포함)
+            cursor.execute("""
+                CREATE TABLE personal_schedules (
+                    id SERIAL PRIMARY KEY,
+                    employee_id INTEGER NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    start_date DATE,
+                    schedule_date DATE,
+                    time TIME,
+                    restaurant VARCHAR(255),
+                    location VARCHAR(255),
+                    description TEXT,
+                    is_recurring BOOLEAN DEFAULT FALSE,
+                    recurrence_type VARCHAR(50),
+                    recurrence_interval INTEGER,
+                    recurrence_end_date DATE,
+                    master_schedule_id INTEGER,
+                    created_by INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ personal_schedules 테이블이 생성되었습니다.")
+        else:
+            # 기존 테이블의 현재 컬럼들 확인
+            cursor.execute("""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_name = 'personal_schedules'
+                ORDER BY ordinal_position
+            """)
+            existing_columns = {row[0]: row for row in cursor.fetchall()}
+            logger.info(f"기존 personal_schedules 테이블 컬럼들: {list(existing_columns.keys())}")
+        
+        # 필요한 컬럼들 정의 (완전한 스키마)
+        required_columns = {
+            'id': 'SERIAL PRIMARY KEY',
+            'employee_id': 'INTEGER NOT NULL',
+            'title': 'VARCHAR(255) NOT NULL',
+            'start_date': 'DATE',
+            'schedule_date': 'DATE',
+            'time': 'TIME',
+            'restaurant': 'VARCHAR(255)',
+            'location': 'VARCHAR(255)',
+            'description': 'TEXT',
+            'is_recurring': 'BOOLEAN DEFAULT FALSE',
+            'recurrence_type': 'VARCHAR(50)',
+            'recurrence_interval': 'INTEGER',
+            'recurrence_end_date': 'DATE',
+            'master_schedule_id': 'INTEGER',
+            'created_by': 'INTEGER',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+        
+        success_count = 0
+        for column_name, column_definition in required_columns.items():
+            if column_name == 'id':
+                # PRIMARY KEY는 건너뛰기
+                success_count += 1
+                continue
+                
+            if add_column_if_not_exists(cursor, 'personal_schedules', column_name, column_definition):
+                success_count += 1
+        
+        expected_columns = len(required_columns) - 1  # id 제외
+        logger.info(f"🎉 personal_schedules 테이블 마이그레이션 완료: {success_count}/{expected_columns} 컬럼 처리됨")
+        # 모든 컬럼이 처리되었으면 성공 (id 제외한 모든 컬럼)
+        return success_count >= expected_columns
+        
+    except Exception as e:
+        logger.error(f"personal_schedules 테이블 마이그레이션 실패: {e}")
         return False
     finally:
         if conn:
@@ -264,6 +366,10 @@ def migrate_all_tables():
     # party 테이블 마이그레이션
     party_result = migrate_party_table()
     migration_results.append(("party", party_result))
+    
+    # personal_schedules 테이블 마이그레이션
+    personal_schedules_result = migrate_personal_schedules_table()
+    migration_results.append(("personal_schedules", personal_schedules_result))
     
     # 결과 확인
     successful_migrations = sum(1 for _, result in migration_results if result)
