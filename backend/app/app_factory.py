@@ -82,13 +82,20 @@ def create_app(config_name=None):
     from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
     
-    # 인증 모델 import (별도 처리)
+    # 인증 모델 import (별도 처리) - 메타데이터 충돌 방지
     try:
-        from backend.auth.models import Friendship
+        from backend.auth.models import User, Friendship
         info("인증 모델을 불러왔습니다.")
+        
+        # User 모델이 메타데이터에 등록되었는지 확인
+        if 'users' not in db.metadata.tables:
+            warning("User 모델이 메타데이터에 등록되지 않았습니다.")
+        else:
+            info("User 모델이 메타데이터에 등록되었습니다.")
+            
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")
-        warning("Friendship 모델은 비활성화됩니다.")
+        warning("User, Friendship 모델은 비활성화됩니다.")
 
     # Flask-Migrate 초기화
     try:

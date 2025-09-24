@@ -5,8 +5,8 @@
 """
 
 from flask import Blueprint, request, jsonify
-from auth.middleware import check_authentication
-from auth.routes import send_magic_link, get_profile
+from backend.auth.middleware import check_authentication
+from backend.auth.routes import send_magic_link, get_profile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,12 @@ def root_dev_user(employee_id):
     
     # 개발용 토큰으로 인증된 사용자 조회
     try:
-        from auth.models import User
+        from backend.app.extensions import db
+        
+        # 메타데이터 충돌 방지를 위해 지연 import 사용
+        # 함수 내부에서만 import하여 메타데이터 충돌 방지
+        from backend.auth.models import User
+        
         user = User.query.filter_by(employee_id=str(employee_id)).first()
         
         if not user:
@@ -38,7 +43,6 @@ def root_dev_user(employee_id):
                 nickname=f'개발자{employee_id}',
                 is_active=True
             )
-            from auth.models import db
             db.session.add(user)
             db.session.commit()
         

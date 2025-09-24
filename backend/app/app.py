@@ -1387,10 +1387,16 @@ if AUTH_AVAILABLE:
         # User 모델의 테이블이 메타데이터에 등록되었는지 확인
         if "users" not in db.metadata.tables:
             print("[WARNING] users 테이블이 메타데이터에 등록되지 않았습니다.")
+            # User 모델을 명시적으로 메타데이터에 등록
+            User.__table__.create(db.engine, checkfirst=True)
+            print("[SUCCESS] User 모델이 메타데이터에 등록되었습니다.")
         else:
             print("[SUCCESS] users 테이블이 메타데이터에 등록되었습니다.")
     except (AttributeError, KeyError) as e:
         print(f"[WARNING] User 모델 메타데이터 확인 실패: {e}")
+    except Exception as e:
+        print(f"[WARNING] User 모델 메타데이터 등록 실패: {e}")
+        print("   메타데이터 충돌이 발생했을 수 있습니다.")
 
 # PersonalSchedule 모델은 필요할 때만 import하여 사용
 
