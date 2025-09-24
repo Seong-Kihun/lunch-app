@@ -1405,10 +1405,7 @@ def initialize_database():
                 print("[ERROR] 데이터베이스 URI가 설정되지 않았습니다.")
                 return False
                 
-            # 데이터베이스 테이블 생성
-            db.create_all()
-            
-            # Render 환경에서 PostgreSQL 마이그레이션 실행
+            # Render 환경에서 PostgreSQL 마이그레이션 먼저 실행
             if os.environ.get('RENDER') and database_url and 'postgresql' in database_url:
                 try:
                     from backend.database.render_db_migration import migrate_all_tables
@@ -1420,6 +1417,9 @@ def initialize_database():
                 except Exception as e:
                     print(f"⚠️ PostgreSQL 마이그레이션 실행 중 오류: {e}")
                     print("   앱은 계속 실행되지만 일부 기능이 제한될 수 있습니다.")
+            
+            # 데이터베이스 테이블 생성
+            db.create_all()
 
             # 초기 데이터가 없으면 생성 (인증 시스템이 활성화된 경우에만)
             if AUTH_AVAILABLE:

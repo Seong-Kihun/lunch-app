@@ -80,6 +80,7 @@ def migrate_restaurant_table():
     """restaurant 테이블 마이그레이션"""
     conn = get_database_connection()
     if not conn:
+        logger.error("데이터베이스 연결을 생성할 수 없습니다.")
         return False
     
     try:
@@ -93,7 +94,10 @@ def migrate_restaurant_table():
             )
         """)
         
-        if not cursor.fetchone()[0]:
+        table_exists = cursor.fetchone()[0]
+        logger.info(f"restaurant 테이블 존재 여부: {table_exists}")
+        
+        if not table_exists:
             logger.warning("restaurant 테이블이 존재하지 않습니다. 테이블을 생성합니다.")
             # restaurant 테이블 생성
             cursor.execute("""
