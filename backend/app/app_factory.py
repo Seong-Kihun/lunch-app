@@ -90,6 +90,10 @@ def create_app(config_name=None):
         # 모든 모델을 메타데이터에 등록 (한 번만)
         # import만으로도 메타데이터에 자동 등록되므로 db.create_all() 제거
         info("모든 모델이 메타데이터에 등록되었습니다.")
+        
+        # 전역 변수로 모델 저장 (다른 모듈에서 사용 가능)
+        app.config['USER_MODEL'] = User
+        app.config['FRIENDSHIP_MODEL'] = Friendship
             
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")

@@ -20,12 +20,22 @@ def get_user_model():
         return User
         
     try:
-        # 근본적 해결: app_factory에서 이미 import된 모델 사용
-        # 메타데이터 충돌을 방지하기 위해 직접 import 제거
-        from backend.app.app import User as UserModel
-        User = UserModel
-        print("[SUCCESS] User 모델을 app.py에서 가져왔습니다.")
-        return User
+        # 근본적 해결: app_factory에서 저장된 모델 사용
+        # 메타데이터 충돌을 완전히 방지하기 위해 app_factory에서 저장된 모델 사용
+        from flask import current_app
+        
+        with current_app.app_context():
+            User = current_app.config.get('USER_MODEL')
+            
+            if User:
+                print("[SUCCESS] User 모델을 app_factory에서 가져왔습니다.")
+                return User
+            else:
+                # 폴백: 직접 import
+                from backend.auth.models import User as UserModel
+                User = UserModel
+                print("[SUCCESS] User 모델을 직접 import했습니다.")
+                return User
     except Exception as e:
         print(f"[ERROR] User 모델 가져오기 실패: {e}")
         return None

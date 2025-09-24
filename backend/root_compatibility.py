@@ -30,11 +30,14 @@ def root_dev_user(employee_id):
         from backend.app.extensions import db
         from flask import current_app
         
-        # 근본적 해결: app_factory에서 이미 import된 모델 사용
+        # 근본적 해결: app_factory에서 저장된 모델 사용
         with current_app.app_context():
-            # 메타데이터 충돌을 방지하기 위해 직접 import 제거
-            # app_factory에서 이미 import된 User 모델 사용
-            from backend.app.app import User
+            # 메타데이터 충돌을 완전히 방지하기 위해 app_factory에서 저장된 모델 사용
+            User = current_app.config.get('USER_MODEL')
+            
+            if not User:
+                # 폴백: 직접 import
+                from backend.auth.models import User
             
             user = User.query.filter_by(employee_id=str(employee_id)).first()
             

@@ -1394,11 +1394,22 @@ def safe_import_models():
     global User, Friendship
     
     try:
-        # 근본적 해결: app_factory에서 이미 import된 모델 사용
-        # 메타데이터 충돌을 방지하기 위해 직접 import 제거
-        User = None
-        Friendship = None
-        print("[SUCCESS] 메타데이터 충돌 방지를 위해 모델 import를 건너뜁니다.")
+        # 근본적 해결: app_factory에서 저장된 모델 사용
+        # 메타데이터 충돌을 완전히 방지하면서도 실제 사용 가능한 모델 제공
+        from flask import current_app
+        
+        with current_app.app_context():
+            User = current_app.config.get('USER_MODEL')
+            Friendship = current_app.config.get('FRIENDSHIP_MODEL')
+            
+            if User and Friendship:
+                print("[SUCCESS] User, Friendship 모델을 app_factory에서 가져왔습니다.")
+            else:
+                # 폴백: 직접 import
+                from backend.auth.models import User as UserModel, Friendship as FriendshipModel
+                User = UserModel
+                Friendship = FriendshipModel
+                print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
             
     except Exception as e:
         print(f"[ERROR] 모델 import 실패: {e}")
