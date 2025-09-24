@@ -48,13 +48,13 @@ def create_app(config_name=None):
         app.config["TESTING"] = True
 
     # 데이터베이스 객체 import (extensions.py에서)
-    from extensions import db
+    from backend.app.extensions import db
     
     # 데이터베이스 초기화 - Factory 패턴에서 필수
     db.init_app(app)
 
     # 모델 import
-    from models.app_models import (
+    from backend.models.app_models import (
         Party,
         PartyMember,
         DangolPot,
@@ -84,7 +84,7 @@ def create_app(config_name=None):
     
     # 인증 모델 import (별도 처리)
     try:
-        from auth.models import Friendship
+        from backend.auth.models import Friendship
         info("인증 모델을 불러왔습니다.")
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")

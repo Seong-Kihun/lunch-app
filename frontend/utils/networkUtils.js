@@ -4,15 +4,46 @@ import { Platform } from 'react-native';
 // 현재 네트워크 IP를 자동으로 감지하는 함수
 export const getCurrentNetworkIP = async () => {
     try {
-        // React Native에서 네트워크 정보 가져오기
-        const NetworkInfo = require('react-native-network-info');
+        // Expo 환경에서는 Constants를 사용하여 IP 감지
+        const Constants = require('expo-constants');
         
-        if (Platform.OS === 'ios') {
-            return await NetworkInfo.getIPAddress();
-        } else {
-            // Android의 경우
-            return await NetworkInfo.getIPAddress();
+        // 1. Expo Constants에서 debuggerHost 확인
+        if (Constants.default?.manifest?.debuggerHost) {
+            const debuggerHost = Constants.default.manifest.debuggerHost.split(':')[0];
+            console.log('🔍 [NetworkUtils] Expo debuggerHost 감지:', debuggerHost);
+            return debuggerHost;
         }
+        
+        // 2. Expo Constants 2.x 방식
+        if (Constants.default?.expoConfig?.hostUri) {
+            const hostUri = Constants.default.expoConfig.hostUri.split(':')[0];
+            console.log('🔍 [NetworkUtils] Expo hostUri 감지:', hostUri);
+            return hostUri;
+        }
+        
+        // 3. Expo Constants에서 LAN IP 감지
+        if (Constants.default?.expoConfig?.debuggerHost) {
+            const debuggerHost = Constants.default.expoConfig.debuggerHost.split(':')[0];
+            console.log('🔍 [NetworkUtils] Expo debuggerHost 감지:', debuggerHost);
+            return debuggerHost;
+        }
+        
+        // 4. fallback: 일반적인 로컬 IP들 시도
+        const commonIPs = [
+            '192.168.45.177', // 현재 백엔드 실행 IP
+            '192.168.1.1',
+            '192.168.0.1',
+            '10.0.0.1',
+            '172.16.0.1',
+            '172.20.10.1',
+            '192.168.43.1',
+            'localhost',
+            '127.0.0.1'
+        ];
+        
+        // 첫 번째 IP 반환 (실제 연결 테스트는 별도로 수행)
+        return commonIPs[0];
+        
     } catch (error) {
         console.warn('🔍 [NetworkUtils] IP 자동 감지 실패:', error);
         return null;
