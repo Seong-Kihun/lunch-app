@@ -72,13 +72,13 @@ function getStartOptions() {
   
   if (wifiInterface) {
     console.log(`✅ [Auto] WiFi 인터페이스 감지: ${wifiInterface.address}`);
-    return '--host tunnel'; // 터널 모드가 가장 안정적
+    return '--host lan'; // LAN 모드가 더 안정적
   }
   
   // 첫 번째 유효한 인터페이스 사용
   const firstInterface = interfaces[0];
   console.log(`✅ [Auto] 첫 번째 인터페이스 사용: ${firstInterface.address}`);
-  return '--host tunnel';
+  return '--host lan';
 }
 
 // 메인 실행 함수

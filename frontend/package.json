@@ -10,8 +10,8 @@
     "start:localhost": "npx expo start --host localhost",
     "start:mcdonalds": "node start-mcdonalds.js",
     "start:offline": "npx expo start --offline",
-    "android": "npx expo start --android --host tunnel",
-    "ios": "npx expo start --ios --host tunnel",
+    "android": "npx expo start --android --host lan",
+    "ios": "npx expo start --ios --host lan",
     "web": "npx expo start --web"
   },
   "dependencies": {

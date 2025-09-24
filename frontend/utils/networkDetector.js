@@ -28,6 +28,13 @@ export const detectServerURL = () => {
       return `http://${hostUri}:5000`;
     }
 
+    // 2.5. Expo Constants에서 LAN IP 감지
+    if (Constants.expoConfig && Constants.expoConfig.debuggerHost) {
+      const debuggerHost = Constants.expoConfig.debuggerHost.split(':')[0];
+      console.log('🔍 [NetworkDetector] Expo debuggerHost 감지:', debuggerHost);
+      return `http://${debuggerHost}:5000`;
+    }
+
     // 3. Metro bundler의 기본 IP들 시도 (더 포괄적인 범위)
     const commonIPs = [
       '192.168.1.1',
