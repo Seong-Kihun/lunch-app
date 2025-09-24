@@ -17,27 +17,25 @@ def get_user_model():
     """User 모델을 동적으로 가져오는 함수"""
     global User
     if User is not None:
+        print(f"[DEBUG] get_user_model - 이미 로드된 User 모델 사용: {User}")
         return User
         
     try:
-        # 근본적 해결: app_factory에서 저장된 모델 사용
-        # 메타데이터 충돌을 완전히 방지하기 위해 app_factory에서 저장된 모델 사용
-        from flask import current_app
+        print(f"[DEBUG] get_user_model 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
         
-        with current_app.app_context():
-            User = current_app.config.get('USER_MODEL')
-            
-            if User:
-                print("[SUCCESS] User 모델을 app_factory에서 가져왔습니다.")
-                return User
-            else:
-                # 폴백: 직접 import
-                from backend.auth.models import User as UserModel
-                User = UserModel
-                print("[SUCCESS] User 모델을 직접 import했습니다.")
-                return User
+        # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
+        # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
+        from backend.auth.models import User as UserModel
+        User = UserModel
+        print("[SUCCESS] User 모델을 직접 import했습니다.")
+        print(f"[DEBUG] User 모델: {User}")
+        print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")
+        return User
     except Exception as e:
         print(f"[ERROR] User 모델 가져오기 실패: {e}")
+        print(f"[ERROR] 오류 타입: {type(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # 그 다음에 다른 모델들을 import

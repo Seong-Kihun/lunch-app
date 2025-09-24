@@ -6,6 +6,8 @@ import hashlib
 # 공통 db 객체 사용 (extensions.py에서)
 from backend.app.extensions import db
 
+print(f"[DEBUG] auth/models.py 로드 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
+
 class User(db.Model):
     """사용자 모델"""
     __tablename__ = 'users'
@@ -216,3 +218,7 @@ class Friendship(db.Model):
     def __init__(self, requester_id, receiver_id):
         self.requester_id = requester_id
         self.receiver_id = receiver_id
+
+print(f"[DEBUG] auth/models.py 로드 완료 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
+print(f"[DEBUG] User 테이블: {db.metadata.tables.get('users')}")
+print(f"[DEBUG] Friendship 테이블: {db.metadata.tables.get('friendships')}")

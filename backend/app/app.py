@@ -1394,15 +1394,23 @@ def safe_import_models():
     global User, Friendship
     
     try:
+        print(f"[DEBUG] safe_import_models 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
+        
         # 근본적 해결: 직접 import 사용 (애플리케이션 컨텍스트 문제 해결)
         # 메타데이터 충돌을 방지하면서도 실제 사용 가능한 모델 제공
         from backend.auth.models import User as UserModel, Friendship as FriendshipModel
         User = UserModel
         Friendship = FriendshipModel
         print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
+        print(f"[DEBUG] User 모델: {User}")
+        print(f"[DEBUG] Friendship 모델: {Friendship}")
+        print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")
             
     except Exception as e:
         print(f"[ERROR] 모델 import 실패: {e}")
+        print(f"[ERROR] 오류 타입: {type(e)}")
+        import traceback
+        traceback.print_exc()
         User = None
         Friendship = None
 

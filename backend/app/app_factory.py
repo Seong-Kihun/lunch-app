@@ -84,8 +84,15 @@ def create_app(config_name=None):
     
     # 인증 모델 import (별도 처리) - 메타데이터 충돌 방지
     try:
+        print(f"[DEBUG] 메타데이터 상태 (User import 전): {list(db.metadata.tables.keys())}")
+        
         from backend.auth.models import User, Friendship
         info("인증 모델을 불러왔습니다.")
+        
+        print(f"[DEBUG] 메타데이터 상태 (User import 후): {list(db.metadata.tables.keys())}")
+        print(f"[DEBUG] User 테이블 정보: {db.metadata.tables.get('users')}")
+        print(f"[DEBUG] User 모델: {User}")
+        print(f"[DEBUG] Friendship 모델: {Friendship}")
         
         # 모든 모델을 메타데이터에 등록 (한 번만)
         # import만으로도 메타데이터에 자동 등록되므로 db.create_all() 제거
@@ -94,10 +101,16 @@ def create_app(config_name=None):
         # 전역 변수로 모델 저장 (다른 모듈에서 사용 가능)
         app.config['USER_MODEL'] = User
         app.config['FRIENDSHIP_MODEL'] = Friendship
+        print(f"[DEBUG] 모델이 app.config에 저장됨: USER_MODEL={app.config.get('USER_MODEL')}")
             
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")
         warning("User, Friendship 모델은 비활성화됩니다.")
+    except Exception as e:
+        print(f"[ERROR] 인증 모델 처리 중 오류: {e}")
+        print(f"[ERROR] 오류 타입: {type(e)}")
+        import traceback
+        traceback.print_exc()
 
     # Flask-Migrate 초기화
     try:
