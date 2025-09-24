@@ -50,42 +50,11 @@ export const getCurrentNetworkIP = async () => {
     }
 };
 
-// 서버 URL을 동적으로 생성하는 함수 - 자동 IP 감지
+// 서버 URL을 동적으로 생성하는 함수 - Render 서버 우선 사용
 export const getServerURL = async () => {
     try {
-        // 개발 환경인지 확인
-        const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
-        
-        if (!isDevelopment) {
-            // 프로덕션 환경에서는 Render 서버 사용
-            console.log('🔧 [NetworkUtils] 프로덕션 환경: Render 서버 사용');
-            return 'https://lunch-app-backend-ra12.onrender.com';
-        }
-        
-        // 개발 환경에서는 동적 IP 감지
-        console.log('🔧 [NetworkUtils] 개발 환경: 동적 IP 감지 시작');
-        
-        // 1. 환경변수에서 서버 URL 확인
-        const envServerURL = process.env.REACT_APP_SERVER_URL || process.env.EXPO_PUBLIC_SERVER_URL;
-        if (envServerURL) {
-            console.log('🔧 [NetworkUtils] 환경변수에서 서버 URL 사용:', envServerURL);
-            return envServerURL;
-        }
-
-        // 2. 현재 네트워크 IP 자동 감지
-        try {
-            const currentIP = await getCurrentNetworkIP();
-            if (currentIP) {
-                const serverURL = `http://${currentIP}:5000`;
-                console.log('🔧 [NetworkUtils] 자동 감지된 IP 사용:', serverURL);
-                return serverURL;
-            }
-        } catch (ipError) {
-            console.warn('🔧 [NetworkUtils] IP 자동 감지 실패:', ipError);
-        }
-
-        // 3. fallback: Render 서버 사용
-        console.log('🔧 [NetworkUtils] fallback: Render 서버 사용');
+        // 근본적 해결: Render 서버를 우선적으로 사용
+        console.log('🔧 [NetworkUtils] Render 서버 우선 사용');
         return 'https://lunch-app-backend-ra12.onrender.com';
 
     } catch (error) {
