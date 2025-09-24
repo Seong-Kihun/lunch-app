@@ -145,7 +145,7 @@ export const getServerURL = async () => {
 };
 
 // 기존 호환성을 위한 동기 함수 (기본값)
-export const RENDER_SERVER_URL = __DEV__ ? 'http://172.30.1.43:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+export const RENDER_SERVER_URL = __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
 
 // 환경별 API 경로 설정
 export const API_PREFIX = __DEV__ ? '/dev' : '/api';

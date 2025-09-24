@@ -1,4 +1,4 @@
-import { RENDER_SERVER_URL } from '../config';
+import { getServerURL } from '../utils/networkUtils';
 import { 
   storeAccessToken, 
   storeRefreshToken, 
@@ -7,14 +7,30 @@ import {
   getRefreshToken
 } from '../utils/secureStorage';
 
-const API_BASE_URL = RENDER_SERVER_URL;
+// 동적 서버 URL 가져오기
+const getApiBaseUrl = async () => {
+  try {
+    return await getServerURL();
+  } catch (error) {
+    console.error('❌ [AuthService] 서버 URL 가져오기 실패:', error);
+    return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+  }
+};
 
 /**
  * API 요청 헬퍼 함수
  */
 const apiRequest = async (endpoint, options = {}) => {
   try {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const baseURL = await getApiBaseUrl();
+    const url = `${baseURL}${endpoint}`;
+    
+    console.log(`🔗 [API] 호출 시작: ${url}`);
+    console.log(`🔗 [API] 요청 옵션:`, {
+      method: options.method || 'GET',
+      headers: options.headers,
+      body: options.body ? 'JSON 데이터' : '없음'
+    });
     
     const defaultOptions = {
       headers: {
@@ -28,15 +44,24 @@ const apiRequest = async (endpoint, options = {}) => {
       ...options
     });
     
+    console.log(`🔗 [API] 응답 상태: ${response.status} ${response.statusText}`);
+    
     const data = await response.json();
     
     if (!response.ok) {
+      console.error(`❌ [API] 오류 응답:`, data);
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
     
+    console.log(`✅ [API] 응답 성공:`, data);
     return data;
   } catch (error) {
-    console.error(`API 요청 실패 (${endpoint}):`, error);
+    console.error(`❌ [API] 요청 실패 (${endpoint}):`, error);
+    console.error(`❌ [API] 오류 상세:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     throw error;
   }
 };
@@ -71,15 +96,22 @@ const authenticatedApiRequest = async (endpoint, options = {}, accessToken) => {
  */
 export const sendMagicLink = async (email) => {
   try {
+    console.log('🔗 [MagicLink] 매직링크 발송 시작:', email);
+    
     const data = await apiRequest('/api/auth/magic-link', {
       method: 'POST',
       body: JSON.stringify({ email })
     });
     
-    console.log('매직링크 발송 성공:', data);
+    console.log('✅ [MagicLink] 매직링크 발송 성공:', data);
     return data;
   } catch (error) {
-    console.error('매직링크 발송 실패:', error);
+    console.error('❌ [MagicLink] 매직링크 발송 실패:', error);
+    console.error('❌ [MagicLink] 오류 상세:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     throw error;
   }
 };
