@@ -101,7 +101,14 @@ def create_app(config_name=None):
         # 전역 변수로 모델 저장 (다른 모듈에서 사용 가능)
         app.config['USER_MODEL'] = User
         app.config['FRIENDSHIP_MODEL'] = Friendship
+        
+        # 전역 모듈 변수로도 저장 (더 안정적인 접근)
+        import backend.app.app as app_module
+        app_module.User = User
+        app_module.Friendship = Friendship
+        
         print(f"[DEBUG] 모델이 app.config에 저장됨: USER_MODEL={app.config.get('USER_MODEL')}")
+        print(f"[DEBUG] 모델이 전역 변수로 저장됨: User={User}, Friendship={Friendship}")
             
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")
