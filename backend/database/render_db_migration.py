@@ -146,11 +146,101 @@ def migrate_restaurant_table():
             if add_column_if_not_exists(cursor, 'restaurant', column_name, column_definition):
                 success_count += 1
         
-        logger.info(f"🎉 restaurant 테이블 마이그레이션 완료: {success_count}/{len(required_columns)-1} 컬럼 처리됨")
-        return success_count == len(required_columns) - 1  # id 제외
+        expected_columns = len(required_columns) - 1  # id 제외
+        logger.info(f"🎉 restaurant 테이블 마이그레이션 완료: {success_count}/{expected_columns} 컬럼 처리됨")
+        return success_count == expected_columns
         
     except Exception as e:
         logger.error(f"restaurant 테이블 마이그레이션 실패: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+def migrate_party_table():
+    """party 테이블 마이그레이션"""
+    conn = get_database_connection()
+    if not conn:
+        logger.error("데이터베이스 연결을 생성할 수 없습니다.")
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        
+        # party 테이블이 존재하는지 확인
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'party'
+            )
+        """)
+        
+        table_exists = cursor.fetchone()[0]
+        logger.info(f"party 테이블 존재 여부: {table_exists}")
+        
+        if not table_exists:
+            logger.warning("party 테이블이 존재하지 않습니다. 테이블을 생성합니다.")
+            # party 테이블 생성 (모든 컬럼 포함)
+            cursor.execute("""
+                CREATE TABLE party (
+                    id SERIAL PRIMARY KEY,
+                    host_employee_id INTEGER NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    restaurant_name VARCHAR(255),
+                    restaurant_address TEXT,
+                    party_date DATE,
+                    party_time TIME,
+                    meeting_location VARCHAR(255),
+                    max_members INTEGER DEFAULT 4,
+                    is_from_match BOOLEAN DEFAULT FALSE,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ party 테이블이 생성되었습니다.")
+        else:
+            # 기존 테이블의 현재 컬럼들 확인
+            cursor.execute("""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_name = 'party'
+                ORDER BY ordinal_position
+            """)
+            existing_columns = {row[0]: row for row in cursor.fetchall()}
+            logger.info(f"기존 party 테이블 컬럼들: {list(existing_columns.keys())}")
+        
+        # 필요한 컬럼들 정의 (완전한 스키마)
+        required_columns = {
+            'id': 'SERIAL PRIMARY KEY',
+            'host_employee_id': 'INTEGER NOT NULL',
+            'title': 'VARCHAR(255) NOT NULL',
+            'restaurant_name': 'VARCHAR(255)',
+            'restaurant_address': 'TEXT',
+            'party_date': 'DATE',
+            'party_time': 'TIME',
+            'meeting_location': 'VARCHAR(255)',
+            'max_members': 'INTEGER DEFAULT 4',
+            'is_from_match': 'BOOLEAN DEFAULT FALSE',
+            'description': 'TEXT',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+        
+        success_count = 0
+        for column_name, column_definition in required_columns.items():
+            if column_name == 'id':
+                # PRIMARY KEY는 건너뛰기
+                success_count += 1
+                continue
+                
+            if add_column_if_not_exists(cursor, 'party', column_name, column_definition):
+                success_count += 1
+        
+        expected_columns = len(required_columns) - 1  # id 제외
+        logger.info(f"🎉 party 테이블 마이그레이션 완료: {success_count}/{expected_columns} 컬럼 처리됨")
+        return success_count == expected_columns
+        
+    except Exception as e:
+        logger.error(f"party 테이블 마이그레이션 실패: {e}")
         return False
     finally:
         if conn:
@@ -164,12 +254,27 @@ def migrate_all_tables():
         
     logger.info("🚀 Render PostgreSQL 데이터베이스 마이그레이션 시작...")
     
+    # 각 테이블 마이그레이션 실행
+    migration_results = []
+    
     # restaurant 테이블 마이그레이션
-    if migrate_restaurant_table():
+    restaurant_result = migrate_restaurant_table()
+    migration_results.append(("restaurant", restaurant_result))
+    
+    # party 테이블 마이그레이션
+    party_result = migrate_party_table()
+    migration_results.append(("party", party_result))
+    
+    # 결과 확인
+    successful_migrations = sum(1 for _, result in migration_results if result)
+    total_migrations = len(migration_results)
+    
+    if successful_migrations == total_migrations:
         logger.info("✅ 모든 마이그레이션이 성공적으로 완료되었습니다!")
         return True
     else:
-        logger.error("❌ 마이그레이션 중 오류가 발생했습니다.")
+        failed_tables = [name for name, result in migration_results if not result]
+        logger.error(f"❌ 마이그레이션 실패 테이블: {failed_tables}")
         return False
 
 if __name__ == '__main__':
