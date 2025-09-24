@@ -6,10 +6,19 @@ Render PostgreSQL 데이터베이스 마이그레이션 스크립트
 
 import os
 import sys
-import psycopg2
-from psycopg2 import sql
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import logging
+
+# 조건부 import - Render 환경에서만 psycopg2 사용
+try:
+    import psycopg2  # type: ignore
+    from psycopg2 import sql  # type: ignore
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT  # type: ignore
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    psycopg2 = None
+    sql = None
+    ISOLATION_LEVEL_AUTOCOMMIT = None
+    PSYCOPG2_AVAILABLE = False
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +26,10 @@ logger = logging.getLogger(__name__)
 
 def get_database_connection():
     """데이터베이스 연결 생성"""
+    if not PSYCOPG2_AVAILABLE:
+        logger.error("psycopg2가 설치되지 않았습니다. PostgreSQL 연결을 사용할 수 없습니다.")
+        return None
+        
     try:
         # Render 환경변수에서 데이터베이스 URL 가져오기
         database_url = os.environ.get('DATABASE_URL')
@@ -117,6 +130,10 @@ def migrate_restaurant_table():
 
 def migrate_all_tables():
     """모든 테이블 마이그레이션 실행"""
+    if not PSYCOPG2_AVAILABLE:
+        logger.warning("psycopg2가 설치되지 않았습니다. 마이그레이션을 건너뜁니다.")
+        return False
+        
     logger.info("🚀 Render PostgreSQL 데이터베이스 마이그레이션 시작...")
     
     # restaurant 테이블 마이그레이션
