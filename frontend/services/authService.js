@@ -71,7 +71,7 @@ const authenticatedApiRequest = async (endpoint, options = {}, accessToken) => {
  */
 export const sendMagicLink = async (email) => {
   try {
-    const data = await apiRequest('/auth/magic-link', {
+    const data = await apiRequest('/api/auth/magic-link', {
       method: 'POST',
       body: JSON.stringify({ email })
     });

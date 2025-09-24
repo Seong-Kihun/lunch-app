@@ -4,6 +4,7 @@
  */
 
 import io from 'socket.io-client';
+import { getServerURL } from './networkUtils';
 
 class WebSocketManager {
   constructor() {
@@ -17,11 +18,35 @@ class WebSocketManager {
   }
 
   /**
+   * 동적 서버 URL 가져오기
+   */
+  async getDynamicServerURL() {
+    try {
+      return await getServerURL();
+    } catch (error) {
+      console.error('❌ WebSocket 동적 서버 URL 감지 실패:', error);
+      return 'http://localhost:5000';
+    }
+  }
+
+  /**
    * WebSocket 서버에 연결
    * @param {string} serverUrl - 서버 URL
    * @param {object} options - 연결 옵션
    */
-  connect(serverUrl = 'http://172.30.1.43:5000', options = {}) {
+  connect(serverUrl = null, options = {}) {
+    // 서버 URL이 제공되지 않으면 동적으로 감지
+    if (!serverUrl) {
+      // 동적 서버 URL 감지 (비동기)
+      this.getDynamicServerURL().then(url => {
+        this.connect(url, options);
+      }).catch(error => {
+        console.error('❌ WebSocket 서버 URL 감지 실패:', error);
+        // fallback
+        this.connect('http://localhost:5000', options);
+      });
+      return;
+    }
     try {
       this.socket = io(serverUrl, {
         transports: ['websocket', 'polling'],

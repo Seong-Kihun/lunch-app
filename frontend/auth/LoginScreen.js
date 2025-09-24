@@ -33,8 +33,12 @@ const LoginScreen = () => {
   // 매직링크 검증 처리
   const handleMagicLinkVerification = async (token) => {
     try {
+      // 동적 서버 URL 사용
+      const { getServerURL } = await import('../utils/networkUtils');
+      const serverURL = await getServerURL();
+      
       // 매직링크 검증 API 호출
-      const response = await fetch(`${RENDER_SERVER_URL}/auth/verify-link?token=${token}`);
+      const response = await fetch(`${serverURL}/api/auth/verify-link?token=${token}`);
       const data = await response.json();
       
       if (response.ok) {
@@ -65,8 +69,12 @@ const LoginScreen = () => {
       setIsLoading(true);
       clearError();
       
+      // 동적 서버 URL 사용
+      const { getServerURL } = await import('../utils/networkUtils');
+      const serverURL = await getServerURL();
+      
       // 가상 유저 API를 사용하여 테스트 로그인
-      const response = await fetch(`${RENDER_SERVER_URL}/dev/users/${userId}`);
+      const response = await fetch(`${serverURL}/dev/users/${userId}`);
       const userData = await response.json();
       
       if (response.ok && userData) {

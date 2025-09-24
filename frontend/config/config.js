@@ -1,15 +1,28 @@
-// 서버 설정 - 개발 환경에서는 네트워크 IP 사용
-const getServerUrl = () => {
-    // 개발 환경에서는 네트워크 IP 사용
-    if (__DEV__) {
-        return 'http://172.30.1.43:5000'; // 네트워크 IP
+// 서버 설정 - 동적 네트워크 감지 사용
+import { getServerURL } from './utils/networkUtils';
+
+let cachedServerURL = null;
+
+const getServerUrl = async () => {
+    if (cachedServerURL) {
+        return cachedServerURL;
     }
     
-    // 프로덕션 환경
-    return 'https://lunch-app-backend-ra12.onrender.com';
+    try {
+        cachedServerURL = await getServerURL();
+        return cachedServerURL;
+    } catch (error) {
+        console.error('❌ [Config] 서버 URL 가져오기 실패:', error);
+        // fallback
+        return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+    }
 };
 
-export const SERVER_URL = getServerUrl();
+// 동적 서버 URL (비동기)
+export const getDynamicServerURL = getServerUrl;
+
+// 기본 서버 URL (동기 - 초기화용)
+export const SERVER_URL = __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
 export const RENDER_SERVER_URL = getServerUrl();
 
 // 🚨 중요: 개발 환경에서도 실제 API 호출 (테스트를 위해)
