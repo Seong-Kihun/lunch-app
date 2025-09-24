@@ -58,13 +58,15 @@ def check_column_exists(cursor, table_name, column_name):
         logger.error(f"컬럼 존재 확인 실패: {e}")
         return False
 
-def add_column_if_not_exists(cursor, table_name, column_name, column_type, default_value=None):
+def add_column_if_not_exists(cursor, table_name, column_name, column_definition):
     """컬럼이 없으면 추가"""
     try:
         if not check_column_exists(cursor, table_name, column_name):
-            alter_query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
-            if default_value is not None:
-                alter_query += f" DEFAULT {default_value}"
+            # 컬럼 정의에서 DEFAULT 값 추출
+            if 'DEFAULT' in column_definition:
+                alter_query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+            else:
+                alter_query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
             
             cursor.execute(alter_query)
             logger.info(f"✅ {table_name}.{column_name} 컬럼이 추가되었습니다.")
@@ -99,31 +101,53 @@ def migrate_restaurant_table():
         
         if not table_exists:
             logger.warning("restaurant 테이블이 존재하지 않습니다. 테이블을 생성합니다.")
-            # restaurant 테이블 생성
+            # restaurant 테이블 생성 (모든 컬럼 포함)
             cursor.execute("""
                 CREATE TABLE restaurant (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     address TEXT,
+                    category VARCHAR(100),
+                    rating FLOAT DEFAULT 0.0,
+                    total_reviews INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             logger.info("✅ restaurant 테이블이 생성되었습니다.")
+        else:
+            # 기존 테이블의 현재 컬럼들 확인
+            cursor.execute("""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_name = 'restaurant'
+                ORDER BY ordinal_position
+            """)
+            existing_columns = {row[0]: row for row in cursor.fetchall()}
+            logger.info(f"기존 restaurant 테이블 컬럼들: {list(existing_columns.keys())}")
         
-        # 필요한 컬럼들 추가
-        columns_to_add = [
-            ('rating', 'FLOAT DEFAULT 0.0'),
-            ('total_reviews', 'INTEGER DEFAULT 0'),
-            ('category', 'VARCHAR(100)')
-        ]
+        # 필요한 컬럼들 정의 (완전한 스키마)
+        required_columns = {
+            'id': 'SERIAL PRIMARY KEY',
+            'name': 'VARCHAR(255) NOT NULL',
+            'address': 'TEXT',
+            'category': 'VARCHAR(100)',
+            'rating': 'FLOAT DEFAULT 0.0',
+            'total_reviews': 'INTEGER DEFAULT 0',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
         
         success_count = 0
-        for column_name, column_definition in columns_to_add:
+        for column_name, column_definition in required_columns.items():
+            if column_name == 'id':
+                # PRIMARY KEY는 건너뛰기
+                success_count += 1
+                continue
+                
             if add_column_if_not_exists(cursor, 'restaurant', column_name, column_definition):
                 success_count += 1
         
-        logger.info(f"🎉 restaurant 테이블 마이그레이션 완료: {success_count}/{len(columns_to_add)} 컬럼 처리됨")
-        return success_count == len(columns_to_add)
+        logger.info(f"🎉 restaurant 테이블 마이그레이션 완료: {success_count}/{len(required_columns)-1} 컬럼 처리됨")
+        return success_count == len(required_columns) - 1  # id 제외
         
     except Exception as e:
         logger.error(f"restaurant 테이블 마이그레이션 실패: {e}")
