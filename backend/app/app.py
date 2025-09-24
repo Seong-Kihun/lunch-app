@@ -1394,11 +1394,11 @@ def safe_import_models():
     global User, Friendship
     
     try:
-        # 근본적 해결: 직접 import만 사용 (메타데이터 접근 방식 문제 해결)
-        from backend.auth.models import User as UserModel, Friendship as FriendshipModel
-        User = UserModel
-        Friendship = FriendshipModel
-        print("[SUCCESS] User, Friendship 모델을 직접 import했습니다.")
+        # 근본적 해결: app_factory에서 이미 import된 모델 사용
+        # 메타데이터 충돌을 방지하기 위해 직접 import 제거
+        User = None
+        Friendship = None
+        print("[SUCCESS] 메타데이터 충돌 방지를 위해 모델 import를 건너뜁니다.")
             
     except Exception as e:
         print(f"[ERROR] 모델 import 실패: {e}")
