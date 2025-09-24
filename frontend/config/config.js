@@ -1,35 +1,24 @@
 // 서버 설정 - 동적 네트워크 감지 사용
-import { getServerURL } from './utils/networkUtils';
-
-let cachedServerURL = null;
-
-const getServerUrl = async () => {
-    if (cachedServerURL) {
-        return cachedServerURL;
-    }
-    
-    try {
-        cachedServerURL = await getServerURL();
-        return cachedServerURL;
-    } catch (error) {
-        console.error('❌ [Config] 서버 URL 가져오기 실패:', error);
-        // fallback
-        return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
-    }
-};
-
-// 동적 서버 URL (비동기)
-export const getDynamicServerURL = getServerUrl;
+import { getServerURL } from '../utils/networkUtils';
 
 // 기본 서버 URL (동기 - 초기화용)
 export const SERVER_URL = __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
-export const RENDER_SERVER_URL = getServerUrl();
+
+// 동적 서버 URL 가져오기 (비동기)
+export const getDynamicServerURL = async () => {
+    try {
+        return await getServerURL();
+    } catch (error) {
+        console.error('❌ [Config] 서버 URL 가져오기 실패:', error);
+        return SERVER_URL;
+    }
+};
 
 // 🚨 중요: 개발 환경에서도 실제 API 호출 (테스트를 위해)
 export const IS_DEVELOPMENT = false; // 개발 환경에서도 API 호출 활성화
 
 // API 설정
-export const API_BASE_URL = RENDER_SERVER_URL;
+export const API_BASE_URL = SERVER_URL;
 
 // 개발용 인증 토큰 (개발 환경에서만 사용)
 export const DEV_AUTH_TOKEN = __DEV__ ? 'dev-token-12345' : null;
