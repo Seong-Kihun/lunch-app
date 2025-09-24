@@ -56,35 +56,8 @@ def init_database():
             else:
                 print("✅ User 모델이 이미 메타데이터에 등록되어 있습니다.")
             
-            # 2단계: PersonalSchedule, ScheduleException 모델 등록
-            if 'personal_schedules' not in db.metadata.tables:
-                PersonalSchedule.__table__.create(db.engine, checkfirst=True)
-                print("✅ PersonalSchedule 모델이 메타데이터에 등록되었습니다.")
-            if 'schedule_exceptions' not in db.metadata.tables:
-                ScheduleException.__table__.create(db.engine, checkfirst=True)
-                print("✅ ScheduleException 모델이 메타데이터에 등록되었습니다.")
-            
-            # 3단계: Party, PartyMember 모델 등록
-            if 'party' not in db.metadata.tables:
-                from app import Party
-                Party.__table__.create(db.engine, checkfirst=True)
-                print("✅ Party 모델이 메타데이터에 등록되었습니다.")
-            if 'party_member' not in db.metadata.tables:
-                from app import PartyMember
-                PartyMember.__table__.create(db.engine, checkfirst=True)
-                print("✅ PartyMember 모델이 메타데이터에 등록되었습니다.")
-            
-            # 4단계: DangolPot, DangolPotMember 모델 등록
-            if 'dangol_pot' not in db.metadata.tables:
-                from app import DangolPot
-                DangolPot.__table__.create(db.engine, checkfirst=True)
-                print("✅ DangolPot 모델이 메타데이터에 등록되었습니다.")
-            if 'dangol_pot_member' not in db.metadata.tables:
-                from app import DangolPotMember
-                DangolPotMember.__table__.create(db.engine, checkfirst=True)
-                print("✅ DangolPotMember 모델이 메타데이터에 등록되었습니다.")
-            
-            print("✅ 모든 모델이 메타데이터에 등록되었습니다.")
+            # 2단계: 다른 모델들 확인 (app_factory에서 이미 등록됨)
+            print("✅ 모든 모델이 app_factory에서 메타데이터에 등록되었습니다.")
             
             # 모든 테이블 삭제 (기존 데이터 초기화)
             db.drop_all()

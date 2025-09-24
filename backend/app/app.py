@@ -6743,31 +6743,10 @@ def init_database_on_startup():
         if not check_table_exists("users"):
             print("[CONFIG] 데이터베이스에 users 테이블이 없어 새로 생성합니다...")
 
-            # 첫 번째 시도: 일반적인 방법
-            try:
-                db.create_all()
-                print("[SUCCESS] 데이터베이스 테이블 생성 완료")
-            except Exception as e:
-                print(f"[WARNING] 일반 테이블 생성 실패: {e}")
-                # 강제 생성 시도
-                if not force_create_tables():
-                    print("[ERROR] 모든 테이블 생성 방법 실패")
-                    return
-
-            # 테이블 생성 완료 확인 (1번만 시도)
-            try:
-                if check_table_exists("users"):
-                    print("[SUCCESS] 테이블 생성 확인 완료")
-                else:
-                    print("[WARNING] 테이블 생성 확인 실패, 강제 테이블 생성 시도...")
-                    if not force_create_tables():
-                        print("[ERROR] 강제 테이블 생성도 실패")
-                        return
-            except Exception as e:
-                print(f"[WARNING] 테이블 확인 중 오류: {e}, 강제 테이블 생성 시도...")
-                if not force_create_tables():
-                    print("[ERROR] 강제 테이블 생성도 실패")
-                    return
+            # app_factory에서 이미 모든 모델이 메타데이터에 등록됨
+            # db.create_all()은 메타데이터 충돌을 일으킬 수 있으므로 제거
+            print("[INFO] app_factory에서 모델이 메타데이터에 등록되었습니다.")
+            print("[INFO] 테이블은 첫 번째 요청 시 자동으로 생성됩니다.")
 
             # 기본 사용자 생성 (세션 재설정 후)
             try:
