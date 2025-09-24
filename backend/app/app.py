@@ -37,7 +37,7 @@ AUTH_USER_AVAILABLE = AUTH_AVAILABLE
 if AUTH_AVAILABLE:
     try:
         from backend.auth.utils import require_auth
-        from backend.auth.models import Friendship, User
+        # User 모델은 app_factory에서만 import하여 메타데이터 충돌 방지
         print("[SUCCESS] 인증 시스템이 활성화되었습니다.")
     except ImportError as e:
         print(f"[WARNING] 인증 모듈 import 실패: {e}")
@@ -1381,22 +1381,18 @@ def get_notification_icon(notification_type):
 
 # 사용자 알림 설정은 User 모델에 통합되어 있음
 
-# 🚨 중요: User 모델을 명시적으로 메타데이터에 등록
+# 🚨 중요: User 모델 메타데이터 등록은 app_factory에서만 처리
+# 메타데이터 충돌 방지를 위해 여기서는 User 모델을 직접 import하지 않음
 if AUTH_AVAILABLE:
     try:
-        # User 모델의 테이블이 메타데이터에 등록되었는지 확인
+        # User 모델의 테이블이 메타데이터에 등록되었는지 확인만
         if "users" not in db.metadata.tables:
             print("[WARNING] users 테이블이 메타데이터에 등록되지 않았습니다.")
-            # User 모델을 명시적으로 메타데이터에 등록
-            User.__table__.create(db.engine, checkfirst=True)
-            print("[SUCCESS] User 모델이 메타데이터에 등록되었습니다.")
+            print("   app_factory에서 User 모델을 import해야 합니다.")
         else:
             print("[SUCCESS] users 테이블이 메타데이터에 등록되었습니다.")
     except (AttributeError, KeyError) as e:
         print(f"[WARNING] User 모델 메타데이터 확인 실패: {e}")
-    except Exception as e:
-        print(f"[WARNING] User 모델 메타데이터 등록 실패: {e}")
-        print("   메타데이터 충돌이 발생했을 수 있습니다.")
 
 # PersonalSchedule 모델은 필요할 때만 import하여 사용
 

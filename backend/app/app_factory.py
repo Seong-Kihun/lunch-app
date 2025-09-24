@@ -90,6 +90,12 @@ def create_app(config_name=None):
         # User 모델이 메타데이터에 등록되었는지 확인
         if 'users' not in db.metadata.tables:
             warning("User 모델이 메타데이터에 등록되지 않았습니다.")
+            # User 모델을 명시적으로 메타데이터에 등록
+            try:
+                User.__table__.create(db.engine, checkfirst=True)
+                info("User 모델이 메타데이터에 등록되었습니다.")
+            except Exception as e:
+                warning(f"User 모델 메타데이터 등록 실패: {e}")
         else:
             info("User 모델이 메타데이터에 등록되었습니다.")
             

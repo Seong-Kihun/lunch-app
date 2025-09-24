@@ -28,23 +28,31 @@ def root_dev_user(employee_id):
     # 개발용 토큰으로 인증된 사용자 조회
     try:
         from backend.app.extensions import db
+        from flask import current_app
         
-        # 메타데이터 충돌 방지를 위해 지연 import 사용
-        # 함수 내부에서만 import하여 메타데이터 충돌 방지
-        from backend.auth.models import User
-        
-        user = User.query.filter_by(employee_id=str(employee_id)).first()
-        
-        if not user:
-            # 개발용 사용자 생성
-            user = User(
-                employee_id=str(employee_id),
-                email=f'dev{employee_id}@example.com',
-                nickname=f'개발자{employee_id}',
-                is_active=True
-            )
-            db.session.add(user)
-            db.session.commit()
+        # 메타데이터 충돌 방지를 위해 기존 User 모델 사용
+        # app_factory에서 이미 등록된 User 모델을 사용
+        with current_app.app_context():
+            # User 모델을 동적으로 가져오기 (메타데이터 충돌 방지)
+            if 'users' in db.metadata.tables:
+                # 기존 User 모델 사용
+                User = db.metadata.tables['users'].class_
+            else:
+                # fallback: 직접 import (최후의 수단)
+                from backend.auth.models import User
+            
+            user = User.query.filter_by(employee_id=str(employee_id)).first()
+            
+            if not user:
+                # 개발용 사용자 생성
+                user = User(
+                    employee_id=str(employee_id),
+                    email=f'dev{employee_id}@example.com',
+                    nickname=f'개발자{employee_id}',
+                    is_active=True
+                )
+                db.session.add(user)
+                db.session.commit()
         
         return jsonify({
             'success': True,

@@ -7,8 +7,8 @@
 from backend.app.app import app
 from backend.app.extensions import db
 
-# 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
-from backend.auth.models import User
+# 🚨 중요: User 모델은 app_factory에서만 import하여 메타데이터 충돌 방지
+# User 모델은 이미 app_factory에서 메타데이터에 등록됨
 
 # 그 다음에 다른 모델들을 import
 from backend.models.schedule_models import PersonalSchedule, ScheduleException
@@ -24,10 +24,11 @@ def init_database():
             # 🚨 중요: 모든 모델을 올바른 순서로 메타데이터에 등록
             print("🔧 모델 메타데이터 등록 중...")
             
-            # 1단계: User 모델 등록
+            # 1단계: User 모델 확인 (app_factory에서 이미 등록됨)
             if 'users' not in db.metadata.tables:
-                User.__table__.create(db.engine, checkfirst=True)
-                print("✅ User 모델이 메타데이터에 등록되었습니다.")
+                print("❌ User 모델이 메타데이터에 등록되지 않았습니다.")
+                print("   app_factory에서 User 모델을 import해야 합니다.")
+                return False
             else:
                 print("✅ User 모델이 이미 메타데이터에 등록되어 있습니다.")
             
