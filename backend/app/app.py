@@ -37,7 +37,8 @@ AUTH_USER_AVAILABLE = AUTH_AVAILABLE
 if AUTH_AVAILABLE:
     try:
         from backend.auth.utils import require_auth
-        # User 모델은 app_factory에서만 import하여 메타데이터 충돌 방지
+        # 메타데이터 충돌 방지를 위해 조건부 import
+        # app_factory에서 이미 import된 경우에만 사용
         print("[SUCCESS] 인증 시스템이 활성화되었습니다.")
     except ImportError as e:
         print(f"[WARNING] 인증 모듈 import 실패: {e}")
@@ -1381,18 +1382,51 @@ def get_notification_icon(notification_type):
 
 # 사용자 알림 설정은 User 모델에 통합되어 있음
 
-# 🚨 중요: User 모델 메타데이터 등록은 app_factory에서만 처리
-# 메타데이터 충돌 방지를 위해 여기서는 User 모델을 직접 import하지 않음
-if AUTH_AVAILABLE:
+# 🚨 중요: 메타데이터 충돌 방지를 위한 안전한 import
+# app_factory에서 이미 import된 경우 메타데이터 충돌 방지
+
+# 전역 변수로 모델 저장
+User = None
+Friendship = None
+
+def safe_import_models():
+    """메타데이터 충돌을 방지하면서 모델을 안전하게 import"""
+    global User, Friendship
+    
     try:
-        # User 모델의 테이블이 메타데이터에 등록되었는지 확인만
-        if "users" not in db.metadata.tables:
-            print("[WARNING] users 테이블이 메타데이터에 등록되지 않았습니다.")
-            print("   app_factory에서 User 모델을 import해야 합니다.")
+        # 1. 메타데이터에서 모델 가져오기 시도 (충돌 방지)
+        if 'users' in db.metadata.tables:
+            User = db.metadata.tables['users'].class_
+            print("[SUCCESS] User 모델을 메타데이터에서 가져왔습니다.")
         else:
-            print("[SUCCESS] users 테이블이 메타데이터에 등록되었습니다.")
-    except (AttributeError, KeyError) as e:
-        print(f"[WARNING] User 모델 메타데이터 확인 실패: {e}")
+            # 2. 직접 import (fallback)
+            from backend.auth.models import User as UserModel
+            User = UserModel
+            print("[SUCCESS] User 모델을 직접 import했습니다.")
+            
+        if 'friendships' in db.metadata.tables:
+            Friendship = db.metadata.tables['friendships'].class_
+            print("[SUCCESS] Friendship 모델을 메타데이터에서 가져왔습니다.")
+        else:
+            # 2. 직접 import (fallback)
+            from backend.auth.models import Friendship as FriendshipModel
+            Friendship = FriendshipModel
+            print("[SUCCESS] Friendship 모델을 직접 import했습니다.")
+            
+    except Exception as e:
+        print(f"[ERROR] 모델 import 실패: {e}")
+        # 최후의 수단: 직접 import
+        try:
+            from backend.auth.models import User as UserModel, Friendship as FriendshipModel
+            User = UserModel
+            Friendship = FriendshipModel
+            print("[SUCCESS] 모델들을 최후의 수단으로 import했습니다.")
+        except Exception as e2:
+            print(f"[ERROR] 최후의 수단도 실패: {e2}")
+
+# 모델 초기화
+if AUTH_AVAILABLE:
+    safe_import_models()
 
 # PersonalSchedule 모델은 필요할 때만 import하여 사용
 
