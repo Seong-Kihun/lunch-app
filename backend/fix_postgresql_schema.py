@@ -17,6 +17,11 @@ def fix_postgresql_schema():
         print("❌ DATABASE_URL 환경변수가 설정되지 않았습니다.")
         return False
     
+    # PostgreSQL URL 확인
+    if not database_url.startswith('postgresql://'):
+        print(f"❌ PostgreSQL URL이 아닙니다: {database_url}")
+        return False
+    
     try:
         # PostgreSQL 연결
         conn = psycopg2.connect(database_url)
@@ -98,6 +103,17 @@ def fix_postgresql_schema():
             print("ℹ️ inquiries 테이블이 이미 존재합니다.")
         
         print("🎉 PostgreSQL 스키마 수정이 완료되었습니다!")
+        
+        # 스키마 수정 후 초기 데이터 생성
+        print("🔧 초기 데이터 생성을 시작합니다...")
+        try:
+            from backend.database.init_db import create_initial_data
+            create_initial_data()
+            print("✅ 초기 데이터 생성이 완료되었습니다.")
+        except Exception as e:
+            print(f"⚠️ 초기 데이터 생성 중 오류 발생: {e}")
+            print("앱은 계속 실행됩니다.")
+        
         return True
         
     except Exception as e:

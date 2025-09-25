@@ -33,8 +33,15 @@ def fix_database_schema():
 # Render 환경에서 실행
 if __name__ == '__main__':
     # PostgreSQL 스키마 수정 (Render 환경에서만)
-    if os.getenv('RENDER'):
+    # Render 환경 감지: DATABASE_URL이 postgresql로 시작하는 경우
+    database_url = os.getenv('DATABASE_URL', '')
+    is_render = os.getenv('RENDER') or database_url.startswith('postgresql://')
+    
+    if is_render:
+        print("🔧 Render 환경 감지: PostgreSQL 스키마 수정을 시작합니다...")
         fix_database_schema()
+    else:
+        print("ℹ️ 로컬 환경: PostgreSQL 스키마 수정을 건너뜁니다.")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

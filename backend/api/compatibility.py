@@ -6,7 +6,7 @@
 
 from flask import Blueprint, request, jsonify, redirect
 from auth.middleware import check_authentication
-from auth.routes import send_magic_link, get_profile
+from auth.routes import get_profile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,9 +16,12 @@ compatibility_bp = Blueprint('compatibility', __name__)
 
 @compatibility_bp.route('/auth/magic-link', methods=['POST'])
 def compatibility_magic_link():
-    """매직링크 API 호환성 엔드포인트"""
-    logger.info("호환성 매직링크 API 호출됨")
-    return send_magic_link()
+    """매직링크 API 호환성 엔드포인트 - 비활성화됨"""
+    logger.info("호환성 매직링크 API 호출됨 - 비활성화됨")
+    return jsonify({
+        'error': 'Magic link authentication is no longer supported. Please use password authentication.',
+        'status': 'deprecated'
+    }), 410
 
 @compatibility_bp.route('/dev/users/<int:employee_id>', methods=['GET'])
 def compatibility_dev_user(employee_id):

@@ -6,7 +6,7 @@
 
 from flask import Blueprint, request, jsonify
 from backend.auth.middleware import check_authentication
-from backend.auth.routes import send_magic_link, get_profile
+from backend.auth.routes import get_profile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,9 +16,12 @@ root_compatibility_bp = Blueprint('root_compatibility', __name__)
 
 @root_compatibility_bp.route('/auth/magic-link', methods=['POST'])
 def root_magic_link():
-    """루트 레벨 매직링크 API"""
-    logger.info("루트 레벨 매직링크 API 호출됨")
-    return send_magic_link()
+    """루트 레벨 매직링크 API - 비활성화됨"""
+    logger.info("루트 레벨 매직링크 API 호출됨 - 비활성화됨")
+    return jsonify({
+        'error': 'Magic link authentication is no longer supported. Please use password authentication.',
+        'status': 'deprecated'
+    }), 410
 
 @root_compatibility_bp.route('/dev/users/<int:employee_id>', methods=['GET'])
 def root_dev_user(employee_id):
