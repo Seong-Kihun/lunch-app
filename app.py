@@ -19,7 +19,13 @@ from backend.app.app import app
 def fix_database_schema():
     """Render 배포 시 PostgreSQL 스키마를 수정합니다."""
     try:
-        from backend.fix_postgresql_schema import fix_postgresql_schema
+        # backend 디렉토리를 Python 경로에 추가
+        import sys
+        backend_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend')
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+        
+        from fix_postgresql_schema import fix_postgresql_schema
         print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
         success = fix_postgresql_schema()
         if success:
