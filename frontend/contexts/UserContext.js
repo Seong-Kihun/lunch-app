@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { Alert } from 'react-native';
 import { getUserProfile, updateUserProfile } from '../services/userService';
 import { getUserData, storeUserData, clearAllTokens } from '../utils/secureStorage';
-import { RENDER_SERVER_URL, getApiUrl } from '../components/common/Utils';
+import { RENDER_SERVER_URL } from '../components/common/Utils';
 
 const UserContext = createContext();
 
@@ -35,83 +35,63 @@ export const UserProvider = ({ children }) => {
             if (__DEV__) {
                 console.log('🔧 개발 환경: 가상 유저 API 사용');
                 
-                // 재시도 로직 추가
-                let retryCount = 0;
-                const maxRetries = 3;
-                
-                while (retryCount < maxRetries) {
-                    try {
-                        console.log(`🔗 API 호출 시작 (시도 ${retryCount + 1}/${maxRetries}):`, `${RENDER_SERVER_URL}/dev/users/1`);
-                        
-                        // 타임아웃 설정 (30초로 증가)
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => {
-                            console.log('⏰ API 호출 타임아웃');
-                            controller.abort();
-                        }, 30000);
-                        
-                        const response = await fetch(getApiUrl('users/1'), {
-                            signal: controller.signal,
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'Cache-Control': 'no-cache',
-                            },
-                            method: 'GET',
-                        });
-                        
-                        clearTimeout(timeoutId);
-                        console.log('📡 API 응답 상태:', response.status);
+                try {
+                    console.log(`🔗 API 호출 시작: ${RENDER_SERVER_URL}/dev/users/1`);
                     
-                        if (response.ok) {
-                            const userData = await response.json();
-                            const defaultUserData = {
-                                id: '1',
-                                employee_id: '1',
-                                nickname: userData.nickname,
-                                name: userData.nickname,
-                                email: 'user1@example.com',
-                                department: '개발팀',
-                                foodPreferences: userData.foodPreferences,
-                                lunchStyle: userData.lunchStyle,
-                                allergies: userData.allergies,
-                                preferredTime: userData.preferredTime,
-                                join_date: '2023-01-15'
-                            };
-                            setUser(defaultUserData);
-                            await storeUserData(defaultUserData);
-                            console.log('✅ 가상 유저 API 호출 성공');
-                            break; // 성공하면 루프 종료
-                        } else {
-                            throw new Error(`가상 유저 API 호출 실패: ${response.status}`);
-                        }
-                    } catch (error) {
-                        console.error(`❌ 가상 유저 API 호출 실패 (시도 ${retryCount + 1}):`, error);
-                        console.error('❌ 에러 타입:', error.name);
-                        console.error('❌ 에러 메시지:', error.message);
-                        
-                        retryCount++;
-                        if (retryCount >= maxRetries) {
-                            console.log('🔄 최대 재시도 횟수 초과 - 기본 사용자 데이터로 폴백');
-                            break;
-                        } else {
-                            console.log(`⏳ ${retryCount * 3}초 후 재시도...`);
-                            await new Promise(resolve => setTimeout(resolve, retryCount * 3000));
-                        }
-                    }
-                }
+                    // 타임아웃 설정 (10초로 단축)
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        console.log('⏰ API 호출 타임아웃');
+                        controller.abort();
+                    }, 10000);
+                    
+                    const response = await fetch(`${RENDER_SERVER_URL}/dev/users/1`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'Cache-Control': 'no-cache',
+                        },
+                        method: 'GET',
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    console.log('📡 API 응답 상태:', response.status);
                 
-                // 모든 재시도가 실패한 경우 기본 데이터 사용
-                if (retryCount >= maxRetries) {
+                    if (response.ok) {
+                        const userData = await response.json();
+                        console.log('✅ 가상 유저 API 호출 성공:', userData);
+                        
+                        const defaultUserData = {
+                            id: '1',
+                            employee_id: userData.user?.employee_id || '1',
+                            nickname: userData.user?.nickname || '개발자1',
+                            name: userData.user?.nickname || '개발자1',
+                            email: userData.user?.email || 'dev1@example.com',
+                            department: '개발팀',
+                            foodPreferences: userData.user?.food_preferences?.split(',') || ['한식', '중식'],
+                            lunchStyle: ['맛집 탐방', '새로운 메뉴 도전'],
+                            allergies: userData.user?.allergies ? [userData.user.allergies] : ['없음'],
+                            preferredTime: userData.user?.preferred_time || '12:00',
+                            join_date: '2023-01-15'
+                        };
+                        setUser(defaultUserData);
+                        await storeUserData(defaultUserData);
+                        console.log('✅ 사용자 데이터 설정 완료');
+                    } else {
+                        throw new Error(`가상 유저 API 호출 실패: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('❌ 가상 유저 API 호출 실패:', error);
                     console.log('🔄 기본 사용자 데이터로 폴백');
                     
                     // 기본값 사용
                     const defaultUserData = {
                         id: '1',
                         employee_id: '1',
-                        nickname: '김철수',
-                        name: '김철수',
-                        email: 'user1@example.com',
+                        nickname: '개발자1',
+                        name: '개발자1',
+                        email: 'dev1@example.com',
                         department: '개발팀',
                         foodPreferences: ['한식', '중식'],
                         lunchStyle: ['맛집 탐방', '새로운 메뉴 도전'],
@@ -121,6 +101,7 @@ export const UserProvider = ({ children }) => {
                     };
                     setUser(defaultUserData);
                     await storeUserData(defaultUserData);
+                    console.log('✅ 기본 사용자 데이터 설정 완료');
                 }
                 setIsLoading(false);
                 return;

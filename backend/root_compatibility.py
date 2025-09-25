@@ -25,50 +25,36 @@ def root_magic_link():
 
 @root_compatibility_bp.route('/dev/users/<int:employee_id>', methods=['GET'])
 def root_dev_user(employee_id):
-    """루트 레벨 개발용 사용자 API - 실제 데이터 사용"""
+    """루트 레벨 개발용 사용자 API - 인증 없이 개발용 데이터 반환"""
     logger.info(f"루트 레벨 개발용 사용자 API 호출됨: {employee_id}")
     
-    # 개발용 토큰으로 인증된 사용자 조회
     try:
-        from backend.app.extensions import db
-        from flask import current_app
-        
-        print(f"[DEBUG] root_dev_user 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
-        
-        # 근본적 해결: app.config에서 모델 가져오기 (중복 import 방지)
-        with current_app.app_context():
-            print(f"[DEBUG] 애플리케이션 컨텍스트 내 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
-            
-            # 메타데이터 충돌 방지: app.config에서 모델 가져오기
-            User = current_app.config.get('USER_MODEL')
-            if not User:
-                print("[WARNING] app.config에서 User 모델을 찾을 수 없습니다. 직접 import합니다.")
-                from backend.auth.models import User
-            else:
-                print(f"[DEBUG] app.config에서 User 모델 가져옴: {User}")
-            
-            print(f"[DEBUG] User 테이블 정보: {db.metadata.tables.get('users')}")
-            
-            user = User.query.filter_by(employee_id=str(employee_id)).first()
-            
-            if not user:
-                # 개발용 사용자 생성
-                user = User(
-                    employee_id=str(employee_id),
-                    email=f'dev{employee_id}@example.com',
-                    nickname=f'개발자{employee_id}',
-                    is_active=True
-                )
-                db.session.add(user)
-                db.session.commit()
-        
+        # 개발 환경에서는 인증 없이 가상 사용자 데이터 반환
         return jsonify({
             'success': True,
             'user': {
-                'employee_id': user.employee_id,
-                'nickname': user.nickname,
-                'email': user.email,
-                'is_active': user.is_active
+                'employee_id': str(employee_id),
+                'nickname': f'개발자{employee_id}',
+                'email': f'dev{employee_id}@example.com',
+                'is_active': True,
+                'points': 100,
+                'profile_image': None,
+                'gender': 'male',
+                'age_group': '20s',
+                'main_dish_genre': '한식',
+                'lunch_preference': '맛있는 음식',
+                'allergies': None,
+                'preferred_time': '12:00',
+                'food_preferences': '한식,중식',
+                'frequent_areas': '강남구',
+                'notification_settings': '{"push": true, "email": true}',
+                'total_points': 100,
+                'current_level': 1,
+                'current_badge': 'newbie',
+                'consecutive_login_days': 1,
+                'last_login_date': '2025-09-25',
+                'matching_status': 'available',
+                'match_request_time': None
             }
         })
     except Exception as e:
