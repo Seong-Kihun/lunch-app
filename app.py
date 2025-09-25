@@ -29,8 +29,14 @@ def fix_database_schema():
         
         # 먼저 일반 스키마 수정 시도
         try:
-            from fix_postgresql_schema import fix_postgresql_schema
-            success = fix_postgresql_schema()
+            # 동적 import로 linter 경고 방지
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("fix_postgresql_schema", 
+                os.path.join(backend_path, "fix_postgresql_schema.py"))
+            fix_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(fix_module)
+            
+            success = fix_module.fix_postgresql_schema()
             if success:
                 print("✅ PostgreSQL 스키마 수정이 완료되었습니다.")
                 return
@@ -40,8 +46,14 @@ def fix_database_schema():
         # 일반 수정 실패 시 강제 수정 시도
         print("🔧 강제 스키마 수정을 시도합니다...")
         try:
-            from force_fix_postgresql_schema import force_fix_postgresql_schema
-            success = force_fix_postgresql_schema()
+            # 동적 import로 linter 경고 방지
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("force_fix_postgresql_schema", 
+                os.path.join(backend_path, "force_fix_postgresql_schema.py"))
+            force_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(force_module)
+            
+            success = force_module.force_fix_postgresql_schema()
             if success:
                 print("✅ PostgreSQL 강제 스키마 수정이 완료되었습니다.")
             else:

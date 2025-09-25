@@ -5,11 +5,23 @@ password_hash 컬럼이 없어서 발생하는 오류를 해결합니다.
 """
 
 import os
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
+# psycopg2는 런타임에만 필요하므로 try-except로 감싸기
+try:
+    import psycopg2
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+except ImportError:
+    print("⚠️ psycopg2가 설치되지 않았습니다. PostgreSQL 스키마 수정을 건너뜁니다.")
+    psycopg2 = None
+    ISOLATION_LEVEL_AUTOCOMMIT = None
 
 def force_fix_postgresql_schema():
     """PostgreSQL 데이터베이스에 비밀번호 인증 필드들을 강제로 추가합니다."""
+    
+    # psycopg2가 설치되지 않은 경우
+    if psycopg2 is None:
+        print("❌ psycopg2가 설치되지 않았습니다. PostgreSQL 스키마 수정을 건너뜁니다.")
+        return False
     
     # Render PostgreSQL 연결 정보
     database_url = os.getenv('DATABASE_URL')
