@@ -78,6 +78,9 @@ def create_app(config_name=None):
         RestaurantRequest,
         UserFavorite,
     )
+    
+    # 문의사항 모델 import
+    from backend.models.inquiry_models import Inquiry
 
     from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
@@ -339,6 +342,13 @@ def create_app(config_name=None):
         print("[SUCCESS] 매칭 관리 Blueprint 등록 성공")
     except Exception as e:
         print(f"[ERROR] 매칭 관리 Blueprint 등록 실패: {e}")
+
+    try:
+        from backend.api.inquiries import inquiries_bp
+        app.register_blueprint(inquiries_bp)
+        print("[SUCCESS] 문의사항 관리 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"[ERROR] 문의사항 관리 Blueprint 등록 실패: {e}")
 
     # 개발용 API는 제거됨 - 프로덕션 환경으로 전환
     print("[INFO] 프로덕션 환경: 개발용 API Blueprint 제거됨")

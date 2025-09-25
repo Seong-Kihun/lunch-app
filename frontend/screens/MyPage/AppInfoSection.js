@@ -26,14 +26,8 @@ const AppInfoSection = ({ navigation }) => {
     };
 
     const handleContact = () => {
-        Alert.alert(
-            '연락처',
-            `이메일: ${appInfo.contact}\n웹사이트: ${appInfo.website}`,
-            [
-                { text: '취소', style: 'cancel' },
-                { text: '웹사이트 열기', onPress: () => Linking.openURL(appInfo.website) }
-            ]
-        );
+        // 문의사항 작성 화면으로 이동
+        navigation.navigate('Inquiry');
     };
 
     const handlePrivacyPolicy = () => {
