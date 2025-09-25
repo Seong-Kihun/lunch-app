@@ -258,8 +258,8 @@ def create_app(config_name=None):
             def fix_postgresql_schema():
                 """PostgreSQL 데이터베이스 스키마를 수정합니다."""
                 try:
-                    import psycopg2
-                    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+                    import psycopg2  # type: ignore
+                    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT  # type: ignore
                     
                     print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
                     
