@@ -239,13 +239,6 @@ const LoginScreen = () => {
               )}
             </TouchableOpacity>
 
-            {/* 테스터 계정 안내 */}
-            <View style={styles.testButtonsContainer}>
-              <Text style={styles.testButtonsLabel}>💡 테스터 계정이 필요하신가요?</Text>
-              <Text style={styles.testButtonsSubLabel}>
-                관리자에게 문의하여 테스터 계정을 발급받으세요.
-              </Text>
-            </View>
           </View>
 
           {/* 도움말 */}
@@ -365,24 +358,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-  testButtonsContainer: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  testButtonsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10B981',
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.2,
-  },
-  testButtonsSubLabel: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 18,
   },
   clearButton: {
     backgroundColor: '#EF4444',
