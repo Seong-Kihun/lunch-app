@@ -4,6 +4,7 @@
 필요한 테이블들을 생성합니다.
 """
 
+import os
 from backend.app.app import app
 from backend.app.extensions import db
 
