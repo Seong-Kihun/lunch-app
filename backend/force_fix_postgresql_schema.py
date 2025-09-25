@@ -8,8 +8,8 @@ import os
 
 # psycopg2는 런타임에만 필요하므로 try-except로 감싸기
 try:
-    import psycopg2
-    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+    import psycopg2  # type: ignore
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT  # type: ignore
 except ImportError:
     print("⚠️ psycopg2가 설치되지 않았습니다. PostgreSQL 스키마 수정을 건너뜁니다.")
     psycopg2 = None
