@@ -239,6 +239,18 @@ const LoginScreen = () => {
               )}
             </TouchableOpacity>
 
+            {/* 회원가입 버튼 */}
+            <TouchableOpacity
+              style={styles.registerButton}
+              onPress={() => {
+                // 회원가입 화면으로 이동
+                navigation.navigate('Register');
+              }}
+              disabled={isLoading}
+            >
+              <Text style={styles.registerButtonText}>회원가입</Text>
+            </TouchableOpacity>
+
           </View>
 
           {/* 도움말 */}
@@ -356,6 +368,20 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registerButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  registerButtonText: {
+    color: '#3B82F6',
     fontSize: 16,
     fontWeight: '600',
   },
