@@ -36,14 +36,18 @@ export const UserProvider = ({ children }) => {
       
       // 로컬 저장소에서 토큰 확인
       const accessToken = await getAccessToken();
+      console.log(`🔍 액세스 토큰 확인: ${accessToken ? '있음' : '없음'}`);
       if (!accessToken) {
         console.log('❌ 인증 토큰이 없습니다. 로그인이 필요합니다.');
+        setUser(null);
         setIsLoading(false);
         return;
       }
       
       try {
         console.log(`🔗 사용자 프로필 API 호출: ${RENDER_SERVER_URL}/api/auth/profile`);
+        
+        console.log(`🔑 토큰 전송: Bearer ${accessToken.substring(0, 20)}...`);
         
         const response = await fetch(`${RENDER_SERVER_URL}/api/auth/profile`, {
           headers: {
@@ -56,6 +60,11 @@ export const UserProvider = ({ children }) => {
         });
         
         console.log('📡 API 응답 상태:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.log('📡 API 에러 응답:', errorText);
+        }
       
         if (response.ok) {
           const userData = await response.json();

@@ -17,7 +17,7 @@ import { useSchedule } from '../contexts/ScheduleContext';
 import { storeAccessToken, storeRefreshToken, storeUserData } from '../utils/secureStorage';
 import { RENDER_SERVER_URL } from '../config';
 
-const LoginScreen = () => {
+const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
