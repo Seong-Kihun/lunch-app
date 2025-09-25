@@ -257,7 +257,12 @@ const LoginScreen = () => {
           <View style={styles.helpSection}>
             <Text style={styles.helpText}>
               로그인에 문제가 있나요?{' '}
-              <Text style={styles.helpLink}>고객센터 문의</Text>
+              <Text 
+                style={styles.helpLink}
+                onPress={() => navigation.navigate('Inquiry')}
+              >
+                고객센터 문의
+              </Text>
             </Text>
           </View>
         </View>
