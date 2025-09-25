@@ -26,12 +26,30 @@ def fix_database_schema():
             sys.path.insert(0, backend_path)
         
         print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
-        from fix_postgresql_schema import fix_postgresql_schema
-        success = fix_postgresql_schema()
-        if success:
-            print("✅ PostgreSQL 스키마 수정이 완료되었습니다.")
-        else:
-            print("⚠️ PostgreSQL 스키마 수정에 실패했지만 앱을 계속 실행합니다.")
+        
+        # 먼저 일반 스키마 수정 시도
+        try:
+            from fix_postgresql_schema import fix_postgresql_schema
+            success = fix_postgresql_schema()
+            if success:
+                print("✅ PostgreSQL 스키마 수정이 완료되었습니다.")
+                return
+        except Exception as e:
+            print(f"⚠️ 일반 스키마 수정 실패: {e}")
+        
+        # 일반 수정 실패 시 강제 수정 시도
+        print("🔧 강제 스키마 수정을 시도합니다...")
+        try:
+            from force_fix_postgresql_schema import force_fix_postgresql_schema
+            success = force_fix_postgresql_schema()
+            if success:
+                print("✅ PostgreSQL 강제 스키마 수정이 완료되었습니다.")
+            else:
+                print("⚠️ PostgreSQL 강제 스키마 수정에 실패했지만 앱을 계속 실행합니다.")
+        except Exception as e:
+            print(f"⚠️ PostgreSQL 강제 스키마 수정 중 오류 발생: {e}")
+            print("앱을 계속 실행합니다.")
+            
     except Exception as e:
         print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
         print("앱을 계속 실행합니다.")

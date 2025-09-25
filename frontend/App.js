@@ -17,6 +17,8 @@ import { NewScheduleProvider } from './contexts/NewScheduleContext';
 // 인증 관련
 import { AuthProvider, useAuth, AUTH_STATES } from './auth/AuthContext';
 import LoginScreen from './auth/LoginScreen';
+import RegisterScreen from './auth/RegisterScreen';
+import InquiryScreen from './screens/InquiryScreen';
 
 // 핵심 화면 컴포넌트 Import
 import HomeScreen from './screens/Home/HomeScreen';
@@ -654,7 +656,15 @@ function MainApp() {
 
     // 인증되지 않은 경우 로그인 화면
     if (authState === 'unauthenticated') {
-        return <LoginScreen />;
+        return (
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="Register" component={RegisterScreen} />
+                    <Stack.Screen name="Inquiry" component={InquiryScreen} />
+                </Stack.Navigator>
+            </NavigationContainer>
+        );
     }
 
     // 온보딩이 완료되지 않은 경우 온보딩 화면
