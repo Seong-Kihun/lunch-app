@@ -95,20 +95,19 @@ def create_app(config_name=None):
         # 기존 메타데이터 완전 정리
         tables_to_remove = []
         for table_name in list(db.metadata.tables.keys()):
-            if table_name in ['users', 'friendships', 'magic_link_tokens', 'refresh_tokens', 'revoked_tokens']:
+            if table_name in ['users', 'friendships', 'refresh_tokens', 'revoked_tokens']:
                 tables_to_remove.append(table_name)
         
         for table_name in tables_to_remove:
             print(f"[DEBUG] 기존 {table_name} 테이블 제거 중...")
             db.metadata.remove(db.metadata.tables[table_name])
         
-        from backend.auth.models import User, Friendship, MagicLinkToken, RefreshToken, RevokedToken
+        from backend.auth.models import User, Friendship, RefreshToken, RevokedToken
         info("인증 모델을 불러왔습니다.")
         
         # 안전한 모델 등록
         register_model_safely(User)
         register_model_safely(Friendship)
-        register_model_safely(MagicLinkToken)
         register_model_safely(RefreshToken)
         register_model_safely(RevokedToken)
         

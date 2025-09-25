@@ -125,6 +125,9 @@ def create_default_users():
         ]
         
         for user_data in default_users:
+            # password_hash 필드가 있는지 확인하고 기본값 설정
+            if hasattr(User, 'password_hash'):
+                user_data['password_hash'] = None  # 기본값으로 None 설정
             user = User(**user_data)
             db.session.add(user)
         
