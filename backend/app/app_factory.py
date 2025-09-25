@@ -247,6 +247,109 @@ def create_app(config_name=None):
         print(f"[WARNING] 인증 시스템 초기화 실패: {e}")
         print("[INFO] 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
 
+    # Render 환경에서 PostgreSQL 스키마 수정 (데이터베이스 초기화 전에 실행)
+    database_url = os.getenv('DATABASE_URL', '')
+    is_render = os.getenv('RENDER') or database_url.startswith('postgresql://')
+    
+    if is_render:
+        print("🔧 Render 환경 감지: PostgreSQL 스키마 수정을 시작합니다...")
+        try:
+            # PostgreSQL 스키마 수정 함수
+            def fix_postgresql_schema():
+                """PostgreSQL 데이터베이스 스키마를 수정합니다."""
+                try:
+                    import psycopg2
+                    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+                    
+                    print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
+                    
+                    conn = None
+                    try:
+                        conn = psycopg2.connect(database_url)
+                        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+                        cur = conn.cursor()
+                        print("✅ PostgreSQL 데이터베이스 연결 성공")
+
+                        # users 테이블에 password_hash 관련 컬럼 추가
+                        print("🔧 users 테이블 스키마를 확인하고 필요한 컬럼을 추가합니다...")
+                        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+                        existing_columns = [row[0] for row in cur.fetchall()]
+
+                        columns_to_add = {
+                            'password_hash': 'VARCHAR(255)',
+                            'last_password_change': 'TIMESTAMP WITHOUT TIME ZONE',
+                            'failed_login_attempts': 'INTEGER DEFAULT 0',
+                            'account_locked_until': 'TIMESTAMP WITHOUT TIME ZONE'
+                        }
+
+                        for col_name, col_type in columns_to_add.items():
+                            if col_name not in existing_columns:
+                                try:
+                                    alter_sql = f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"
+                                    cur.execute(alter_sql)
+                                    print(f"  ✅ users 테이블에 '{col_name}' 컬럼 추가 완료.")
+                                except Exception as e:
+                                    print(f"  ⚠️ users 테이블에 '{col_name}' 컬럼 추가 실패: {e}")
+                            else:
+                                print(f"  ℹ️ users 테이블에 '{col_name}' 컬럼이 이미 존재합니다.")
+                        
+                        # inquiries 테이블이 없으면 생성
+                        print("🔧 inquiries 테이블 존재 여부를 확인합니다...")
+                        cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'inquiries')")
+                        inquiries_exists = cur.fetchone()[0]
+
+                        if not inquiries_exists:
+                            print("  ℹ️ inquiries 테이블이 존재하지 않아 생성합니다...")
+                            cur.execute("""
+                                CREATE TABLE inquiries (
+                                    id SERIAL PRIMARY KEY,
+                                    user_id INTEGER REFERENCES users(id),
+                                    name VARCHAR(100) NOT NULL,
+                                    email VARCHAR(120) NOT NULL,
+                                    subject VARCHAR(200) NOT NULL,
+                                    message TEXT NOT NULL,
+                                    status VARCHAR(20) DEFAULT 'pending',
+                                    priority VARCHAR(20) DEFAULT 'normal',
+                                    category VARCHAR(50) DEFAULT 'general',
+                                    answer TEXT,
+                                    answered_by VARCHAR(100),
+                                    answered_at TIMESTAMP WITHOUT TIME ZONE,
+                                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                                )
+                            """)
+                            print("  ✅ inquiries 테이블 생성 완료.")
+                        else:
+                            print("  ℹ️ inquiries 테이블이 이미 존재합니다.")
+
+                        print("🎉 PostgreSQL 스키마 수정이 완료되었습니다!")
+                        return True
+
+                    except Exception as e:
+                        print(f"❌ PostgreSQL 스키마 수정 실패: {e}")
+                        return False
+                    finally:
+                        if conn:
+                            cur.close()
+                            conn.close()
+                            print("데이터베이스 연결 종료.")
+
+                except ImportError:
+                    print("⚠️ psycopg2가 설치되지 않았습니다. PostgreSQL 스키마 수정을 건너뜁니다.")
+                    return False
+                except Exception as e:
+                    print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
+                    return False
+            
+            # 스키마 수정 실행
+            fix_postgresql_schema()
+            
+        except Exception as e:
+            print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
+            print("앱을 계속 실행합니다.")
+    else:
+        print("ℹ️ 로컬 환경: PostgreSQL 스키마 수정을 건너뜁니다.")
+
     # 데이터베이스 초기화
     try:
         from backend.database.init_db import init_database
