@@ -15,7 +15,26 @@ sys.path.insert(0, backend_path)
 # 백엔드 앱 import
 from backend.app.app import app
 
+# Render 환경에서 PostgreSQL 스키마 수정
+def fix_database_schema():
+    """Render 배포 시 PostgreSQL 스키마를 수정합니다."""
+    try:
+        from backend.fix_postgresql_schema import fix_postgresql_schema
+        print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
+        success = fix_postgresql_schema()
+        if success:
+            print("✅ PostgreSQL 스키마 수정이 완료되었습니다.")
+        else:
+            print("⚠️ PostgreSQL 스키마 수정에 실패했지만 앱을 계속 실행합니다.")
+    except Exception as e:
+        print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
+        print("앱을 계속 실행합니다.")
+
 # Render 환경에서 실행
 if __name__ == '__main__':
+    # PostgreSQL 스키마 수정 (Render 환경에서만)
+    if os.getenv('RENDER'):
+        fix_database_schema()
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
