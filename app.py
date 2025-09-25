@@ -25,8 +25,8 @@ def fix_database_schema():
         if backend_path not in sys.path:
             sys.path.insert(0, backend_path)
         
-        from fix_postgresql_schema import fix_postgresql_schema
         print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
+        from fix_postgresql_schema import fix_postgresql_schema
         success = fix_postgresql_schema()
         if success:
             print("✅ PostgreSQL 스키마 수정이 완료되었습니다.")

@@ -22,6 +22,8 @@ def fix_postgresql_schema():
         print(f"❌ PostgreSQL URL이 아닙니다: {database_url}")
         return False
     
+    print(f"🔧 PostgreSQL 스키마 수정 시작: {database_url[:20]}...")
+    
     try:
         # PostgreSQL 연결
         conn = psycopg2.connect(database_url)
