@@ -12,7 +12,6 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from 'react-native-vector-icons';
-import { sendMagicLink } from '../services/authService';
 import { useAuth } from './AuthContext';
 import { useSchedule } from '../contexts/ScheduleContext';
 import { storeAccessToken, storeRefreshToken, storeUserData } from '../utils/secureStorage';
@@ -22,7 +21,6 @@ const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState('password'); // 'password' 또는 'magic_link'
   const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
 
@@ -100,38 +98,6 @@ const LoginScreen = () => {
     }
   };
 
-  // 매직링크 검증 처리
-  const handleMagicLinkVerification = async (token) => {
-    try {
-      // 동적 서버 URL 사용
-      const { getServerURL } = await import('../utils/networkUtils');
-      const serverURL = await getServerURL();
-      
-      // 매직링크 검증 API 호출
-      const response = await fetch(`${serverURL}/api/auth/verify-link?token=${token}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.type === 'login') {
-          // 기존 사용자: 토큰 저장 후 메인 화면으로 이동
-          await storeAccessToken(data.access_token);
-          await storeRefreshToken(data.refresh_token);
-          await storeUserData(data.user);
-          
-          // AuthContext를 통해 로그인 성공 처리
-          handleLoginSuccess(data.user, data.access_token, data.refresh_token);
-        } else if (data.type === 'register') {
-          // 신규 사용자: 회원가입 화면으로 이동
-          Alert.alert('회원가입 준비 중', '회원가입 기능은 현재 개발 중입니다.');
-        }
-      } else {
-        Alert.alert('오류', data.error || '매직링크 검증에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('매직링크 검증 실패:', error);
-      Alert.alert('오류', '매직링크 검증 중 오류가 발생했습니다.');
-    }
-  };
 
   // 개발용 전체 정리 (백엔드 데이터 완전 정리)
   const handleClearAllData = async () => {
@@ -214,47 +180,6 @@ const LoginScreen = () => {
     }
   };
 
-  // 매직링크 요청
-  const handleSendMagicLink = async () => {
-    if (!email.trim()) {
-      Alert.alert('알림', '이메일 주소를 입력해주세요.');
-      return;
-    }
-
-    // 사용자가 입력한 아이디에 @koica.go.kr 도메인을 자동으로 추가
-    const fullEmail = `${email.trim()}@koica.go.kr`;
-
-    if (!isValidEmail(fullEmail)) {
-      Alert.alert('알림', '올바른 이메일 형식이 아닙니다.');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      clearError();
-
-      const response = await sendMagicLink(fullEmail);
-      
-      if (response.is_new_user) {
-        // 신규 사용자: 회원가입 모드로 전환
-        enterRegistrationMode();
-      }
-      
-      // 이메일 확인 화면으로 이동 (다음 단계에서 구현)
-      Alert.alert(
-        '이메일 발송 완료',
-        `${fullEmail}로 접속 링크를 보냈습니다.\n\n📱 링크를 클릭하면 자동으로 앱이 열리고 로그인이 완료됩니다.\n\n📧 메일함을 확인하여 링크를 클릭해주세요.`,
-        [{ text: '확인' }]
-      );
-      
-    } catch (error) {
-      console.error('매직링크 발송 실패:', error);
-      setAuthError(error.message || '이메일 발송에 실패했습니다.');
-      Alert.alert('오류', error.message || '이메일 발송에 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -269,37 +194,6 @@ const LoginScreen = () => {
             <Text style={styles.subtitle}>점심이 설레는 이유</Text>
           </View>
 
-          {/* 로그인 방식 선택 */}
-          <View style={styles.loginMethodContainer}>
-            <TouchableOpacity
-              style={[
-                styles.methodButton,
-                loginMethod === 'password' && styles.methodButtonActive
-              ]}
-              onPress={() => setLoginMethod('password')}
-            >
-              <Text style={[
-                styles.methodButtonText,
-                loginMethod === 'password' && styles.methodButtonTextActive
-              ]}>
-                비밀번호 로그인
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.methodButton,
-                loginMethod === 'magic_link' && styles.methodButtonActive
-              ]}
-              onPress={() => setLoginMethod('magic_link')}
-            >
-              <Text style={[
-                styles.methodButtonText,
-                loginMethod === 'magic_link' && styles.methodButtonTextActive
-              ]}>
-                이메일 인증
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* 입력 폼 */}
           <View style={styles.form}>
@@ -317,35 +211,31 @@ const LoginScreen = () => {
               <Text style={styles.domainText}>@koica.go.kr</Text>
             </View>
 
-            {loginMethod === 'password' && (
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="비밀번호"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-              </View>
-            )}
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="비밀번호"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+            </View>
 
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!email.trim() || (loginMethod === 'password' && !password.trim()) || isLoading) && styles.submitButtonDisabled
+                (!email.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled
               ]}
-              onPress={loginMethod === 'password' ? handlePasswordLogin : handleSendMagicLink}
-              disabled={(!email.trim() || (loginMethod === 'password' && !password.trim()) || isLoading)}
+              onPress={handlePasswordLogin}
+              disabled={(!email.trim() || !password.trim() || isLoading)}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>
-                  {loginMethod === 'password' ? '로그인' : '이메일로 시작하기'}
-                </Text>
+                <Text style={styles.submitButtonText}>로그인</Text>
               )}
             </TouchableOpacity>
 
@@ -398,40 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#64748B',
     textAlign: 'center',
-  },
-  loginMethodContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-  },
-  methodButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  methodButtonActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  methodButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  methodButtonTextActive: {
-    color: '#3B82F6',
-    fontWeight: '600',
   },
   form: {
     marginBottom: 32,

@@ -19,8 +19,6 @@ class AuthConfig:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # 1일
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     
-    # 매직링크 설정
-    MAGIC_LINK_EXPIRES = timedelta(minutes=10)  # 10분
     
     # 이메일 설정
     MAIL_SERVER = get_env_var('MAIL_SERVER', 'smtp.gmail.com')  # Gmail 서버
@@ -46,10 +44,6 @@ class AuthConfig:
     # 데이터베이스 설정
     DB_CONNECTION_STRING = get_env_var('DATABASE_URL', 'sqlite:///site.db')
     
-    @classmethod
-    def get_magic_link_url(cls, token):
-        """매직링크 URL 생성"""
-        return f"{cls.APP_DOMAIN}/auth/verify-link?token={token}"
     
     @classmethod
     def get_deep_link_url(cls, action, **params):

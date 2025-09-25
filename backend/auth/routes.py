@@ -6,52 +6,6 @@ from backend.config.auth_config import AuthConfig
 # 인증 블루프린트 생성
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
-@auth_bp.route('/magic-link', methods=['POST'])
-def send_magic_link():
-    """매직링크 이메일 발송"""
-    # 지연 import로 순환 참조 방지
-    from .models import User
-    from .utils import AuthUtils
-    from .email_service import email_service
-    
-    try:
-        data = request.get_json()
-        
-        if not data or 'email' not in data:
-            return jsonify({'error': '이메일 주소가 필요합니다.'}), 400
-        
-        email = data['email'].strip().lower()
-        
-        # 이메일 형식 검증
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@koica\.go\.kr$', email):
-            return jsonify({'error': 'KOICA 이메일 주소만 사용 가능합니다.'}), 400
-        
-        # 사용자 조회 (신규/기존 사용자 구분)
-        user = User.query.filter_by(email=email).first()
-        
-        # 매직링크 토큰 생성
-        original_token, token_hash = AuthUtils.create_magic_link_token(email)
-        
-        # 이메일 발송
-        nickname = user.nickname if user else None
-        if email_service.send_magic_link_email(email, original_token, nickname):
-            return jsonify({
-                'message': '인증 이메일을 발송했습니다.',
-                'email': email,
-                'is_new_user': user is None
-            }), 200
-        else:
-            return jsonify({'error': '이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.'}), 500
-            
-    except Exception as e:
-        current_app.logger.error(f"매직링크 발송 실패: {str(e)}")
-        import traceback
-        current_app.logger.error(f"매직링크 발송 오류 상세: {traceback.format_exc()}")
-        return jsonify({
-            'error': '서버 오류가 발생했습니다.',
-            'details': str(e),
-            'type': type(e).__name__
-        }), 500
 
 @auth_bp.route('/test-login/<employee_id>', methods=['GET'])
 def test_login(employee_id):
@@ -88,69 +42,6 @@ def test_login(employee_id):
             'type': type(e).__name__
         }), 500
 
-@auth_bp.route('/verify-link', methods=['GET'])
-def verify_magic_link():
-    """매직링크 검증 및 사용자 분기 처리"""
-    # 지연 import로 순환 참조 방지
-    from .utils import AuthUtils
-    
-    try:
-        token = request.args.get('token')
-        
-        if not token:
-            return jsonify({'error': '토큰이 필요합니다.'}), 400
-        
-        # 토큰 검증
-        verification_result = AuthUtils.verify_magic_link_token(token)
-        
-        if not verification_result:
-            return jsonify({'error': '유효하지 않거나 만료된 링크입니다.'}), 400
-        
-        email = verification_result['email']
-        user = verification_result['user']
-        is_new_user = verification_result['is_new_user']
-        
-        if is_new_user:
-            # 신규 사용자: 임시 토큰 발급
-            temp_token = AuthUtils.generate_jwt_token(0, 'temp')  # user_id 0은 임시
-            
-            # 딥링크로 앱 실행
-            deep_link = AuthConfig.get_deep_link_url('register', tempToken=temp_token)
-            
-            return jsonify({
-                'type': 'register',
-                'email': email,
-                'deep_link': deep_link,
-                'message': '신규 사용자입니다. 프로필을 설정해주세요.'
-            }), 200
-        else:
-            # 기존 사용자: 액세스 토큰과 리프레시 토큰 발급
-            access_token = AuthUtils.generate_jwt_token(user.id, 'access')
-            refresh_token, _ = AuthUtils.create_refresh_token(user.id)
-            
-            # 딥링크로 앱 실행
-            deep_link = AuthConfig.get_deep_link_url('login', 
-                                                   accessToken=access_token, 
-                                                   refreshToken=refresh_token)
-            
-            return jsonify({
-                'type': 'login',
-                'user': user.to_dict(),
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'deep_link': deep_link,
-                'message': '로그인 성공'
-            }), 200
-            
-    except Exception as e:
-        current_app.logger.error(f"매직링크 검증 실패: {str(e)}")
-        import traceback
-        current_app.logger.error(f"매직링크 검증 오류 상세: {traceback.format_exc()}")
-        return jsonify({
-            'error': '서버 오류가 발생했습니다.',
-            'details': str(e),
-            'type': type(e).__name__
-        }), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login_with_password():

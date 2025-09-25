@@ -51,7 +51,6 @@ class User(db.Model):
     
     # 비밀번호 인증 필드들
     password_hash = db.Column(db.String(255), nullable=True)  # 비밀번호 해시
-    login_method = db.Column(db.String(20), default='magic_link')  # 'magic_link' 또는 'password'
     last_password_change = db.Column(db.DateTime, nullable=True)
     failed_login_attempts = db.Column(db.Integer, default=0)
     account_locked_until = db.Column(db.DateTime, nullable=True)
@@ -91,7 +90,6 @@ class User(db.Model):
         from werkzeug.security import generate_password_hash
         self.password_hash = generate_password_hash(password)
         self.last_password_change = datetime.utcnow()
-        self.login_method = 'password'
     
     def check_password(self, password):
         """비밀번호 검증"""
@@ -178,34 +176,6 @@ class User(db.Model):
             'match_request_time': self.match_request_time.isoformat() if self.match_request_time else None
         }
 
-class MagicLinkToken(db.Model):
-    """매직링크 토큰 모델"""
-    __tablename__ = 'magic_link_tokens'
-    __table_args__ = {'extend_existing': True}
-    
-    id = db.Column(db.Integer, primary_key=True)
-    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), nullable=False, index=True)
-    expires_at = db.Column(db.DateTime, nullable=False)
-    is_used = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<MagicLinkToken {self.email}>'
-    
-    @staticmethod
-    def generate_token():
-        """암호학적으로 안전한 토큰 생성"""
-        return secrets.token_urlsafe(32)
-    
-    @staticmethod
-    def hash_token(token):
-        """토큰을 해시화"""
-        return hashlib.sha256(token.encode()).hexdigest()
-    
-    def is_expired(self):
-        """토큰 만료 여부 확인"""
-        return datetime.utcnow() > self.expires_at
 
 class RefreshToken(db.Model):
     """리프레시 토큰 모델"""

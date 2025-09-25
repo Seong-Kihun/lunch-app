@@ -33,7 +33,6 @@ def update_user_schema():
         # 새로운 컬럼들 추가
         new_columns = [
             ("password_hash", "VARCHAR(255)"),
-            ("login_method", "VARCHAR(20) DEFAULT 'magic_link'"),
             ("last_password_change", "DATETIME"),
             ("failed_login_attempts", "INTEGER DEFAULT 0"),
             ("account_locked_until", "DATETIME")
@@ -49,8 +48,7 @@ def update_user_schema():
             else:
                 print(f"ℹ️ {column_name} 컬럼이 이미 존재합니다")
         
-        # 기존 사용자들의 login_method를 'magic_link'로 설정
-        cursor.execute("UPDATE users SET login_method = 'magic_link' WHERE login_method IS NULL")
+        # 기존 사용자들의 failed_login_attempts를 0으로 설정
         cursor.execute("UPDATE users SET failed_login_attempts = 0 WHERE failed_login_attempts IS NULL")
         
         # 변경사항 저장
