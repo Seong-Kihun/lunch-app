@@ -49,6 +49,13 @@ class User(db.Model):
     matching_status = db.Column(db.String(20), default='idle')  # 'idle', 'waiting', 'matched'
     match_request_time = db.Column(db.DateTime, nullable=True)
     
+    # 비밀번호 인증 필드들
+    password_hash = db.Column(db.String(255), nullable=True)  # 비밀번호 해시
+    login_method = db.Column(db.String(20), default='magic_link')  # 'magic_link' 또는 'password'
+    last_password_change = db.Column(db.DateTime, nullable=True)
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    account_locked_until = db.Column(db.DateTime, nullable=True)
+    
     # 관계 정의 (기존 앱과의 호환성을 위해)
     @property
     def preferences(self):
@@ -78,6 +85,46 @@ class User(db.Model):
             'matching_status': self.matching_status,
             'match_request_time': self.match_request_time
         }
+    
+    def set_password(self, password):
+        """비밀번호 설정 및 해시화"""
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+        self.last_password_change = datetime.utcnow()
+        self.login_method = 'password'
+    
+    def check_password(self, password):
+        """비밀번호 검증"""
+        if not self.password_hash:
+            return False
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
+    
+    def is_account_locked(self):
+        """계정 잠금 상태 확인"""
+        if not self.account_locked_until:
+            return False
+        return datetime.utcnow() < self.account_locked_until
+    
+    def lock_account(self, duration_minutes=15):
+        """계정 잠금"""
+        self.account_locked_until = datetime.utcnow() + timedelta(minutes=duration_minutes)
+        self.failed_login_attempts = 0
+    
+    def unlock_account(self):
+        """계정 잠금 해제"""
+        self.account_locked_until = None
+        self.failed_login_attempts = 0
+    
+    def increment_failed_attempts(self):
+        """실패한 로그인 시도 횟수 증가"""
+        self.failed_login_attempts += 1
+        if self.failed_login_attempts >= 5:  # 5회 실패 시 계정 잠금
+            self.lock_account()
+    
+    def reset_failed_attempts(self):
+        """실패한 로그인 시도 횟수 초기화"""
+        self.failed_login_attempts = 0
     
     def __repr__(self):
         return f'<User {self.email}>'

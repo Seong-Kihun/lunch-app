@@ -20,7 +20,9 @@ import { RENDER_SERVER_URL } from '../config';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginMethod, setLoginMethod] = useState('password'); // 'password' 또는 'magic_link'
   const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
 
@@ -28,6 +30,74 @@ const LoginScreen = () => {
   const isValidEmail = (email) => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@koica\.go\.kr$/;
     return emailRegex.test(email);
+  };
+
+  // 비밀번호 로그인 처리
+  const handlePasswordLogin = async () => {
+    try {
+      setIsLoading(true);
+      clearError();
+      
+      // 입력값 검증
+      if (!email.trim()) {
+        setAuthError('이메일을 입력해주세요.');
+        return;
+      }
+      
+      if (!password.trim()) {
+        setAuthError('비밀번호를 입력해주세요.');
+        return;
+      }
+      
+      if (!isValidEmail(email)) {
+        setAuthError('올바른 KOICA 이메일 주소를 입력해주세요.');
+        return;
+      }
+      
+      // 동적 서버 URL 사용
+      const { getServerURL } = await import('../utils/networkUtils');
+      const serverURL = await getServerURL();
+      
+      // 비밀번호 로그인 API 호출
+      const response = await fetch(`${serverURL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password.trim()
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.access_token) {
+        // 로그인 성공 처리
+        await storeAccessToken(data.access_token);
+        await storeRefreshToken(data.refresh_token);
+        await storeUserData(data.user);
+        
+        // Context에 액세스 토큰 설정
+        setScheduleAccessToken(data.access_token);
+        
+        Alert.alert(
+          '로그인 성공',
+          `환영합니다, ${data.user.nickname}님!`,
+          [{ text: '확인' }]
+        );
+        
+        // AuthContext를 통해 로그인 성공 처리
+        handleLoginSuccess(data.user, data.access_token, data.refresh_token);
+      } else {
+        setAuthError(data.error || '로그인에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('비밀번호 로그인 실패:', error);
+      setAuthError('로그인 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 매직링크 검증 처리
@@ -60,62 +130,6 @@ const LoginScreen = () => {
     } catch (error) {
       console.error('매직링크 검증 실패:', error);
       Alert.alert('오류', '매직링크 검증 중 오류가 발생했습니다.');
-    }
-  };
-
-  // 테스트 로그인 (개발용) - 특정 사용자로 로그인
-  const handleTestLogin = async (userId) => {
-    try {
-      setIsLoading(true);
-      clearError();
-      
-      // 동적 서버 URL 사용
-      const { getServerURL } = await import('../utils/networkUtils');
-      const serverURL = await getServerURL();
-      
-      // 가상 유저 API를 사용하여 테스트 로그인
-      const response = await fetch(`${serverURL}/dev/users/${userId}`);
-      const userData = await response.json();
-      
-      if (response.ok && userData) {
-        // 가상 유저 데이터로 로그인 성공 처리
-        const testUser = {
-          id: userId,
-          employee_id: userId,
-          nickname: userData.nickname,
-          email: `user${userId}@example.com`,
-          foodPreferences: userData.foodPreferences,
-          lunchStyle: userData.lunchStyle,
-          allergies: userData.allergies,
-          preferredTime: userData.preferredTime
-        };
-        
-        // 가상 토큰 생성 (실제 인증 없음)
-        const fakeToken = 'fake_token_' + Date.now();
-        
-        // Context에 액세스 토큰 설정
-        setScheduleAccessToken(fakeToken);
-        
-        await storeAccessToken(fakeToken);
-        await storeRefreshToken(fakeToken);
-        await storeUserData(testUser);
-        
-        Alert.alert(
-          '테스트 로그인 성공',
-          `환영합니다, ${testUser.nickname}님!\n\n가상 유저 계정으로 로그인되었습니다.`,
-          [{ text: '확인' }]
-        );
-        
-        // AuthContext를 통해 로그인 성공 처리
-        handleLoginSuccess(testUser, fakeToken, fakeToken);
-      } else {
-        Alert.alert('오류', '가상 유저 데이터를 가져올 수 없습니다.');
-      }
-    } catch (error) {
-      console.error('테스트 로그인 실패:', error);
-      Alert.alert('오류', '테스트 로그인 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -255,7 +269,39 @@ const LoginScreen = () => {
             <Text style={styles.subtitle}>점심이 설레는 이유</Text>
           </View>
 
-          {/* 이메일 입력 폼 */}
+          {/* 로그인 방식 선택 */}
+          <View style={styles.loginMethodContainer}>
+            <TouchableOpacity
+              style={[
+                styles.methodButton,
+                loginMethod === 'password' && styles.methodButtonActive
+              ]}
+              onPress={() => setLoginMethod('password')}
+            >
+              <Text style={[
+                styles.methodButtonText,
+                loginMethod === 'password' && styles.methodButtonTextActive
+              ]}>
+                비밀번호 로그인
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.methodButton,
+                loginMethod === 'magic_link' && styles.methodButtonActive
+              ]}
+              onPress={() => setLoginMethod('magic_link')}
+            >
+              <Text style={[
+                styles.methodButtonText,
+                loginMethod === 'magic_link' && styles.methodButtonTextActive
+              ]}>
+                이메일 인증
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 입력 폼 */}
           <View style={styles.form}>
             <View style={styles.emailInputContainer}>
               <TextInput
@@ -271,114 +317,45 @@ const LoginScreen = () => {
               <Text style={styles.domainText}>@koica.go.kr</Text>
             </View>
 
+            {loginMethod === 'password' && (
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="비밀번호"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+            )}
+
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!email.trim() || isLoading) && styles.submitButtonDisabled
+                (!email.trim() || (loginMethod === 'password' && !password.trim()) || isLoading) && styles.submitButtonDisabled
               ]}
-              onPress={handleSendMagicLink}
-              disabled={!email.trim() || isLoading}
+              onPress={loginMethod === 'password' ? handlePasswordLogin : handleSendMagicLink}
+              disabled={(!email.trim() || (loginMethod === 'password' && !password.trim()) || isLoading)}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>이메일로 시작하기</Text>
+                <Text style={styles.submitButtonText}>
+                  {loginMethod === 'password' ? '로그인' : '이메일로 시작하기'}
+                </Text>
               )}
             </TouchableOpacity>
 
-            {/* 테스트 로그인 버튼들 (개발용) */}
+            {/* 테스터 계정 안내 */}
             <View style={styles.testButtonsContainer}>
-              <Text style={styles.testButtonsLabel}>🧪 가상 유저 테스트 로그인</Text>
-              
-              {/* 사용자 1-6 로그인 버튼들 */}
-              <View style={styles.testButtonsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('1')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자1</Text>
-                  <Text style={styles.testButtonSubtext}>김철수</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('2')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자2</Text>
-                  <Text style={styles.testButtonSubtext}>이영희</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('3')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자3</Text>
-                  <Text style={styles.testButtonSubtext}>박민수</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.testButtonsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('4')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자4</Text>
-                  <Text style={styles.testButtonSubtext}>최지은</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('5')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자5</Text>
-                  <Text style={styles.testButtonSubtext}>정현우</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.testButtonSmall,
-                    isLoading && styles.submitButtonDisabled
-                  ]}
-                  onPress={() => handleTestLogin('6')}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.testButtonTextSmall}>사용자6</Text>
-                  <Text style={styles.testButtonSubtext}>한소영</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.testButtonsLabel}>💡 테스터 계정이 필요하신가요?</Text>
+              <Text style={styles.testButtonsSubLabel}>
+                관리자에게 문의하여 테스터 계정을 발급받으세요.
+              </Text>
             </View>
-
-            {/* 개발용 전체 정리 버튼 */}
-            <TouchableOpacity
-              style={[
-                styles.clearButton,
-                isLoading && styles.submitButtonDisabled
-              ]}
-              onPress={handleClearAllData}
-              disabled={isLoading}
-            >
-              <Text style={styles.clearButtonText}>🧹 개발용 전체 정리</Text>
-            </TouchableOpacity>
           </View>
 
           {/* 도움말 */}
@@ -422,6 +399,40 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
+  loginMethodContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  methodButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  methodButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  methodButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  methodButtonTextActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
   form: {
     marginBottom: 32,
   },
@@ -455,6 +466,28 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginLeft: 8,
   },
+  passwordInputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  passwordInput: {
+    fontSize: 16,
+    color: '#1E293B',
+    padding: 0,
+  },
   submitButton: {
     backgroundColor: '#3B82F6',
     borderRadius: 12,
@@ -486,42 +519,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#10B981',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     letterSpacing: -0.2,
   },
-  testButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  testButtonSmall: {
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  testButtonTextSmall: {
-    color: '#FFFFFF',
+  testButtonsSubLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  testButtonSubtext: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '500',
-    opacity: 0.9,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   clearButton: {
     backgroundColor: '#EF4444',

@@ -152,6 +152,124 @@ def verify_magic_link():
             'type': type(e).__name__
         }), 500
 
+@auth_bp.route('/login', methods=['POST'])
+def login_with_password():
+    """아이디/비밀번호로 로그인"""
+    from .models import User
+    from .utils import AuthUtils
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'password' not in data:
+            return jsonify({'error': '이메일과 비밀번호가 필요합니다.'}), 400
+        
+        email = data['email'].strip().lower()
+        password = data['password']
+        
+        # 이메일 형식 검증
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@koica\.go\.kr$', email):
+            return jsonify({'error': 'KOICA 이메일 주소만 사용 가능합니다.'}), 400
+        
+        # 사용자 조회
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            return jsonify({'error': '존재하지 않는 사용자입니다.'}), 401
+        
+        # 계정 잠금 확인
+        if user.is_account_locked():
+            return jsonify({'error': '계정이 잠겨있습니다. 잠시 후 다시 시도해주세요.'}), 423
+        
+        # 비밀번호 검증
+        if not user.check_password(password):
+            # 실패한 로그인 시도 기록
+            user.increment_failed_attempts()
+            from .models import db
+            db.session.commit()
+            
+            return jsonify({'error': '비밀번호가 올바르지 않습니다.'}), 401
+        
+        # 로그인 성공 - 실패 횟수 초기화
+        user.reset_failed_attempts()
+        user.last_login_date = datetime.utcnow()
+        
+        # 토큰 생성
+        access_token = AuthUtils.generate_jwt_token(user.id, 'access')
+        refresh_token, _ = AuthUtils.create_refresh_token(user.id)
+        
+        from .models import db
+        db.session.commit()
+        
+        return jsonify({
+            'message': '로그인 성공',
+            'user': user.to_dict(),
+            'access_token': access_token,
+            'refresh_token': refresh_token
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"비밀번호 로그인 실패: {str(e)}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
+
+@auth_bp.route('/change-password', methods=['POST'])
+def change_password():
+    """비밀번호 변경"""
+    from .models import User, db
+    from .utils import AuthUtils
+    
+    try:
+        # 인증 확인
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': '인증이 필요합니다.'}), 401
+        
+        token = auth_header.split(' ')[1]
+        payload = AuthUtils.verify_jwt_token(token)
+        
+        if not payload or payload.get('token_type') != 'access':
+            return jsonify({'error': '유효하지 않은 토큰입니다.'}), 401
+        
+        user_id = payload.get('user_id')
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
+        
+        data = request.get_json()
+        
+        if not data or 'current_password' not in data or 'new_password' not in data:
+            return jsonify({'error': '현재 비밀번호와 새 비밀번호가 필요합니다.'}), 400
+        
+        current_password = data['current_password']
+        new_password = data['new_password']
+        
+        # 현재 비밀번호 확인
+        if not user.check_password(current_password):
+            return jsonify({'error': '현재 비밀번호가 올바르지 않습니다.'}), 401
+        
+        # 새 비밀번호 유효성 검사
+        if len(new_password) < 8:
+            return jsonify({'error': '비밀번호는 최소 8자 이상이어야 합니다.'}), 400
+        
+        # 비밀번호 변경
+        user.set_password(new_password)
+        db.session.commit()
+        
+        return jsonify({'message': '비밀번호가 성공적으로 변경되었습니다.'}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"비밀번호 변경 실패: {str(e)}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'details': str(e),
+            'type': type(e).__name__
+        }), 500
+
 @auth_bp.route('/register', methods=['POST'])
 def register_user():
     """신규 사용자 회원가입 완료"""
@@ -202,6 +320,10 @@ def register_user():
             nickname=nickname,
             employee_id=AuthUtils.generate_employee_id()
         )
+        
+        # 비밀번호 설정 (제공된 경우)
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
         
         db.session.add(user)
         db.session.commit()

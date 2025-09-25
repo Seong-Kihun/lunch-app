@@ -89,15 +89,22 @@ def init_database():
             traceback.print_exc()
 
 def create_default_users():
-    """기본 사용자들을 생성합니다."""
+    """기본 사용자들을 생성합니다. (환경 설정에 따라 제어)"""
     try:
+        # 환경 설정 확인
+        create_virtual_users = os.getenv('CREATE_VIRTUAL_USERS', 'false').lower() == 'true'
+        
+        if not create_virtual_users:
+            print("ℹ️ 가상 유저 생성이 비활성화되어 있습니다. 실제 테스터 계정을 사용하세요.")
+            return
+        
         # User 모델 동적 로드
         User = get_user_model()
         if User is None:
             print("❌ User 모델을 로드할 수 없습니다.")
             return
             
-        # 가상 사용자 데이터
+        # 가상 사용자 데이터 (개발 환경에서만)
         default_users = [
             {
                 'email': 'kim@example.com',

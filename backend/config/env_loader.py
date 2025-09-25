@@ -56,16 +56,51 @@ def load_environment_variables():
         db_path = os.path.join(project_root, "instance", "lunch_app.db")
         db_url = f"sqlite:///{db_path}"
         
-        required_vars = {
-            "JWT_SECRET_KEY": "dev-jwt-secret-key-change-in-production",
-            "SECRET_KEY": "dev-flask-secret-key-change-in-production",
-            "DATABASE_URL": db_url,
-            "REDIS_URL": "redis://localhost:6379/0",
-            "CELERY_BROKER_URL": "redis://localhost:6379/1",
-            "CELERY_RESULT_BACKEND": "redis://localhost:6379/2",
-            "FLASK_ENV": "development",
-            "ENV": "development",
-        }
+        # 환경별 설정
+        env_type = os.getenv('ENV_TYPE', 'development')  # development, testing, production
+        
+        if env_type == 'testing':
+            # 테스트 환경 - 가상 유저 생성 비활성화
+            required_vars = {
+                "JWT_SECRET_KEY": "test-jwt-secret-key",
+                "SECRET_KEY": "test-flask-secret-key",
+                "DATABASE_URL": db_url,
+                "REDIS_URL": "redis://localhost:6379/0",
+                "CELERY_BROKER_URL": "redis://localhost:6379/1",
+                "CELERY_RESULT_BACKEND": "redis://localhost:6379/2",
+                "FLASK_ENV": "testing",
+                "ENV": "testing",
+                "CREATE_VIRTUAL_USERS": "false",
+                "AUTH_METHOD": "password",
+            }
+        elif env_type == 'production':
+            # 프로덕션 환경 - 가상 유저 생성 비활성화
+            required_vars = {
+                "JWT_SECRET_KEY": "dev-jwt-secret-key-change-in-production",
+                "SECRET_KEY": "dev-flask-secret-key-change-in-production",
+                "DATABASE_URL": db_url,
+                "REDIS_URL": "redis://localhost:6379/0",
+                "CELERY_BROKER_URL": "redis://localhost:6379/1",
+                "CELERY_RESULT_BACKEND": "redis://localhost:6379/2",
+                "FLASK_ENV": "production",
+                "ENV": "production",
+                "CREATE_VIRTUAL_USERS": "false",
+                "AUTH_METHOD": "password",
+            }
+        else:
+            # 개발 환경 - 가상 유저 생성 비활성화 (실제 테스터 계정 사용)
+            required_vars = {
+                "JWT_SECRET_KEY": "dev-jwt-secret-key-change-in-production",
+                "SECRET_KEY": "dev-flask-secret-key-change-in-production",
+                "DATABASE_URL": db_url,
+                "REDIS_URL": "redis://localhost:6379/0",
+                "CELERY_BROKER_URL": "redis://localhost:6379/1",
+                "CELERY_RESULT_BACKEND": "redis://localhost:6379/2",
+                "FLASK_ENV": "development",
+                "ENV": "development",
+                "CREATE_VIRTUAL_USERS": "false",
+                "AUTH_METHOD": "password",
+            }
 
     # 환경변수 설정
     for var_name, default_value in required_vars.items():
