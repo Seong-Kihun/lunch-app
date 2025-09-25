@@ -80,7 +80,7 @@ def create_app(config_name=None):
     )
     
     # 문의사항 모델 import
-    from backend.models.inquiry_models import Inquiry
+    from backend.models import Inquiry
 
     from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
