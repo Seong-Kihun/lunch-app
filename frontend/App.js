@@ -605,7 +605,7 @@ function MainApp() {
             console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
         }
 
-        // 네트워크 초기화
+        // 네트워크 초기화 (개발/프로덕션 환경 통일)
         networkInitializer.initialize().catch(error => {
             console.error('❌ [MainApp] 네트워크 초기화 실패:', error);
             // 네트워크 초기화 실패 시 네트워크 설정 모달 표시

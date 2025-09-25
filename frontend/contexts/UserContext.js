@@ -31,138 +31,66 @@ export const UserProvider = ({ children }) => {
                 setUser(localUserData);
             }
             
-            // 개발 모드에서는 가상 유저 API 사용
-            if (__DEV__) {
-                console.log('🔧 개발 환경: 가상 유저 API 사용');
-                
-                try {
-                    console.log(`🔗 API 호출 시작: ${RENDER_SERVER_URL}/dev/users/1`);
-                    
-                    // 타임아웃 설정 (10초로 단축)
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => {
-                        console.log('⏰ API 호출 타임아웃');
-                        controller.abort();
-                    }, 10000);
-                    
-                    const response = await fetch(`${RENDER_SERVER_URL}/dev/users/1`, {
-                        signal: controller.signal,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'Cache-Control': 'no-cache',
-                        },
-                        method: 'GET',
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    console.log('📡 API 응답 상태:', response.status);
-                
-                    if (response.ok) {
-                        const userData = await response.json();
-                        console.log('✅ 가상 유저 API 호출 성공:', userData);
-                        
-                        const defaultUserData = {
-                            id: '1',
-                            employee_id: userData.user?.employee_id || '1',
-                            nickname: userData.user?.nickname || '개발자1',
-                            name: userData.user?.nickname || '개발자1',
-                            email: userData.user?.email || 'dev1@example.com',
-                            department: '개발팀',
-                            foodPreferences: userData.user?.food_preferences?.split(',') || ['한식', '중식'],
-                            lunchStyle: ['맛집 탐방', '새로운 메뉴 도전'],
-                            allergies: userData.user?.allergies ? [userData.user.allergies] : ['없음'],
-                            preferredTime: userData.user?.preferred_time || '12:00',
-                            join_date: '2023-01-15'
-                        };
-                        setUser(defaultUserData);
-                        await storeUserData(defaultUserData);
-                        console.log('✅ 사용자 데이터 설정 완료');
-                    } else {
-                        throw new Error(`가상 유저 API 호출 실패: ${response.status}`);
-                    }
-                } catch (error) {
-                    console.error('❌ 가상 유저 API 호출 실패:', error);
-                    console.log('🔄 기본 사용자 데이터로 폴백');
-                    
-                    // 기본값 사용
-                    const defaultUserData = {
-                        id: '1',
-                        employee_id: '1',
-                        nickname: '개발자1',
-                        name: '개발자1',
-                        email: 'dev1@example.com',
-                        department: '개발팀',
-                        foodPreferences: ['한식', '중식'],
-                        lunchStyle: ['맛집 탐방', '새로운 메뉴 도전'],
-                        allergies: ['없음'],
-                        preferredTime: '12:00',
-                        join_date: '2023-01-15'
-                    };
-                    setUser(defaultUserData);
-                    await storeUserData(defaultUserData);
-                    console.log('✅ 기본 사용자 데이터 설정 완료');
-                }
+            // 개발/프로덕션 환경 통일: 실제 인증 시스템 사용
+            console.log('🔧 실제 인증 시스템 사용');
+            
+            // 로컬 저장소에서 토큰 확인
+            const accessToken = await getAccessToken();
+            if (!accessToken) {
+                console.log('❌ 인증 토큰이 없습니다. 로그인이 필요합니다.');
                 setIsLoading(false);
                 return;
             }
             
-            // 프로덕션 모드에서만 API 호출
             try {
-                // 타임아웃 설정 (10초)
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                console.log(`🔗 사용자 프로필 API 호출: ${RENDER_SERVER_URL}/api/auth/profile`);
                 
-                const response = await getUserProfile();
-                clearTimeout(timeoutId);
+                const response = await fetch(`${RENDER_SERVER_URL}/api/auth/profile`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Cache-Control': 'no-cache',
+                    },
+                    method: 'GET',
+                });
                 
-                if (response.user) {
-                    setUser(response.user);
-                    await storeUserData(response.user);
-                    console.log('✅ 프로덕션 API 호출 성공');
-                }
-            } catch (err) {
-                console.error('API 호출 실패, 기본 데이터 사용:', err);
-                console.log('🔄 기본 사용자 데이터로 폴백');
-                
-                // API 실패 시에도 기본 데이터 사용
-                const defaultUserData = {
-                    id: 'KOICA001',
-                    employee_id: 'KOICA001',
-                    nickname: '김코이카',
-                    name: '김코이카',
-                    email: 'koica@example.com',
-                    department: '개발팀',
-                    lunch_preference: '한식, 중식, 일식',
-                    allergies: '없음',
-                    preferred_time: '12:00',
-                    join_date: '2023-01-15'
-                };
-                setUser(defaultUserData);
-                await storeUserData(defaultUserData);
-            }
-        } catch (err) {
-            console.error('사용자 프로필 로드 실패:', err);
-            setError(err.message);
+                console.log('📡 API 응답 상태:', response.status);
             
-            // 에러 시에도 기본 데이터 사용
-            const defaultUserData = {
-                id: 'KOICA001',
-                employee_id: 'KOICA001',
-                nickname: '김코이카',
-                name: '김코이카',
-                email: 'koica@example.com',
-                department: '개발팀',
-                lunch_preference: '한식, 중식, 일식',
-                allergies: '없음',
-                preferred_time: '12:00',
-                join_date: '2023-01-15'
-            };
-            setUser(defaultUserData);
-            await storeUserData(defaultUserData);
-        } finally {
+                if (response.ok) {
+                    const userData = await response.json();
+                    console.log('✅ 사용자 프로필 API 호출 성공:', userData);
+                    
+                    const userProfile = {
+                        id: userData.user?.id || '1',
+                        employee_id: userData.user?.employee_id || '1',
+                        nickname: userData.user?.nickname || '사용자',
+                        name: userData.user?.nickname || '사용자',
+                        email: userData.user?.email || 'user@example.com',
+                        department: '개발팀',
+                        foodPreferences: userData.user?.food_preferences?.split(',') || ['한식', '중식'],
+                        lunchStyle: ['맛집 탐방', '새로운 메뉴 도전'],
+                        allergies: userData.user?.allergies ? [userData.user.allergies] : ['없음'],
+                        preferredTime: userData.user?.preferred_time || '12:00',
+                        join_date: '2023-01-15'
+                    };
+                    setUser(userProfile);
+                    await storeUserData(userProfile);
+                    console.log('✅ 사용자 프로필 설정 완료');
+                } else if (response.status === 401) {
+                    console.log('❌ 인증 토큰이 만료되었습니다. 로그인이 필요합니다.');
+                    await clearAllTokens();
+                    setUser(null);
+                } else {
+                    throw new Error(`사용자 프로필 API 호출 실패: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ 사용자 프로필 API 호출 실패:', error);
+                console.log('🔄 로그인이 필요합니다.');
+                setUser(null);
+            }
             setIsLoading(false);
-        }
+            return;
     }, []);
 
   // 사용자 프로필 업데이트

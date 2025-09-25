@@ -25,44 +25,13 @@ def root_magic_link():
 
 @root_compatibility_bp.route('/dev/users/<int:employee_id>', methods=['GET'])
 def root_dev_user(employee_id):
-    """루트 레벨 개발용 사용자 API - 인증 없이 개발용 데이터 반환"""
-    logger.info(f"루트 레벨 개발용 사용자 API 호출됨: {employee_id}")
-    
-    try:
-        # 개발 환경에서는 인증 없이 가상 사용자 데이터 반환
-        return jsonify({
-            'success': True,
-            'user': {
-                'employee_id': str(employee_id),
-                'nickname': f'개발자{employee_id}',
-                'email': f'dev{employee_id}@example.com',
-                'is_active': True,
-                'points': 100,
-                'profile_image': None,
-                'gender': 'male',
-                'age_group': '20s',
-                'main_dish_genre': '한식',
-                'lunch_preference': '맛있는 음식',
-                'allergies': None,
-                'preferred_time': '12:00',
-                'food_preferences': '한식,중식',
-                'frequent_areas': '강남구',
-                'notification_settings': '{"push": true, "email": true}',
-                'total_points': 100,
-                'current_level': 1,
-                'current_badge': 'newbie',
-                'consecutive_login_days': 1,
-                'last_login_date': '2025-09-25',
-                'matching_status': 'available',
-                'match_request_time': None
-            }
-        })
-    except Exception as e:
-        logger.error(f"개발용 사용자 API 오류: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    """루트 레벨 개발용 사용자 API - 제거됨 (실제 인증 시스템 사용)"""
+    logger.info(f"루트 레벨 개발용 사용자 API 호출됨: {employee_id} - 제거됨")
+    return jsonify({
+        'error': 'Development API has been removed. Please use the actual authentication system.',
+        'message': 'Use /api/auth/login for authentication and /api/auth/profile for user data.',
+        'status': 'deprecated'
+    }), 410
 
 @root_compatibility_bp.route('/auth/profile', methods=['GET'])
 def root_auth_profile():
