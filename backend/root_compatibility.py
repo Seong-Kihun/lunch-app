@@ -69,7 +69,7 @@ def root_dev_schedules():
         
         # 실제 일정 데이터 조회
         from models.schedule_models import PersonalSchedule
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime
         
         # 날짜 파싱
@@ -143,7 +143,7 @@ def root_dev_create_schedule():
         
         # 실제 일정 생성
         from models.schedule_models import PersonalSchedule
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime
         
         # 일정 객체 생성
@@ -257,7 +257,7 @@ def root_dev_friends(employee_id):
     # 실제 친구 데이터 조회
     try:
         from auth.models import Friendship, User
-        from extensions import db
+        from backend.app.extensions import db
         
         # 친구 관계 조회 (실제 컬럼명 사용)
         friendships = Friendship.query.filter(
@@ -357,7 +357,7 @@ def root_friends(employee_id):
     # 개발 환경에서는 인증 우회하고 실제 친구 데이터 반환
     try:
         from auth.models import Friendship, User
-        from extensions import db
+        from backend.app.extensions import db
         
         # 친구 관계 조회 (실제 컬럼명 사용)
         friendships = Friendship.query.filter(
