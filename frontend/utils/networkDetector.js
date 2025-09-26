@@ -7,15 +7,12 @@ import Constants from 'expo-constants';
  * 현재 네트워크 환경에 맞는 서버 URL을 동적으로 감지합니다.
  * @returns {string} 서버 URL
  */
-export const detectServerURL = () => {
-  // 개발 환경에서는 강제로 로컬 서버 사용
-  if (__DEV__) {
-    console.log('🔧 [NetworkDetector] 개발 환경: 로컬 서버 강제 사용');
-    return 'http://192.168.45.177:5000';
-  }
+// 통합된 네트워크 설정 사용
+import { getServerURL as getUnifiedServerURL } from '../config/networkConfig';
 
-  // 프로덕션 환경인 경우
-  return 'https://lunch-app-backend-ra12.onrender.com';
+export const detectServerURL = () => {
+  // 통합된 네트워크 설정 사용
+  return getUnifiedServerURL();
 };
 
 /**

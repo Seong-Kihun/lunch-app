@@ -116,18 +116,18 @@ const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NOD
 // 동적 서버 URL (초기화 후 사용)
 let dynamicServerURL = null;
 
-// 서버 URL 초기화 함수
+// 통합된 네트워크 설정 사용
 const initializeServerURL = async () => {
     if (dynamicServerURL) {
         return dynamicServerURL;
     }
 
     try {
-        // 동적 서버 URL 감지 사용
-        const { getServerURL } = await import('../../utils/networkUtils');
-        dynamicServerURL = await getServerURL();
+        // 통합된 네트워크 설정 사용
+        const { getServerURL } = await import('../../config/networkConfig');
+        dynamicServerURL = getServerURL();
         
-        console.log('🔧 [Utils] 동적 서버 URL 설정:', dynamicServerURL);
+        console.log('🔧 [Utils] 통합 네트워크 설정 사용:', dynamicServerURL);
         console.log('🔧 [Utils] 개발 환경:', isDevelopment);
         
         return dynamicServerURL;

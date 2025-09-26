@@ -50,22 +50,18 @@ export const getCurrentNetworkIP = async () => {
     }
 };
 
-// 서버 URL을 동적으로 생성하는 함수 - 개발 환경에서는 로컬 서버 사용
+// 통합된 네트워크 설정 사용
+import { getServerURL as getUnifiedServerURL } from '../config/networkConfig';
+
+// 기존 함수를 통합 설정으로 리다이렉트
 export const getServerURL = async () => {
     try {
-        // 개발 환경에서는 로컬 서버 사용
-        if (__DEV__) {
-            console.log('🔧 [NetworkUtils] 개발 환경: 로컬 서버 사용');
-            return 'http://192.168.45.177:5000';
-        }
-        
-        // 프로덕션 환경에서는 Render 서버 사용
-        console.log('🔧 [NetworkUtils] 프로덕션 환경: Render 서버 사용');
-        return 'https://lunch-app-backend-ra12.onrender.com';
-
+        // 통합된 네트워크 설정 사용
+        return getUnifiedServerURL();
     } catch (error) {
         console.error('🔧 [NetworkUtils] 서버 URL 생성 실패:', error);
-        return __DEV__ ? 'http://192.168.45.177:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+        // fallback
+        return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
     }
 };
 

@@ -12,8 +12,8 @@ const CONFIG = {
   // 서버 URL 목록 (우선순위 순)
   SERVER_URLS: {
     development: [
-      'http://192.168.45.177:5000',  // 로컬 개발 서버
-      'http://localhost:5000',        // 로컬호스트 백업
+      'http://localhost:5000',        // 로컬호스트 (가장 안정적)
+      'http://127.0.0.1:5000',        // 로컬호스트 IP
       'https://lunch-app-backend-ra12.onrender.com'  // 프로덕션 백업
     ],
     production: [
@@ -145,7 +145,13 @@ class NetworkConfig {
    * 서버 URL 자동 감지
    */
   async detectServerURL(environment) {
-    const urls = CONFIG.SERVER_URLS[environment];
+    let urls = [...CONFIG.SERVER_URLS[environment]];
+    
+    // 개발 환경에서는 동적 IP 감지 추가
+    if (environment === 'development') {
+      const dynamicIPs = await this.detectDynamicIPs();
+      urls = [...dynamicIPs, ...urls]; // 동적 IP를 우선순위로 설정
+    }
     
     for (const url of urls) {
       try {
@@ -161,6 +167,42 @@ class NetworkConfig {
     }
     
     return null;
+  }
+
+  /**
+   * 동적 IP 감지 (개발 환경용)
+   */
+  async detectDynamicIPs() {
+    const dynamicIPs = [];
+    
+    try {
+      // Expo Constants에서 IP 감지
+      if (Constants.manifest?.debuggerHost) {
+        const ip = Constants.manifest.debuggerHost.split(':')[0];
+        dynamicIPs.push(`http://${ip}:5000`);
+      }
+      
+      if (Constants.expoConfig?.hostUri) {
+        const ip = Constants.expoConfig.hostUri.split(':')[0];
+        dynamicIPs.push(`http://${ip}:5000`);
+      }
+      
+      // 일반적인 로컬 네트워크 IP 범위
+      const commonIPs = [
+        '192.168.1.1', '192.168.0.1', '192.168.1.100', '192.168.0.100',
+        '10.0.0.1', '10.0.0.100', '172.16.0.1', '172.20.10.1'
+      ];
+      
+      commonIPs.forEach(ip => {
+        dynamicIPs.push(`http://${ip}:5000`);
+      });
+      
+      console.log(`🔍 [NetworkConfig] 동적 IP 감지: ${dynamicIPs.length}개`);
+      return dynamicIPs;
+    } catch (error) {
+      console.warn('🔍 [NetworkConfig] 동적 IP 감지 실패:', error);
+      return [];
+    }
   }
 
   /**
