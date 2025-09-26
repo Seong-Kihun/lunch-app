@@ -87,8 +87,8 @@ import { RENDER_SERVER_URL } from './config';
 // 온보딩 유틸리티 Import
 import { checkOnboardingStatus, setOnboardingCompleted } from './utils/onboardingUtils';
 
-// 네트워크 초기화 Import
-import networkInitializer from './utils/networkInitializer';
+// 통합 네트워크 설정 Import
+import { initializeNetwork, getServerURL } from './config/networkConfig';
 import NetworkStatus from './components/NetworkStatus';
 
 // API_BASE_URL과 API 호출 함수 정의
@@ -607,8 +607,10 @@ function MainApp() {
             console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
         }
 
-        // 네트워크 초기화 (개발/프로덕션 환경 통일)
-        networkInitializer.initialize().catch(error => {
+        // 통합 네트워크 초기화
+        initializeNetwork().then((serverURL) => {
+            console.log('✅ [MainApp] 네트워크 초기화 완료:', serverURL);
+        }).catch(error => {
             console.error('❌ [MainApp] 네트워크 초기화 실패:', error);
             // 네트워크 초기화 실패 시 네트워크 설정 모달 표시
             setShowNetworkStatus(true);

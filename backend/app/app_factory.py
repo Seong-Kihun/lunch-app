@@ -452,6 +452,14 @@ def create_app(config_name=None):
     except Exception as e:
         print(f"[ERROR] 문의사항 관리 Blueprint 등록 실패: {e}")
 
+    # 헬스체크 Blueprint 등록
+    try:
+        from backend.routes.health import health_bp
+        app.register_blueprint(health_bp)
+        print("[SUCCESS] 헬스체크 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"[ERROR] 헬스체크 Blueprint 등록 실패: {e}")
+
     # 개발용 API는 제거됨 - 프로덕션 환경으로 전환
     print("[INFO] 프로덕션 환경: 개발용 API Blueprint 제거됨")
 
