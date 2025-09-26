@@ -418,15 +418,34 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logo: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: '900',
     color: '#3B82F6',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-black',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(59, 130, 246, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Black' : 'sans-serif-black',
+    letterSpacing: 3,
+    textShadowColor: 'rgba(59, 130, 246, 0.5)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
+    // 더 둥근 모서리를 위한 추가 스타일
+    transform: [{ scale: 1.08 }],
+    // iOS에서 더 둥근 폰트 강제 적용 (가장 둥근 폰트들)
+    ...(Platform.OS === 'ios' && {
+      fontFamily: 'Avenir-Black',
+      fontWeight: '900',
+      // iOS에서 사용 가능한 가장 둥근 폰트들 시도
+      fontFamily: 'Avenir-Black', // Avenir 시리즈는 둥근 모서리
+    }),
+    // Android에서 더 둥근 폰트 적용
+    ...(Platform.OS === 'android' && {
+      fontFamily: 'sans-serif-black',
+      fontWeight: '900',
+      // Android에서 사용 가능한 둥근 폰트
+      fontFamily: 'sans-serif-black',
+    }),
+    // 추가적인 둥근 효과를 위한 스타일
+    includeFontPadding: false, // Android에서 폰트 패딩 제거로 더 둥글게
+    textAlignVertical: 'center', // 수직 정렬로 더 균형잡힌 모양
   },
   subtitle: {
     fontSize: 18,
