@@ -28,8 +28,7 @@ const InquiryScreen = ({ navigation }) => {
     email: userData?.email || '',
     subject: '',
     message: '',
-    category: 'general',
-    priority: 'normal'
+    category: 'general'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -102,8 +101,7 @@ const InquiryScreen = ({ navigation }) => {
                   email: userData?.email || '',
                   subject: '',
                   message: '',
-                  category: 'general',
-                  priority: 'normal'
+                  category: 'general'
                 });
                 setErrors({});
                 // 이전 화면으로 이동
@@ -131,12 +129,6 @@ const InquiryScreen = ({ navigation }) => {
     { label: '기타', value: 'other' }
   ];
 
-  const priorityOptions = [
-    { label: '낮음', value: 'low' },
-    { label: '보통', value: 'normal' },
-    { label: '높음', value: 'high' },
-    { label: '긴급', value: 'urgent' }
-  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
@@ -224,38 +216,6 @@ const InquiryScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* 우선순위 선택 */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: currentColors.text }]}>
-                  우선순위
-                </Text>
-                <View style={styles.buttonGroup}>
-                  {priorityOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.filterButton,
-                        {
-                          backgroundColor: formData.priority === option.value ? currentColors.primary : currentColors.surface,
-                          borderColor: formData.priority === option.value ? currentColors.primary : currentColors.border,
-                        }
-                      ]}
-                      onPress={() => handleInputChange('priority', option.value)}
-                      disabled={isLoading}
-                    >
-                      <Text style={[
-                        styles.filterButtonText,
-                        {
-                          color: formData.priority === option.value ? 'white' : currentColors.text,
-                          fontWeight: formData.priority === option.value ? 'bold' : '600'
-                        }
-                      ]}>
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
 
               {/* 제목 입력 */}
               <View style={styles.inputGroup}>
