@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useMonthSchedules, transformSchedulesForCalendar } from '../../hooks/useScheduleQuery';
+import { transformSchedulesToAppointments, transformSchedulesToMarkedDates, transformSchedulesToAllEvents } from './HomeScreenData';
 import { getMyEmployeeId } from '../../components/common/Utils';
 import COLORS from '../../components/common/Colors';
 import { useSchedule } from '../../contexts/ScheduleContext';
@@ -126,11 +127,8 @@ export default function HomeScreen({ navigation, route }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     
-    // 일정 데이터를 달력 형식으로 변환
-    const transformedData = transformSchedulesData(schedulesData);
-    
-    // 디버깅: 변환된 데이터 확인
-    console.log('🔍 [HomeScreen] 변환된 일정 데이터:', transformedData);
+    // 디버깅: 원본 데이터 확인
+    console.log('🔍 [HomeScreen] 원본 일정 데이터:', schedulesData);
     
     // 일정 데이터 수동 조회
     const fetchSchedules = useCallback(async () => {
@@ -197,61 +195,10 @@ export default function HomeScreen({ navigation, route }) {
             };
         }
         
-        const appointments = [];
-        const markedDates = {};
-        const allEvents = {};
-        
-        // 날짜별로 그룹화
-        const groupedByDate = {};
-        rawData.forEach(schedule => {
-            // schedule_date 사용 (백엔드 응답 필드명과 일치)
-            const date = schedule.schedule_date || schedule.start_date;
-            if (!groupedByDate[date]) {
-                groupedByDate[date] = [];
-            }
-            
-            // 백엔드 데이터를 프론트엔드 형식으로 변환
-            const transformedSchedule = {
-                ...schedule,
-                isRecurring: schedule.is_recurring || false,
-                recurrenceType: schedule.recurrence_type,
-                recurrenceInterval: schedule.recurrence_interval,
-                recurrenceEndDate: schedule.recurrence_end_date,
-                time: schedule.start_time ? schedule.start_time.split(':').slice(0, 2).join(':') : schedule.time,
-                attendees: schedule.attendees || []
-            };
-            
-            groupedByDate[date].push(transformedSchedule);
-        });
-        
-        // 각 날짜별로 처리
-        Object.keys(groupedByDate).forEach(date => {
-            const events = groupedByDate[date];
-            
-            // appointments 배열에 추가
-            appointments.push({
-                date: date,
-                events: events
-            });
-            
-            // 일정 종류에 따른 색상 결정
-            const getScheduleColor = (events) => {
-                // 모든 기타 일정은 회색으로 표시 (식당 여부와 관계없이)
-                return '#666666'; // 회색 (기타 일정)
-            };
-            
-            const scheduleColor = getScheduleColor(events);
-            
-            // markedDates에 마킹 추가
-            markedDates[date] = {
-                selected: true,
-                selectedColor: scheduleColor,
-                selectedTextColor: '#FFFFFF'
-            };
-            
-            // allEvents에 이벤트 추가
-            allEvents[date] = events;
-        });
+        // import한 함수들 사용
+        const appointments = transformSchedulesToAppointments(rawData);
+        const markedDates = transformSchedulesToMarkedDates(rawData);
+        const allEvents = transformSchedulesToAllEvents(rawData);
         
         return {
             appointments,
@@ -260,7 +207,8 @@ export default function HomeScreen({ navigation, route }) {
         };
     };
     
-    // 달력에 필요한 데이터로 변환 (transformedData 사용)
+    // 달력에 필요한 데이터로 변환
+    const transformedData = transformSchedulesData(schedulesData);
     const { appointments, markedDates, allEvents } = transformedData;
     
     // 변환된 데이터 디버깅

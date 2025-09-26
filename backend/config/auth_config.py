@@ -25,7 +25,7 @@ class AuthConfig:
     MAIL_PORT = 587
     MAIL_USE_TLS = True
     MAIL_USERNAME = 'kihun.seong.official@gmail.com'  # 실제 Gmail 주소
-    MAIL_PASSWORD = 'your-app-password-here'  # Gmail 앱 비밀번호 필요
+    MAIL_PASSWORD = 'ipvb dkft ttjt aqvv'  # Gmail 앱 비밀번호 필요
     
     # 앱 설정
     APP_NAME = '밥플떼기'
