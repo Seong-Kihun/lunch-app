@@ -56,6 +56,22 @@ import { getServerURL as getUnifiedServerURL } from '../config/networkConfig';
 // 기존 함수를 통합 설정으로 리다이렉트
 export const getServerURL = async () => {
     try {
+        // 네트워크 초기화 상태 확인
+        if (!global.networkInitialized) {
+            console.warn('⚠️ [NetworkUtils] 네트워크가 아직 초기화되지 않음');
+            // 네트워크 초기화 대기
+            let attempts = 0;
+            while (!global.networkInitialized && attempts < 50) { // 5초 대기
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!global.networkInitialized) {
+                console.error('❌ [NetworkUtils] 네트워크 초기화 타임아웃');
+                throw new Error('네트워크 초기화 타임아웃');
+            }
+        }
+        
         // 통합된 네트워크 설정 사용
         return getUnifiedServerURL();
     } catch (error) {

@@ -580,41 +580,51 @@ function MainApp() {
 
     // 전역 변수 초기화 - currentColors 설정
     useEffect(() => {
-        // global.currentColors가 설정되지 않은 경우 기본값으로 초기화
-        if (!global.currentColors) {
-            global.currentColors = {
-                background: '#F1F5F9', // 파란색 테마와 어울리는 연한 블루 그레이
-                surface: '#FFFFFF',
-                primary: '#3B82F6',
-                primaryLight: '#E3F2FD',
-                text: '#000000',
-                textSecondary: '#666666',
-                border: '#E5E7EB',
-                lightGray: '#D1D5DB', // 추가
-                secondary: '#5856D6',
-                success: '#10B981',
-                error: '#EF4444'
-            };
-            console.log('✅ [MainApp] global.currentColors 초기화 완료:', global.currentColors);
-        }
-        
-        // global.currentUser가 설정되지 않은 경우 기본값으로 초기화
-        if (!global.currentUser) {
-            global.currentUser = {
-                employee_id: '1',
-                nickname: '사용자'
-            };
-            console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
-        }
+        const initializeApp = async () => {
+            try {
+                // 1. 전역 변수 초기화
+                if (!global.currentColors) {
+                    global.currentColors = {
+                        background: '#F1F5F9', // 파란색 테마와 어울리는 연한 블루 그레이
+                        surface: '#FFFFFF',
+                        primary: '#3B82F6',
+                        primaryLight: '#E3F2FD',
+                        text: '#000000',
+                        textSecondary: '#666666',
+                        border: '#E5E7EB',
+                        lightGray: '#D1D5DB', // 추가
+                        secondary: '#5856D6',
+                        success: '#10B981',
+                        error: '#EF4444'
+                    };
+                    console.log('✅ [MainApp] global.currentColors 초기화 완료:', global.currentColors);
+                }
+                
+                if (!global.currentUser) {
+                    global.currentUser = {
+                        employee_id: '1',
+                        nickname: '사용자'
+                    };
+                    console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
+                }
 
-        // 통합 네트워크 초기화
-        initializeNetwork().then((serverURL) => {
-            console.log('✅ [MainApp] 네트워크 초기화 완료:', serverURL);
-        }).catch(error => {
-            console.error('❌ [MainApp] 네트워크 초기화 실패:', error);
-            // 네트워크 초기화 실패 시 네트워크 설정 모달 표시
-            setShowNetworkStatus(true);
-        });
+                // 2. 네트워크 초기화 (완료될 때까지 대기)
+                console.log('🔧 [MainApp] 네트워크 초기화 시작...');
+                const serverURL = await initializeNetwork();
+                console.log('✅ [MainApp] 네트워크 초기화 완료:', serverURL);
+                
+                // 3. 네트워크 초기화 완료 후 전역 변수 설정
+                global.serverURL = serverURL;
+                global.networkInitialized = true;
+                
+            } catch (error) {
+                console.error('❌ [MainApp] 앱 초기화 실패:', error);
+                // 네트워크 초기화 실패 시 네트워크 설정 모달 표시
+                setShowNetworkStatus(true);
+            }
+        };
+
+        initializeApp();
     }, []);
 
     useEffect(() => {
