@@ -14,7 +14,6 @@ import {
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../theme/colors';
 import { RENDER_SERVER_URL } from '../config';
 import { useAuth } from '../auth/AuthContext';
@@ -165,10 +164,10 @@ const InquiryScreen = ({ navigation }) => {
             <View style={styles.cardHeader}>
               <Ionicons name="chatbubbles" size={32} color={currentColors.primary} />
               <Text style={[styles.cardTitle, { color: currentColors.text }]}>
-                문의사항을 남겨주세요
+                고객센터 문의
               </Text>
               <Text style={[styles.cardSubtitle, { color: currentColors.textSecondary }]}>
-                궁금한 점이나 개선사항을 알려주시면 빠르게 답변드리겠습니다
+                문의사항은 퇴근 후에 확인하여 가능한 빠르게 답변드립니다.
               </Text>
             </View>
 
@@ -202,34 +201,36 @@ const InquiryScreen = ({ navigation }) => {
                 {errors.email && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.email}</Text>}
               </View>
 
-              {/* 카테고리 선택 */}
+              {/* 문의 유형 선택 */}
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: currentColors.text }]}>
                   문의 유형
                 </Text>
-                <View style={[
-                  styles.pickerContainer,
-                  { 
-                    borderColor: currentColors.border,
-                    backgroundColor: currentColors.surface
-                  }
-                ]}>
-                  <Ionicons name="list" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
-                  <Picker
-                    selectedValue={formData.category}
-                    onValueChange={(value) => handleInputChange('category', value)}
-                    style={[styles.picker, { color: currentColors.text }]}
-                    enabled={!isLoading}
-                  >
-                    {categoryOptions.map((option) => (
-                      <Picker.Item
-                        key={option.value}
-                        label={option.label}
-                        value={option.value}
-                        color={currentColors.text}
-                      />
-                    ))}
-                  </Picker>
+                <View style={styles.buttonGroup}>
+                  {categoryOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.filterButton,
+                        {
+                          backgroundColor: formData.category === option.value ? currentColors.primary : currentColors.surface,
+                          borderColor: formData.category === option.value ? currentColors.primary : currentColors.border,
+                        }
+                      ]}
+                      onPress={() => handleInputChange('category', option.value)}
+                      disabled={isLoading}
+                    >
+                      <Text style={[
+                        styles.filterButtonText,
+                        {
+                          color: formData.category === option.value ? 'white' : currentColors.text,
+                          fontWeight: formData.category === option.value ? 'bold' : '600'
+                        }
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
 
@@ -238,29 +239,31 @@ const InquiryScreen = ({ navigation }) => {
                 <Text style={[styles.label, { color: currentColors.text }]}>
                   우선순위
                 </Text>
-                <View style={[
-                  styles.pickerContainer,
-                  { 
-                    borderColor: currentColors.border,
-                    backgroundColor: currentColors.surface
-                  }
-                ]}>
-                  <Ionicons name="flag" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
-                  <Picker
-                    selectedValue={formData.priority}
-                    onValueChange={(value) => handleInputChange('priority', value)}
-                    style={[styles.picker, { color: currentColors.text }]}
-                    enabled={!isLoading}
-                  >
-                    {priorityOptions.map((option) => (
-                      <Picker.Item
-                        key={option.value}
-                        label={option.label}
-                        value={option.value}
-                        color={currentColors.text}
-                      />
-                    ))}
-                  </Picker>
+                <View style={styles.buttonGroup}>
+                  {priorityOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.filterButton,
+                        {
+                          backgroundColor: formData.priority === option.value ? currentColors.primary : currentColors.surface,
+                          borderColor: formData.priority === option.value ? currentColors.primary : currentColors.border,
+                        }
+                      ]}
+                      onPress={() => handleInputChange('priority', option.value)}
+                      disabled={isLoading}
+                    >
+                      <Text style={[
+                        styles.filterButtonText,
+                        {
+                          color: formData.priority === option.value ? 'white' : currentColors.text,
+                          fontWeight: formData.priority === option.value ? 'bold' : '600'
+                        }
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
 
@@ -328,11 +331,11 @@ const InquiryScreen = ({ navigation }) => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={currentColors.white} />
+                  <ActivityIndicator color="white" />
                 ) : (
                   <>
-                    <Ionicons name="send" size={20} color={currentColors.white} style={styles.buttonIcon} />
-                    <Text style={[styles.submitButtonText, { color: currentColors.white }]}>
+                    <Ionicons name="send" size={20} color="white" style={styles.buttonIcon} />
+                    <Text style={[styles.submitButtonText, { color: "white" }]}>
                       문의 접수하기
                     </Text>
                   </>
@@ -505,6 +508,24 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   infoCard: {
     flexDirection: 'row',
