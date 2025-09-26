@@ -37,10 +37,8 @@ const FriendListScreen = ({ navigation }) => {
             const response = await fetch(`${RENDER_SERVER_URL}/dev/friends/${global.myEmployeeId || '1'}`);
             const data = await response.json();
             if (response.ok) {
-                // 가상유저 데이터에 마지막 점심 히스토리 추가
-                const friendsWithLastLunch = data.map(friend => 
-                    addLastLunchToVirtualUser(friend, global.myEmployeeId || '1')
-                );
+                // 실제 친구 데이터 사용
+                const friendsWithLastLunch = data;
                 
                 setFriends(friendsWithLastLunch);
                 console.log('🔍 [친구목록] 가상 친구 관계 로드 성공:', friendsWithLastLunch.length);
