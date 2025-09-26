@@ -377,16 +377,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   registerButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#3B82F6',
+    backgroundColor: '#10B981', // secondary 색상 (에메랄드)
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 12,
+    elevation: 2,
+    shadowColor: '#10B981',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   registerButtonText: {
-    color: '#3B82F6',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
