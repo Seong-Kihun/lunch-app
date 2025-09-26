@@ -417,6 +417,68 @@ def delete_account():
     
     return protected_delete()
 
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """비밀번호 재설정 요청"""
+    from .models import User, db
+    from .utils import AuthUtils
+    from .email_service import EmailService
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data:
+            return jsonify({'error': '이메일이 필요합니다.'}), 400
+        
+        email = data['email'].strip().lower()
+        
+        # 이메일 형식 검증
+        if not email.endswith('@koica.go.kr'):
+            return jsonify({'error': 'KOICA 이메일 주소를 사용해주세요.'}), 400
+        
+        # 사용자 조회
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            # 보안을 위해 존재하지 않는 이메일이어도 성공 메시지 반환
+            return jsonify({
+                'message': '비밀번호 재설정 이메일을 발송했습니다.',
+                'success': True
+            }), 200
+        
+        # 임시 비밀번호 생성
+        import secrets
+        import string
+        temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        
+        # 사용자 비밀번호를 임시 비밀번호로 변경
+        user.set_password(temp_password)
+        db.session.commit()
+        
+        # 이메일 발송
+        try:
+            email_service = EmailService()
+            email_service.send_password_reset_email(
+                to_email=email,
+                temp_password=temp_password,
+                user_name=user.nickname
+            )
+        except Exception as e:
+            current_app.logger.error(f"비밀번호 재설정 이메일 발송 실패: {str(e)}")
+            # 이메일 발송 실패해도 성공으로 처리 (보안상)
+        
+        return jsonify({
+            'message': '비밀번호 재설정 이메일을 발송했습니다.',
+            'success': True
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"비밀번호 재설정 요청 실패: {str(e)}")
+        return jsonify({
+            'error': '서버 오류가 발생했습니다.',
+            'success': False
+        }), 500
+
 # 에러 핸들러
 @auth_bp.errorhandler(404)
 def not_found(error):

@@ -21,6 +21,8 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
 
@@ -88,16 +90,79 @@ const LoginScreen = ({ navigation }) => {
         // AuthContext를 통해 로그인 성공 처리
         handleLoginSuccess(data.user, data.access_token, data.refresh_token);
       } else {
-        setAuthError(data.error || '로그인에 실패했습니다.');
+        // 로그인 실패 시 팝업 표시
+        const errorMessage = data.error || '로그인에 실패했습니다.';
+        Alert.alert(
+          '로그인 실패',
+          '아이디와 비밀번호를 확인해주세요.',
+          [{ text: '확인' }]
+        );
+        setAuthError(errorMessage);
       }
     } catch (error) {
       console.error('비밀번호 로그인 실패:', error);
+      Alert.alert(
+        '로그인 오류',
+        '네트워크 오류가 발생했습니다. 다시 시도해주세요.',
+        [{ text: '확인' }]
+      );
       setAuthError('로그인 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 비밀번호 찾기 처리
+  const handleForgotPassword = async () => {
+    try {
+      if (!forgotPasswordEmail.trim()) {
+        Alert.alert('오류', '이메일을 입력해주세요.');
+        return;
+      }
+
+      if (!isValidEmail(forgotPasswordEmail)) {
+        Alert.alert('오류', '올바른 KOICA 이메일 주소를 입력해주세요.');
+        return;
+      }
+
+      setIsLoading(true);
+
+      const response = await fetch(`${RENDER_SERVER_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: forgotPasswordEmail.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          '비밀번호 재설정',
+          '임시 비밀번호가 이메일로 발송되었습니다.\n이메일을 확인하신 후 임시 비밀번호로 로그인해주세요.',
+          [
+            {
+              text: '확인',
+              onPress: () => {
+                setShowForgotPassword(false);
+                setForgotPasswordEmail('');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('오류', data.error || '비밀번호 재설정 요청에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('비밀번호 찾기 실패:', error);
+      Alert.alert('오류', '네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 개발용 전체 정리 (백엔드 데이터 완전 정리)
   const handleClearAllData = async () => {
@@ -239,6 +304,15 @@ const LoginScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
+            {/* 비밀번호 찾기 버튼 */}
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => setShowForgotPassword(true)}
+              disabled={isLoading}
+            >
+              <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
+            </TouchableOpacity>
+
             {/* 회원가입 버튼 */}
             <TouchableOpacity
               style={styles.registerButton}
@@ -266,6 +340,60 @@ const LoginScreen = ({ navigation }) => {
             </Text>
           </View>
         </View>
+
+        {/* 비밀번호 찾기 모달 */}
+        {showForgotPassword && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>비밀번호 찾기</Text>
+              <Text style={styles.modalDescription}>
+                등록된 이메일 주소를 입력하시면{'\n'}임시 비밀번호를 발송해드립니다.
+              </Text>
+              
+              <View style={styles.modalInputContainer}>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="이메일 아이디"
+                  value={forgotPasswordEmail}
+                  onChangeText={setForgotPasswordEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+                <Text style={styles.modalDomainText}>@koica.go.kr</Text>
+              </View>
+
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => {
+                    setShowForgotPassword(false);
+                    setForgotPasswordEmail('');
+                  }}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.modalCancelText}>취소</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.modalSubmitButton,
+                    (!forgotPasswordEmail.trim() || isLoading) && styles.modalSubmitButtonDisabled
+                  ]}
+                  onPress={handleForgotPassword}
+                  disabled={!forgotPasswordEmail.trim() || isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.modalSubmitText}>발송</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -396,6 +524,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  forgotPasswordText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
   clearButton: {
     backgroundColor: '#EF4444',
     borderRadius: 12,
@@ -427,6 +566,114 @@ const styles = StyleSheet.create({
   helpLink: {
     color: '#3B82F6',
     textDecorationLine: 'underline',
+  },
+  // 모달 스타일
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    backgroundColor: '#F8F9FA',
+  },
+  modalInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1E293B',
+    paddingVertical: 4,
+  },
+  modalDomainText: {
+    fontSize: 16,
+    color: '#64748B',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalCancelText: {
+    color: '#64748B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#3B82F6',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  modalSubmitButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  modalSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
