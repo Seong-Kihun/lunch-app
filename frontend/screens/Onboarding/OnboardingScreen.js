@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RENDER_SERVER_URL } from '../../config';
 import { setOnboardingCompleted } from '../../utils/onboardingUtils';
+import { useAuth } from '../../auth/AuthContext';
 
 // 디버깅을 위한 로그
 console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
@@ -20,7 +21,7 @@ console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
 import { useAuth } from '../../auth/AuthContext';
 
 export default function OnboardingScreen() {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [userPreferences, setUserPreferences] = useState({
         nickname: '',
@@ -106,12 +107,17 @@ export default function OnboardingScreen() {
                 if (user && user.employee_id) {
                     await setOnboardingCompleted(user.employee_id);
                     console.log(`✅ 사용자 ${user.employee_id} 온보딩 완료 상태 저장됨`);
+                    
+                    // 사용자 정보에 온보딩 완료 상태 추가하여 강제로 상태 업데이트
+                    const updatedUser = {
+                        ...user,
+                        onboardingCompleted: true
+                    };
+                    updateUser(updatedUser);
+                    console.log(`🔄 사용자 정보 업데이트로 온보딩 완료 상태 반영`);
                 } else {
                     console.error('❌ 사용자 정보가 없어서 온보딩 완료 상태 저장 실패');
                 }
-                
-                // 온보딩 완료 후 메인 앱으로 이동
-                // setOnboardingCompleted가 호출되면 MainApp의 useEffect에서 자동으로 hasCompletedOnboarding이 true로 설정됨
             } catch (error) {
                 console.error('온보딩 완료 처리 중 오류:', error);
                 // 오류가 발생해도 온보딩 완료 상태는 저장

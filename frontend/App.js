@@ -619,6 +619,13 @@ function MainApp() {
         const checkStatus = async () => {
             // 사용자 정보가 있을 때만 온보딩 상태 확인
             if (user && user.employee_id) {
+                // 사용자 정보에 온보딩 완료 상태가 있으면 바로 설정
+                if (user.onboardingCompleted) {
+                    setHasCompletedOnboarding(true);
+                    console.log(`✅ [MainApp] 사용자 ${user.employee_id} 온보딩 완료 (사용자 정보에서 확인) - 메인 화면으로 전환`);
+                    return true;
+                }
+                
                 const completed = await checkOnboardingStatus(user.employee_id);
                 if (completed) {
                     setHasCompletedOnboarding(true);
