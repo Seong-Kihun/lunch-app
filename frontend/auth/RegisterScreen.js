@@ -151,13 +151,6 @@ const RegisterScreen = ({ navigation }) => {
 
           {/* 메인 카드 */}
           <View style={[styles.mainCard, { backgroundColor: currentColors.surface }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="person-add" size={32} color={currentColors.primary} />
-              <Text style={[styles.cardTitle, { color: currentColors.text }]}>
-                회원가입
-              </Text>
-            </View>
-
             {/* 폼 */}
             <View style={styles.form}>
               {/* 이메일 입력 */}

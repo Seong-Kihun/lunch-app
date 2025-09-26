@@ -394,6 +394,7 @@ const LoginScreen = ({ navigation }) => {
             </View>
           </View>
         )}
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
