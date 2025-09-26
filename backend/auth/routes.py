@@ -163,63 +163,55 @@ def change_password():
 
 @auth_bp.route('/register', methods=['POST'])
 def register_user():
-    """신규 사용자 회원가입 완료"""
+    """신규 사용자 회원가입"""
     # 지연 import로 순환 참조 방지
     from .models import User, db
     from .utils import AuthUtils
     
     try:
-        # 임시 토큰 검증
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        temp_token = auth_header.split(' ')[1]
-        payload = AuthUtils.verify_jwt_token(temp_token)
-        
-        if not payload or payload.get('token_type') != 'temp':
-            return jsonify({'error': '유효하지 않은 임시 토큰입니다.'}), 401
-        
         data = request.get_json()
         
-        if not data or 'nickname' not in data:
-            return jsonify({'error': '닉네임이 필요합니다.'}), 400
+        # 필수 필드 검증
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다.'}), 400
         
-        nickname = data['nickname'].strip()
-        agreements = data.get('agreements', {})
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
         
-        # 입력값 검증
-        if len(nickname) < 2 or len(nickname) > 8:
-            return jsonify({'error': '닉네임은 2~8자로 입력해주세요.'}), 400
+        if not email:
+            return jsonify({'error': '이메일이 필요합니다.'}), 400
         
-        if not re.match(r'^[a-zA-Z0-9가-힣]+$', nickname):
-            return jsonify({'error': '닉네임에는 특수문자를 사용할 수 없습니다.'}), 400
+        if not password:
+            return jsonify({'error': '비밀번호가 필요합니다.'}), 400
         
-        # 필수 약관 동의 확인
-        required_agreements = ['service_terms', 'privacy_policy']
-        for agreement in required_agreements:
-            if not agreements.get(agreement):
-                return jsonify({'error': '필수 약관에 동의해주세요.'}), 400
+        if len(password) < 8:
+            return jsonify({'error': '비밀번호는 8자 이상이어야 합니다.'}), 400
         
-        # 닉네임 중복 확인
-        if User.query.filter_by(nickname=nickname).first():
-            return jsonify({'error': '이미 사용 중인 닉네임입니다.'}), 400
+        # 이메일 형식 검증
+        if not email.endswith('@koica.go.kr'):
+            return jsonify({'error': 'KOICA 이메일 주소를 사용해주세요.'}), 400
         
-        # 사용자 생성
+        # 이메일 중복 확인
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': '이미 사용 중인 이메일입니다.'}), 400
+        
+        # 사용자 생성 (닉네임은 이메일에서 자동 생성)
+        nickname = email.split('@')[0]  # 이메일 아이디 부분을 닉네임으로 사용
+        employee_id = AuthUtils.generate_employee_id()
+        
         user = User(
-            email=data.get('email'),  # 임시 토큰에서 이메일 추출 필요
+            email=email,
             nickname=nickname,
-            employee_id=AuthUtils.generate_employee_id()
+            employee_id=employee_id
         )
         
-        # 비밀번호 설정 (제공된 경우)
-        if 'password' in data and data['password']:
-            user.set_password(data['password'])
+        # 비밀번호 설정
+        user.set_password(password)
         
         db.session.add(user)
         db.session.commit()
         
-        # 최종 토큰 발급
+        # 토큰 발급
         access_token = AuthUtils.generate_jwt_token(user.id, 'access')
         refresh_token, _ = AuthUtils.create_refresh_token(user.id)
         

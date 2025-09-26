@@ -24,9 +24,7 @@ const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    nickname: '',
-    employeeId: ''
+    confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -68,16 +66,6 @@ const RegisterScreen = ({ navigation }) => {
       newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.';
     }
     
-    if (!formData.nickname.trim()) {
-      newErrors.nickname = '닉네임을 입력해주세요.';
-    } else if (formData.nickname.length < 2 || formData.nickname.length > 8) {
-      newErrors.nickname = '닉네임은 2-8자로 입력해주세요.';
-    }
-    
-    if (!formData.employeeId.trim()) {
-      newErrors.employeeId = '직원 ID를 입력해주세요.';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,9 +82,7 @@ const RegisterScreen = ({ navigation }) => {
         },
         body: JSON.stringify({
           email: formData.email,
-          password: formData.password,
-          nickname: formData.nickname,
-          employee_id: formData.employeeId
+          password: formData.password
         })
       });
 
@@ -153,7 +139,7 @@ const RegisterScreen = ({ navigation }) => {
                 밥플떼기에 오신 것을 환영합니다!
               </Text>
               <Text style={[styles.cardSubtitle, { color: currentColors.textSecondary }]}>
-                회원가입하고 함께 맛있는 점심을 즐겨보세요
+                KOICA 이메일과 비밀번호만으로 간편하게 가입하세요
               </Text>
             </View>
 
@@ -238,55 +224,6 @@ const RegisterScreen = ({ navigation }) => {
                 {errors.confirmPassword && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.confirmPassword}</Text>}
               </View>
 
-              {/* 닉네임 입력 */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: currentColors.text }]}>
-                  닉네임 <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={[
-                  styles.inputContainer, 
-                  { 
-                    borderColor: errors.nickname ? currentColors.red : currentColors.border,
-                    backgroundColor: currentColors.surface
-                  }
-                ]}>
-                  <Ionicons name="person" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, { color: currentColors.text }]}
-                    placeholder="닉네임을 입력하세요 (2-8자)"
-                    placeholderTextColor={currentColors.textSecondary}
-                    value={formData.nickname}
-                    onChangeText={(value) => handleInputChange('nickname', value)}
-                    editable={!isLoading}
-                  />
-                </View>
-                {errors.nickname && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.nickname}</Text>}
-              </View>
-
-              {/* 직원 ID 입력 */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: currentColors.text }]}>
-                  직원 ID <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={[
-                  styles.inputContainer, 
-                  { 
-                    borderColor: errors.employeeId ? currentColors.red : currentColors.border,
-                    backgroundColor: currentColors.surface
-                  }
-                ]}>
-                  <Ionicons name="card" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, { color: currentColors.text }]}
-                    placeholder="직원 ID를 입력하세요"
-                    placeholderTextColor={currentColors.textSecondary}
-                    value={formData.employeeId}
-                    onChangeText={(value) => handleInputChange('employeeId', value)}
-                    editable={!isLoading}
-                  />
-                </View>
-                {errors.employeeId && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.employeeId}</Text>}
-              </View>
 
               {/* 회원가입 버튼 */}
               <TouchableOpacity
