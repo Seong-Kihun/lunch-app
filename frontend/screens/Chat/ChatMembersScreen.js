@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getServerURL } from '../../utils/networkUtils';
 
 const ChatMembersScreen = ({ route, navigation }) => {
   const { chatId, chatType, chatName } = route.params;
@@ -39,13 +40,14 @@ const ChatMembersScreen = ({ route, navigation }) => {
       // const response = await fetch(`/dev/chat/rooms/${chatId}/members`);
       // const data = await response.json();
       
-      // 임시 데이터
-      const mockMembers = [
-        { id: 1, nickname: '사용자1', role: 'admin', is_online: true },
-        { id: 2, nickname: '사용자2', role: 'member', is_online: true },
-        { id: 3, nickname: '사용자3', role: 'member', is_online: false },
-      ];
-      setMembers(mockMembers);
+      // 실제 API 호출
+      const response = await fetch(`${getServerURL()}/api/chat/rooms/${chatId}/members`);
+      if (response.ok) {
+        const data = await response.json();
+        setMembers(data.members || []);
+      } else {
+        setMembers([]);
+      }
     } catch (error) {
       console.error('멤버 목록 로드 실패:', error);
       Alert.alert('오류', '멤버 목록을 불러올 수 없습니다.');

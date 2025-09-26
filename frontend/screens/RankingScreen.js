@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getSpecialRanking, getMyPointsRanking } from '../utils/pointsManager';
 import { RENDER_SERVER_URL } from '../config';
-import { addLastLunchToVirtualUser } from '../utils/virtualUserData';
+// 가상 유저 데이터 import 제거
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -84,30 +84,7 @@ const RankingScreen = ({ navigation }) => {
         { id: 'friend', title: '친구 사랑', icon: '🤝', color: '#BB8FCE' }
     ];
 
-    // 기본 임시 데이터 생성 함수
-    const generateDefaultMockData = (period) => {
-        const rankings = [];
-        const badges = ['양식 마스터', '카페 헌터', '한식 전문가', '중식 탐험가', '일식 마니아', '레전드', '베테랑', '신인', '열정가', '탐험가'];
-        const changes = ['+3', '+2', '+1', '=', '-1', '-2', '-3'];
-        
-        for (let i = 1; i <= 20; i++) {
-            const points = Math.max(0, 1000 - (i - 1) * 50); // 0점도 가능
-            const badge = badges[i % badges.length];
-            const change = changes[i % changes.length];
-            
-            rankings.push({
-                rank: i,
-                user_id: `user_${i}`,
-                nickname: `사용자${i.toString().padStart(3, '0')}`,
-                points: points,
-                badge: badge,
-                change: change,
-                activities: [],
-                last_lunch: '처음'
-            });
-        }
-        return rankings;
-    };
+    // 가상 데이터 생성 함수 제거 - 실제 API만 사용
 
     // 랭킹 데이터 가져오기
     const fetchRankingData = useCallback(async () => {
@@ -136,98 +113,10 @@ const RankingScreen = ({ navigation }) => {
                 }
             }
             
-            // API 데이터가 없으면 가상 유저 데이터를 사용하여 랭킹 생성
+            // API 데이터가 없으면 빈 배열로 설정
             if (data.length === 0) {
-                console.log('API 데이터가 없어서 가상 유저 데이터로 랭킹 생성 시작');
-                try {
-                    // 가상 유저 목록 가져오기
-                    const friendsResponse = await fetch(`${RENDER_SERVER_URL}/dev/friends/${global.myEmployeeId || '1'}`);
-                    console.log('가상 유저 API 응답 상태:', friendsResponse.status);
-                    
-                    if (friendsResponse.ok) {
-                        const friendsData = await friendsResponse.json();
-                        console.log('가상 유저 데이터 로드 성공, 유저 수:', friendsData.length);
-                        console.log('가상 유저 데이터 샘플:', friendsData.slice(0, 2));
-                        
-                        // 가상 유저 데이터에 마지막 점심 히스토리 추가
-                        const usersWithLastLunch = friendsData.map(friend => 
-                            addLastLunchToVirtualUser(friend, global.myEmployeeId || '1')
-                        );
-                        console.log('마지막 점심 히스토리 추가 후 유저 수:', usersWithLastLunch.length);
-                        console.log('처리된 유저 샘플:', usersWithLastLunch.slice(0, 2));
-                        
-                        // 랭킹 데이터 생성 (점수가 0점인 유저도 포함)
-                        const generateRankingsFromUsers = (users, period) => {
-                            console.log('랭킹 생성 시작, 입력 유저 수:', users.length);
-                            console.log('입력 유저 샘플:', users.slice(0, 2));
-                            
-                            const badges = ['양식 마스터', '카페 헌터', '한식 전문가', '중식 탐험가', '일식 마니아', '레전드', '베테랑', '신인', '열정가', '탐험가'];
-                            const changes = ['+3', '+2', '+1', '=', '-1', '-2', '-3'];
-                            
-                            // 사용자별 점수 계산 (사용자 ID 기반으로 일관된 점수 생성)
-                            const rankings = users.map((user, index) => {
-                                const userSeed = parseInt(user.employee_id.toString().replace(/\D/g, '0')) || 1;
-                                const periodMultiplier = period === 'weekly' ? 1 : period === 'monthly' ? 4 : 12;
-                                
-                                // 사용자 ID 기반으로 일관된 점수 생성 (0점도 가능)
-                                const basePoints = (userSeed * 37) % 1000; // 0-999점 범위
-                                const periodPoints = basePoints * periodMultiplier;
-                                const finalPoints = Math.max(0, periodPoints - (index * 10)); // 순위에 따라 점수 감소
-                                
-                                const badge = badges[userSeed % badges.length];
-                                const change = changes[userSeed % changes.length];
-                                
-                                const rankingItem = {
-                                    rank: index + 1,
-                                    user_id: user.employee_id,
-                                    nickname: user.nickname,
-                                    points: finalPoints,
-                            badge: badge,
-                            change: change,
-                                    activities: [],
-                                    last_lunch: user.last_lunch || '처음'
-                                };
-                                
-                                console.log(`유저 ${user.nickname} 랭킹 생성:`, rankingItem);
-                                return rankingItem;
-                            });
-                            
-                            console.log('정렬 전 랭킹 데이터:', rankings.length, '개');
-                            
-                            // 점수 순으로 정렬 (높은 점수 순)
-                            const sortedRankings = rankings.sort((a, b) => b.points - a.points).map((item, index) => ({
-                                ...item,
-                                rank: index + 1
-                            }));
-                            
-                            console.log('정렬 후 랭킹 데이터:', sortedRankings.length, '개');
-                            console.log('정렬 후 샘플:', sortedRankings.slice(0, 2));
-                            
-                            return sortedRankings;
-                        };
-                        
-                        const rankingsData = {
-                            weekly: generateRankingsFromUsers(usersWithLastLunch, 'weekly'),
-                            monthly: generateRankingsFromUsers(usersWithLastLunch, 'monthly'),
-                            alltime: generateRankingsFromUsers(usersWithLastLunch, 'alltime')
-                        };
-                        
-                        data = rankingsData[activeTab] || [];
-                        console.log(`${activeTab} 탭 랭킹 데이터 생성 완료, 데이터 수:`, data.length);
-                        console.log(`${activeTab} 탭 랭킹 데이터 샘플:`, data.slice(0, 2));
-                        console.log('전체 랭킹 데이터 구조:', Object.keys(rankingsData));
-                    } else {
-                        console.error('가상 유저 데이터 로드 실패:', friendsResponse.status);
-                        // 가상 유저 데이터 로드 실패 시 기본 임시 데이터 사용
-                        data = generateDefaultMockData(activeTab);
-                        console.log('기본 임시 데이터 사용, 데이터 수:', data.length);
-                    }
-                } catch (error) {
-                    console.error('가상 유저 데이터 로드 오류:', error);
-                    // 오류 발생 시 기본 임시 데이터 사용
-                    data = generateDefaultMockData(activeTab);
-                    console.log('오류로 인한 기본 임시 데이터 사용, 데이터 수:', data.length);
-                }
+                console.log('API 데이터가 없어서 빈 랭킹 표시');
+                data = [];
             }
 
             setRankingData(data);
@@ -272,41 +161,12 @@ const RankingScreen = ({ navigation }) => {
                             }
                         }
                     } else {
-                        // API에서 데이터를 가져올 수 없는 경우, 가상 유저 데이터에서 현재 사용자 찾기
-                        const currentUserRanking = data.find(item => 
-                            item.user_id === global.myEmployeeId || 
-                            item.nickname === global.myNickname
-                        );
-                        
-                        if (currentUserRanking) {
-                            setMyRanking({
-                                rank: currentUserRanking.rank,
-                                points: currentUserRanking.points,
-                                change: currentUserRanking.change || '='
-                            });
-                        } else {
-                            // 현재 사용자를 찾을 수 없는 경우 기본값 설정
-                            setMyRanking({ rank: 0, points: 0, change: '=' });
-                        }
+                        // API에서 데이터를 가져올 수 없는 경우 기본값 설정
+                        setMyRanking({ rank: 0, points: 0, change: '=' });
                     }
                 } catch (error) {
                     console.error('내 랭킹 정보 조회 실패:', error);
-                    
-                    // 오류 발생 시 가상 유저 데이터에서 현재 사용자 찾기
-                    const currentUserRanking = data.find(item => 
-                        item.user_id === global.myEmployeeId || 
-                        item.nickname === global.myNickname
-                    );
-                    
-                    if (currentUserRanking) {
-                        setMyRanking({
-                            rank: currentUserRanking.rank,
-                            points: currentUserRanking.points,
-                            change: currentUserRanking.change || '='
-                        });
-                    } else {
-                        setMyRanking({ rank: 0, points: 0, change: '=' });
-                    }
+                    setMyRanking({ rank: 0, points: 0, change: '=' });
                 }
             } else {
                 // 사용자 ID가 없거나 데이터가 없는 경우 기본값 설정

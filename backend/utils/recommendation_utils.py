@@ -77,10 +77,8 @@ def _get_all_user_ids():
         if users:
             return [user.employee_id for user in users]
         
-        # 데이터베이스에 사용자가 없으면 가상 사용자 사용
-        from utils.mock_data import get_all_mock_users
-        mock_users = get_all_mock_users()
-        return list(mock_users.keys())
+        # 데이터베이스에 사용자가 없으면 빈 리스트 반환
+        return []
         
     except Exception as e:
         print(f"ERROR: _get_all_user_ids 실행 중 오류: {e}")
@@ -219,9 +217,19 @@ def get_user_preference(user_id, preference_type):
                 return getattr(user, 'lunch_preference', '').split(',')
         
         # 가상 데이터 사용
-        from utils.mock_data import get_all_mock_users
-        mock_users = get_all_mock_users()
-        user_data = mock_users.get(user_id)
+        from backend.auth.models import User
+        user = User.query.filter_by(employee_id=user_id).first()
+        if user:
+            user_data = {
+                "employee_id": user.employee_id,
+                "nickname": user.nickname,
+                "food_preferences": getattr(user, 'food_preferences', ''),
+                "lunch_style": getattr(user, 'lunch_style', ''),
+                "allergies": getattr(user, 'allergies', ''),
+                "preferred_time": getattr(user, 'preferred_time', '12:00')
+            }
+        else:
+            user_data = None
         
         if user_data:
             if preference_type == "food":
@@ -318,9 +326,19 @@ def generate_recommendation_cache():
                     if other_user_id != user_id:
                         compatibility = calculate_compatibility_score_cached(user_id, other_user_id)
                         
-                        from utils.mock_data import get_all_mock_users
-                        mock_users = get_all_mock_users()
-                        user_data = mock_users.get(other_user_id, {})
+                        from backend.auth.models import User
+                        other_user = User.query.filter_by(employee_id=other_user_id).first()
+                        if other_user:
+                            user_data = {
+                                "employee_id": other_user.employee_id,
+                                "nickname": other_user.nickname,
+                                "food_preferences": getattr(other_user, 'food_preferences', ''),
+                                "lunch_style": getattr(other_user, 'lunch_style', ''),
+                                "allergies": getattr(other_user, 'allergies', ''),
+                                "preferred_time": getattr(other_user, 'preferred_time', '12:00')
+                            }
+                        else:
+                            user_data = {}
                         
                         scored_users.append({
                             'user_id': other_user_id,

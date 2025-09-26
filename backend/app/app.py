@@ -314,7 +314,7 @@ if app.config.get("DEBUG", False):
                 return jsonify({"error": "알림 시스템이 비활성화되어 있습니다."}), 400
 
             data = request.get_json() or {}
-            user_id = data.get("user_id", "test_user")
+            user_id = data.get("user_id", "unknown_user")
             message = data.get("message", "테스트 알림입니다!")
 
             success = notification_system.send_notification(user_id, "system_alert", message, {"test": True})
@@ -348,7 +348,7 @@ if app.config.get("DEBUG", False):
                 return jsonify({"error": "협업 시스템이 비활성화되어 있습니다."}), 400
 
             data = request.get_json() or {}
-            user_id = data.get("user_id", "test_user")
+            user_id = data.get("user_id", "unknown_user")
             title = data.get("title", "테스트 협업 세션")
 
             from realtime.collaboration_system import CollaborationType
@@ -1587,18 +1587,17 @@ def create_initial_data():
             db.session.commit()
             print("DEBUG: users 테이블 재생성 완료")
         
-        # 공통 모의 데이터 사용
-        from utils.mock_data import get_all_mock_users
-        mock_users = get_all_mock_users()
+        # 실제 사용자 데이터 사용
+        users = User.query.all()
         
         # 데이터베이스 형식으로 변환
         users_data = []
-        for user_id, user_data in mock_users.items():
+        for user in users:
             users_data.append({
-                "employee_id": user_data["employee_id"],
-                "nickname": user_data["nickname"],
-                "food_preferences": user_data["food_preferences"],
-                "lunch_style": ",".join(user_data["lunchStyle"]),
+                "employee_id": user.employee_id,
+                "nickname": user.nickname,
+                "food_preferences": getattr(user, 'food_preferences', ''),
+                "lunch_style": getattr(user, 'lunch_style', ''),
             })
 
         # User 생성
@@ -6601,19 +6600,17 @@ def get_nickname_by_id(employee_id):
 
 
 def get_dev_user_data(employee_id):
-    """가상 유저 데이터 반환 헬퍼 함수"""
-    # 공통 모의 데이터 사용
-    from utils.mock_data import get_all_mock_users
-    mock_users = get_all_mock_users()
+    """실제 유저 데이터 반환 헬퍼 함수"""
+    # 실제 데이터베이스에서 사용자 조회
+    user = User.query.filter_by(employee_id=employee_id).first()
     
-    if employee_id in mock_users:
-        user_data = mock_users[employee_id]
+    if user:
         return {
-            "nickname": user_data["nickname"],
-            "foodPreferences": user_data["food_preferences"].split(","),
-            "lunchStyle": user_data["lunchStyle"],
-            "allergies": user_data["allergies"],
-            "preferredTime": user_data["preferred_time"],
+            "nickname": user.nickname,
+            "foodPreferences": getattr(user, 'food_preferences', '').split(",") if getattr(user, 'food_preferences', '') else [],
+            "lunchStyle": getattr(user, 'lunch_style', ''),
+            "allergies": getattr(user, 'allergies', ''),
+            "preferredTime": getattr(user, 'preferred_time', '12:00'),
         }
     
     return None

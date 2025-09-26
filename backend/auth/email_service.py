@@ -105,7 +105,7 @@ class EmailService:
                     </div>
                     <div class="footer">
                         <p>이 이메일은 자동으로 발송되었습니다. 회신하지 마세요.</p>
-                        <p>© 2024 밥플떼기. All rights reserved.</p>
+                        <p>© 2025 밥플떼기. All rights reserved.</p>
                     </div>
                 </div>
             </body>
