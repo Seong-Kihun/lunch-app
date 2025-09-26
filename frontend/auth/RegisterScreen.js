@@ -136,10 +136,7 @@ const RegisterScreen = ({ navigation }) => {
             <View style={styles.cardHeader}>
               <Ionicons name="person-add" size={32} color={currentColors.primary} />
               <Text style={[styles.cardTitle, { color: currentColors.text }]}>
-                밥플떼기에 오신 것을 환영합니다!
-              </Text>
-              <Text style={[styles.cardSubtitle, { color: currentColors.textSecondary }]}>
-                KOICA 이메일과 비밀번호만으로 간편하게 가입하세요
+                회원가입
               </Text>
             </View>
 
@@ -236,11 +233,11 @@ const RegisterScreen = ({ navigation }) => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={currentColors.white} />
+                  <ActivityIndicator color="white" />
                 ) : (
                   <>
-                    <Ionicons name="person-add" size={20} color={currentColors.white} style={styles.buttonIcon} />
-                    <Text style={[styles.registerButtonText, { color: currentColors.white }]}>
+                    <Ionicons name="person-add" size={20} color="white" style={styles.buttonIcon} />
+                    <Text style={[styles.registerButtonText, { color: "white" }]}>
                       회원가입
                     </Text>
                   </>
