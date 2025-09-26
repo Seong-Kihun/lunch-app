@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from backend.app.extensions import db
-from backend.models.app_models import VotingSession, VotingOption, Vote, ChatRoom, ChatParticipant, User
+from backend.models.app_models import VotingSession, VotingOption, Vote, ChatRoom, ChatParticipant
 from datetime import datetime, timedelta
 import random
 from backend.auth.middleware import check_authentication

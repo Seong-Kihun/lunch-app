@@ -189,7 +189,7 @@ class RefreshToken(db.Model):
     is_revoked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref='refresh_tokens')
+    user = db.relationship('backend.auth.models.User', backref='refresh_tokens')
     
     def __repr__(self):
         return f'<RefreshToken {self.user_id}>'
@@ -218,7 +218,7 @@ class RevokedToken(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     revoked_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref='revoked_tokens')
+    user = db.relationship('backend.auth.models.User', backref='revoked_tokens')
     
     def __repr__(self):
         return f'<RevokedToken {self.user_id}>'

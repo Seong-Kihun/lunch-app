@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from backend.app.extensions import db
-from backend.models.app_models import User, UserPreference, MatchRequest, Match
+from backend.models.app_models import UserPreference, MatchRequest, Match
 from datetime import datetime, timedelta
 import random
 from backend.auth.middleware import check_authentication
@@ -59,6 +59,9 @@ def calculate_compatibility_score(user1, user2):
 
 def find_best_match(user_id, exclude_ids=None):
     """사용자에게 가장 적합한 매칭 상대 찾기"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
+    
     if exclude_ids is None:
         exclude_ids = []
     
@@ -125,6 +128,8 @@ def get_match_status(employee_id):
         ).first()
         
         if current_match:
+            # 지연 import로 SQLAlchemy 충돌 방지
+            from backend.auth.models import User
             other_user_id = current_match.user2_id if current_match.user1_id == employee_id else current_match.user1_id
             other_user = User.query.filter_by(employee_id=other_user_id).first()
             
@@ -164,6 +169,8 @@ def create_match_request():
             return jsonify({"error": "요청자 ID가 필요합니다."}), 400
         
         # 사용자 확인
+        # 지연 import로 SQLAlchemy 충돌 방지
+        from backend.auth.models import User
         user = User.query.filter_by(employee_id=requester_id).first()
         if not user:
             return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404

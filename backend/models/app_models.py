@@ -6,8 +6,8 @@
 from datetime import datetime, timedelta
 from backend.app.extensions import db
 
-# 🚨 중요: User 모델을 가장 먼저 import하여 'users' 테이블을 먼저 생성
-from backend.auth.models import User
+# 🚨 중요: User 모델은 지연 import를 사용하여 SQLAlchemy 충돌 방지
+# from backend.auth.models import User  # 제거: SQLAlchemy 충돌 방지
 
 class Party(db.Model):
     """파티 모델"""

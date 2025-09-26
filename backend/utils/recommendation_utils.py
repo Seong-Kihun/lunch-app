@@ -4,7 +4,7 @@
 import random
 from datetime import datetime, timedelta
 from backend.app.extensions import db
-from backend.models.app_models import User, Party, PartyMember, LunchProposal
+from backend.models.app_models import Party, PartyMember, LunchProposal
 
 
 def get_available_users_for_date(date_str):

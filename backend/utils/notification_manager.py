@@ -5,7 +5,7 @@
 
 from datetime import datetime, timedelta
 from backend.app.extensions import db
-from backend.models.app_models import ChatNotification, NotificationSettings, User
+from backend.models.app_models import ChatNotification, NotificationSettings
 from flask_socketio import emit
 import json
 

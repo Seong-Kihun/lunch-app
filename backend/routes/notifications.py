@@ -5,7 +5,7 @@
 
 from flask import Blueprint, request, jsonify
 from backend.app.extensions import db
-from backend.models.app_models import ChatNotification, NotificationSettings, User
+from backend.models.app_models import ChatNotification, NotificationSettings
 from backend.utils.notification_manager import notification_manager
 from backend.auth.middleware import check_authentication
 from datetime import datetime, timedelta

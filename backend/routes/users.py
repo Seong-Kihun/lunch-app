@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from backend.app.extensions import db
-from backend.models.app_models import User, UserPreference, RestaurantVisit, Review
+from backend.models.app_models import UserPreference, RestaurantVisit, Review
 from datetime import datetime, timedelta
 import random
 from backend.auth.middleware import check_authentication
@@ -26,6 +26,8 @@ def get_seoul_today():
 @users_bp.route("/users/<employee_id>", methods=["GET"])
 def get_user(employee_id):
     """사용자 정보 조회"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -63,6 +65,8 @@ def get_users_batch():
         return jsonify({"error": "사용자 ID 목록이 필요합니다."}), 400
     
     employee_ids = data["employee_ids"]
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     users = User.query.filter(User.employee_id.in_(employee_ids)).all()
     
     users_data = []
@@ -80,6 +84,8 @@ def get_users_batch():
 @users_bp.route("/users/<employee_id>", methods=["PUT"])
 def update_user(employee_id):
     """사용자 정보 수정"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -120,6 +126,8 @@ def update_user(employee_id):
 @users_bp.route("/users/<employee_id>/preferences", methods=["PUT"])
 def update_user_preferences(employee_id):
     """사용자 선호도 수정"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -166,6 +174,8 @@ def update_user_preferences(employee_id):
 @users_bp.route("/users/<employee_id>/preferences", methods=["GET"])
 def get_user_preferences(employee_id):
     """사용자 선호도 조회"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -196,6 +206,8 @@ def search_users():
     if not query and not department and not position:
         return jsonify({"error": "검색 조건이 필요합니다."}), 400
     
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     users_query = User.query
     
     if query:
@@ -235,6 +247,8 @@ def get_nearby_users():
     if not employee_id:
         return jsonify({"error": "사용자 ID가 필요합니다."}), 400
     
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -271,6 +285,8 @@ def get_nearby_users():
 @users_bp.route("/dev/users/<employee_id>", methods=["GET"])
 def get_dev_user(employee_id):
     """개발용 사용자 상세 정보 조회"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
@@ -324,6 +340,8 @@ def get_all_dev_users():
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 50, type=int), 200)
     
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     users_query = User.query
     total = users_query.count()
     users = users_query.offset((page - 1) * per_page).limit(per_page).all()
@@ -357,6 +375,8 @@ def get_all_dev_users():
 @users_bp.route("/dev/users/<employee_id>/lunch-history", methods=["GET"])
 def get_user_lunch_history(employee_id):
     """사용자의 점심 기록 조회"""
+    # 지연 import로 SQLAlchemy 충돌 방지
+    from backend.auth.models import User
     user = User.query.filter_by(employee_id=employee_id).first()
     if not user:
         return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
