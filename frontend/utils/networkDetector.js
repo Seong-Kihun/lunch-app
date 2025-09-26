@@ -8,60 +8,14 @@ import Constants from 'expo-constants';
  * @returns {string} 서버 URL
  */
 export const detectServerURL = () => {
+  // 개발 환경에서는 강제로 로컬 서버 사용
+  if (__DEV__) {
+    console.log('🔧 [NetworkDetector] 개발 환경: 로컬 서버 강제 사용');
+    return 'http://192.168.45.177:5000';
+  }
+
   // 프로덕션 환경인 경우
-  if (!__DEV__) {
-    return 'https://lunch-app-backend-ra12.onrender.com';
-  }
-
-  try {
-    // 1. Expo Constants에서 debuggerHost 확인
-    if (Constants.manifest && Constants.manifest.debuggerHost) {
-      const debuggerHost = Constants.manifest.debuggerHost.split(':')[0];
-      console.log('🔍 [NetworkDetector] Expo debuggerHost 감지:', debuggerHost);
-      return `http://${debuggerHost}:5000`;
-    }
-
-    // 2. Expo Constants 2.x 방식
-    if (Constants.expoConfig && Constants.expoConfig.hostUri) {
-      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
-      console.log('🔍 [NetworkDetector] Expo hostUri 감지:', hostUri);
-      return `http://${hostUri}:5000`;
-    }
-
-    // 2.5. Expo Constants에서 LAN IP 감지
-    if (Constants.expoConfig && Constants.expoConfig.debuggerHost) {
-      const debuggerHost = Constants.expoConfig.debuggerHost.split(':')[0];
-      console.log('🔍 [NetworkDetector] Expo debuggerHost 감지:', debuggerHost);
-      return `http://${debuggerHost}:5000`;
-    }
-
-    // 3. Metro bundler의 기본 IP들 시도 (더 포괄적인 범위)
-    const commonIPs = [
-      '192.168.1.1',
-      '192.168.0.1', 
-      '192.168.45.177', // 현재 백엔드가 실행 중인 IP
-      '10.0.0.1',
-      '172.16.0.1',
-      '172.20.10.1', // iPhone 핫스팟
-      '172.30.1.43', // 이전에 사용되던 IP
-      '192.168.43.1', // Android 핫스팟
-      'localhost',
-      '127.0.0.1'
-    ];
-
-    // 4. 플랫폼별 기본값
-    if (Platform.OS === 'web') {
-      return 'https://lunch-app-backend-ra12.onrender.com';
-    }
-
-    // 5. 기본값으로 Render 서버 사용
-    console.warn('⚠️ [NetworkDetector] 네트워크 자동 감지 실패, Render 서버 사용');
-    return 'https://lunch-app-backend-ra12.onrender.com';
-
-  } catch (error) {
-    console.error('❌ [NetworkDetector] 서버 URL 감지 중 오류:', error);
-    return 'https://lunch-app-backend-ra12.onrender.com';
-  }
+  return 'https://lunch-app-backend-ra12.onrender.com';
 };
 
 /**

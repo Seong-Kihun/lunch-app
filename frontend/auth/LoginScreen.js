@@ -35,24 +35,30 @@ const LoginScreen = ({ navigation }) => {
   // 비밀번호 로그인 처리
   const handlePasswordLogin = async () => {
     try {
+      console.log('🔐 [LoginScreen] 로그인 시도 시작');
       setIsLoading(true);
       clearError();
       
       // 입력값 검증
       if (!email.trim()) {
+        console.log('❌ [LoginScreen] 이메일이 비어있음');
         setAuthError('이메일을 입력해주세요.');
         return;
       }
       
       if (!password.trim()) {
+        console.log('❌ [LoginScreen] 비밀번호가 비어있음');
         setAuthError('비밀번호를 입력해주세요.');
         return;
       }
       
       if (!isValidEmail(email)) {
+        console.log('❌ [LoginScreen] 이메일 형식이 잘못됨:', email);
         setAuthError('올바른 KOICA 이메일 주소를 입력해주세요.');
         return;
       }
+      
+      console.log('✅ [LoginScreen] 입력값 검증 통과:', { email, passwordLength: password.length });
       
       // 동적 서버 URL 사용
       const { getServerURL } = await import('../utils/networkUtils');
@@ -294,7 +300,10 @@ const LoginScreen = ({ navigation }) => {
                 styles.submitButton,
                 (!email.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled
               ]}
-              onPress={handlePasswordLogin}
+              onPress={() => {
+                console.log('🔘 [LoginScreen] 로그인 버튼 클릭됨');
+                handlePasswordLogin();
+              }}
               disabled={(!email.trim() || !password.trim() || isLoading)}
             >
               {isLoading ? (
