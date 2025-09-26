@@ -18,6 +18,7 @@ import { storeAccessToken, storeRefreshToken, storeUserData } from '../utils/sec
 import { RENDER_SERVER_URL } from '../config';
 
 const LoginScreen = ({ navigation }) => {
+  const [emailPrefix, setEmailPrefix] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +26,14 @@ const LoginScreen = ({ navigation }) => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
+
+  // 이메일 prefix 핸들러
+  const handleEmailPrefixChange = (value) => {
+    setEmailPrefix(value);
+    const fullEmail = value ? `${value}@koica.go.kr` : '';
+    setEmail(fullEmail);
+    if (authError) { clearError(); }
+  };
 
   // 이메일 유효성 검사
   const isValidEmail = (email) => {
@@ -126,7 +135,10 @@ const LoginScreen = ({ navigation }) => {
         return;
       }
 
-      if (!isValidEmail(forgotPasswordEmail)) {
+      // 이메일 prefix에 @koica.go.kr 추가
+      const fullEmail = `${forgotPasswordEmail.trim()}@koica.go.kr`;
+
+      if (!isValidEmail(fullEmail)) {
         Alert.alert('오류', '올바른 KOICA 이메일 주소를 입력해주세요.');
         return;
       }
@@ -139,7 +151,7 @@ const LoginScreen = ({ navigation }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: forgotPasswordEmail.trim()
+          email: fullEmail
         })
       });
 
@@ -272,8 +284,8 @@ const LoginScreen = ({ navigation }) => {
               <TextInput
                 style={styles.emailInput}
                 placeholder="이메일 아이디"
-                value={email}
-                onChangeText={setEmail}
+                value={emailPrefix}
+                onChangeText={handleEmailPrefixChange}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -364,7 +376,10 @@ const LoginScreen = ({ navigation }) => {
                   style={styles.modalInput}
                   placeholder="이메일 아이디"
                   value={forgotPasswordEmail}
-                  onChangeText={setForgotPasswordEmail}
+                  onChangeText={(value) => {
+                    setForgotPasswordEmail(value);
+                    // @koica.go.kr 자동 추가는 비밀번호 찾기에서는 필요 없음
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
