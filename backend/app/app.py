@@ -769,62 +769,7 @@ def root():
     return jsonify({"message": "Lunch App API Server", "status": "running", "version": "1.0.0"})
 
 # 헬스체크 엔드포인트 (네트워크 연결 테스트용)
-@app.route("/health")
-@log_api_call
-def health_check():
-    """서버 상태 확인 엔드포인트 - 개발 및 모니터링용"""
-    try:
-        health_status = {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "version": "1.0.0",
-            "environment": os.getenv("FLASK_ENV", "development"),
-            "uptime": "running"
-        }
-        
-        # 데이터베이스 연결 상태 확인
-        try:
-            db.session.execute(text("SELECT 1"))
-            health_status["database"] = "connected"
-            logger.debug("Database health check passed")
-        except Exception as e:
-            health_status["database"] = f"error: {str(e)}"
-            logger.error("Database health check failed", error=str(e))
-        
-        # Redis 연결 상태 확인
-        try:
-            from backend.app.cache_manager import cache_manager
-            if cache_manager.redis_client:
-                cache_manager.redis_client.ping()
-                health_status["redis"] = "connected"
-                logger.debug("Redis health check passed")
-            else:
-                health_status["redis"] = "offline_mode"
-                logger.info("Redis in offline mode")
-        except Exception as e:
-            health_status["redis"] = f"error: {str(e)}"
-            logger.warning("Redis health check failed", error=str(e))
-        
-        # 메모리 사용량 (개발용)
-        if os.getenv("FLASK_ENV") == "development":
-            import psutil
-            process = psutil.Process()
-            health_status["memory"] = {
-                "rss": f"{process.memory_info().rss / 1024 / 1024:.1f} MB",
-                "vms": f"{process.memory_info().vms / 1024 / 1024:.1f} MB"
-            }
-        
-        logger.info("Health check completed", status="healthy")
-        return jsonify(health_status), 200
-        
-    except Exception as e:
-        error_response = {
-            "status": "unhealthy",
-            "timestamp": datetime.now().isoformat(),
-            "error": str(e)
-        }
-        logger.error("Health check failed", error=str(e))
-        return jsonify(error_response), 500
+# Health 엔드포인트는 backend/routes/health.py에서 관리
 
 # 에러 모니터링 시스템 설정
 try:
