@@ -12,6 +12,7 @@ const CONFIG = {
   // 서버 URL 목록 (우선순위 순)
   SERVER_URLS: {
     development: [
+      'http://192.168.45.177:5000',   // 현재 실행 중인 서버 IP
       'http://localhost:5000',        // 로컬호스트 (가장 안정적)
       'http://127.0.0.1:5000',        // 로컬호스트 IP
       'https://lunch-app-backend-ra12.onrender.com'  // 프로덕션 백업
