@@ -21,14 +21,11 @@ class EmailService:
     def _send_email(self, msg: MIMEMultipart) -> bool:
         """이메일 발송 실행"""
         try:
-            # SMTP 서버 연결
-            if self.use_tls:
-                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-                server.starttls()
-            else:
-                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            # Gmail SMTP 서버 연결
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server.starttls()  # TLS 암호화 활성화
             
-            # 로그인
+            # Gmail 인증 (앱 비밀번호 사용)
             server.login(self.username, self.password)
             
             # 이메일 발송
@@ -37,11 +34,18 @@ class EmailService:
             # 연결 종료
             server.quit()
             
-            print(f"이메일 발송 성공: {msg['To']}")
+            print(f"✅ 이메일 발송 성공: {msg['To']}")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"❌ 이메일 인증 실패: {str(e)}")
+            print("💡 Gmail 앱 비밀번호를 확인해주세요.")
+            return False
+        except smtplib.SMTPException as e:
+            print(f"❌ SMTP 오류: {str(e)}")
+            return False
         except Exception as e:
-            print(f"이메일 발송 실패: {str(e)}")
+            print(f"❌ 이메일 발송 실패: {str(e)}")
             return False
     
     def send_password_reset_email(self, to_email: str, temp_password: str, user_name: str) -> bool:

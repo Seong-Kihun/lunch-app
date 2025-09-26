@@ -20,12 +20,12 @@ class AuthConfig:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     
     
-    # 이메일 설정
-    MAIL_SERVER = get_env_var('MAIL_SERVER', 'smtp.gmail.com')  # Gmail 서버
-    MAIL_PORT = int(get_env_var('MAIL_PORT', '587'))
-    MAIL_USE_TLS = get_env_var('MAIL_USE_TLS', 'true').lower() == 'true'
-    MAIL_USERNAME = get_env_var('MAIL_USERNAME', '')  # 환경 변수에서 가져옴
-    MAIL_PASSWORD = get_env_var('MAIL_PASSWORD', '')  # 환경 변수에서 가져옴
+    # 이메일 설정 (Gmail)
+    MAIL_SERVER = 'smtp.gmail.com'  # Gmail 서버
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = 'kihun.seong.official@gmail.com'  # 실제 Gmail 주소
+    MAIL_PASSWORD = 'your-app-password-here'  # Gmail 앱 비밀번호 필요
     
     # 앱 설정
     APP_NAME = '밥플떼기'
