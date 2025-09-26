@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../utils/commonStyles';
 import { RENDER_SERVER_URL } from '../../config';
 import { createFormStyles } from '../../components/common/FormStyles';
-import { generateVirtualLastLunchHistory } from '../../utils/virtualUserData';
+// 가상 유저 데이터 import 제거
 
 // 새로운 컴포넌트들 import
 import UserProfileHeader from '../../components/profile/UserProfileHeader';
@@ -130,46 +130,20 @@ const UserProfileScreen = ({ route, navigation }) => {
             
             // 사용자 프로필 조회 시작
             
-            // 가상 유저인지 확인
-            if (employeeId && parseInt(employeeId) <= 20) {
-                // 가상 유저 프로필 조회
-                
-                // 가상 유저 데이터 직접 생성 (백엔드 데이터와 일치)
-                const virtualUserData = {
-                    employee_id: employeeId,
-                    nickname: getVirtualUserNickname(employeeId),
-                    food_preferences: getVirtualUserFoodPreferences(employeeId),
-                    lunch_style: getVirtualUserLunchStyle(employeeId),
-                    allergies: getVirtualUserAllergies(employeeId),
-                    preferred_time: getVirtualUserPreferredTime(employeeId)
-                };
-                
-                // 가상 유저 데이터 생성 완료
-                setUserData(virtualUserData);
+            // 실제 사용자 프로필 조회
+            const response = await fetch(`${RENDER_SERVER_URL}/api/users/${employeeId}`);
+            if (response.ok) {
+                const userData = await response.json();
+                setUserData(userData);
                 
                 // 포인트, 배지, 마지막 점심 정보도 가져오기
                 fetchPointsData(employeeId);
                 fetchBadgesData(employeeId);
                 fetchLastLunchTogether(employeeId);
                 fetchActivityStats(employeeId);
-                
             } else {
-                // 실제 사용자 프로필 조회
-                const response = await fetch(`${RENDER_SERVER_URL}/users/${employeeId}`);
-                if (response.ok) {
-                    const userData = await response.json();
-                    // 실제 사용자 데이터
-                    setUserData(userData);
-                    
-                    // 포인트, 배지, 마지막 점심 정보도 가져오기
-                    fetchPointsData(employeeId);
-                    fetchBadgesData(employeeId);
-                    fetchLastLunchTogether(employeeId);
-                    fetchActivityStats(employeeId);
-                } else {
-                    console.error('🔍 [프로필] 사용자 프로필 조회 실패:', response.status);
-                    Alert.alert('오류', '사용자 프로필을 불러올 수 없습니다.');
-                }
+                console.error('🔍 [프로필] 사용자 프로필 조회 실패:', response.status);
+                Alert.alert('오류', '사용자 프로필을 불러올 수 없습니다.');
             }
         } catch (error) {
             console.error('🔍 [프로필] 사용자 프로필 조회 오류:', error);
@@ -242,28 +216,18 @@ const UserProfileScreen = ({ route, navigation }) => {
         try {
             if (!global.myEmployeeId) return;
             
-            // 공통 함수를 사용하여 일관된 가상 데이터 생성
-            const lastLunchData = generateVirtualLastLunchHistory(userId, global.myEmployeeId);
-            
-            if (lastLunchData) {
-                setLastLunchTogether({
-                    date: lastLunchData.date,
-                    restaurant: lastLunchData.restaurant
-                });
-                
-                // 마지막 점심 데이터 설정 완료
+            // 실제 API에서 마지막 점심 정보 조회
+            const response = await fetch(`${RENDER_SERVER_URL}/api/users/${userId}/last-lunch/${global.myEmployeeId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setLastLunchTogether(data);
+            } else {
+                // API 데이터가 없으면 기본값 설정
+                setLastLunchTogether(null);
             }
         } catch (error) {
             console.error('마지막 점심 정보 가져오기 실패:', error);
-            
-            // 에러 시에도 공통 함수 사용
-            const lastLunchData = generateVirtualLastLunchHistory(userId, global.myEmployeeId);
-            if (lastLunchData) {
-                setLastLunchTogether({
-                    date: lastLunchData.date,
-                    restaurant: lastLunchData.restaurant
-                });
-            }
+            setLastLunchTogether(null);
         }
     };
 
@@ -560,80 +524,7 @@ const UserProfileScreen = ({ route, navigation }) => {
         navigation.navigate('ProfileEdit', { userData });
     };
 
-    // 가상 유저 닉네임 반환 (API 데이터와 일치하도록 수정)
-    const getVirtualUserNickname = (userId) => {
-        const nicknames = {
-            '1': '김철수', '2': '이영희', '3': '박민수', '4': '최지은', '5': '정현우',
-            '6': '한소영', '7': '윤준호', '8': '송미라', '9': '강동현', '10': '임서연',
-            '11': '오태호', '12': '신유진', '13': '조성민', '14': '백하은', '15': '남준석',
-            '16': '류지현', '17': '차준호', '18': '구미영', '19': '홍성훈', '20': '전소연'
-        };
-        
-        return nicknames[userId] || `사용자 ${userId}`;
-    };
-
-    // 가상 유저 음식 선호도 반환
-    const getVirtualUserFoodPreferences = (userId) => {
-        const foodPreferences = {
-            '1': ['한식', '중식'], '2': ['양식', '일식'], '3': ['한식', '분식'], '4': ['양식', '한식'], '5': ['중식', '한식'],
-            '6': ['일식', '양식'], '7': ['한식', '양식'], '8': ['중식', '일식'], '9': ['한식', '분식'], '10': ['양식', '한식'],
-            '11': ['일식', '중식'], '12': ['중식', '한식'], '13': ['한식', '분식'], '14': ['양식', '한식'], '15': ['한식', '중식'],
-            '16': ['일식', '양식'], '17': ['한식', '분식'], '18': ['양식', '일식'], '19': ['한식', '일식'], '20': ['중식', '양식']
-        };
-        
-        // 일부 유저는 음식 선호도 정보가 없음 (실제 상황 반영)
-        if (['3', '7', '12', '16'].includes(userId)) {
-            return [];
-        }
-        
-        return foodPreferences[userId] || ['한식'];
-    };
-
-    // 가상 유저 점심 성향 반환
-    const getVirtualUserLunchStyle = (userId) => {
-        const lunchStyles = {
-            '1': ['맛집 탐방', '새로운 메뉴 도전'], '2': ['건강한 음식', '다이어트'], '3': ['빠른 식사', '가성비'], '4': ['다양한 음식', '새로운 메뉴 도전'],
-            '5': ['맛집 탐방', '분위기 좋은 곳'], '6': ['건강한 음식', '다이어트'], '7': ['건강한 식사', '빠른 식사'], '8': ['맛있는 음식', '친구들과 함께'],
-            '9': ['다양한 음식', '가성비 좋은 곳'], '10': ['전통 음식', '분위기 좋은 곳'], '11': ['맛집 탐방', '새로운 메뉴 도전'], '12': ['건강한 식사', '혼자 조용히'],
-            '13': ['빠른 식사', '가성비'], '14': ['다양한 음식', '친구들과 함께'], '15': ['전통 음식', '가성비 좋은 곳'], '16': ['맛집 탐방', '분위기 좋은 곳'],
-            '17': ['건강한 식사', '빠른 식사'], '18': ['맛있는 음식', '친구들과 함께'], '19': ['다양한 음식', '새로운 메뉴 도전'], '20': ['전통 음식', '가성비 좋은 곳']
-        };
-        
-        // 일부 유저는 점심 성향 정보가 없음 (실제 상황 반영)
-        if (['2', '6', '11', '17'].includes(userId)) {
-            return [];
-        }
-        
-        return lunchStyles[userId] || ['맛집 탐방'];
-    };
-
-    // 가상 유저 알레르기 정보 반환
-    const getVirtualUserAllergies = (userId) => {
-        // 일부 유저는 알레르기 정보가 없음 (실제 상황 반영)
-        if (['4', '9', '14', '19'].includes(userId)) {
-            return [];
-        }
-        
-        // 모든 가상 유저는 알레르기가 없음
-        return ['없음'];
-    };
-
-    // 가상 유저 선호 시간 반환
-    const getVirtualUserPreferredTime = (userId) => {
-        const preferredTimes = {
-            '1': '12:00', '2': '12:30', '3': '12:00', '4': '12:00', '5': '11:30',
-            '6': '12:00', '7': '12:15', '8': '11:45', '9': '12:00', '10': '12:00',
-            '11': '12:00', '12': '12:30', '13': '12:00', '14': '12:00', '15': '12:30',
-            '16': '12:00', '17': '12:00', '18': '12:00', '19': '12:00', '20': '12:00'
-        };
-        
-        // 일부 유저는 선호 시간 정보가 없음 (실제 상황 반영)
-        if (['5', '10', '15', '20'].includes(userId)) {
-            return null;
-        }
-        
-        return preferredTimes[userId] || '12:00';
-    };
+    // 가상 유저 관련 함수들 제거 - 실제 API만 사용
 
     useEffect(() => {
         if (employeeId && !friend) {
