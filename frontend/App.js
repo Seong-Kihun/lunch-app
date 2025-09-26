@@ -85,7 +85,7 @@ import { COLORS } from './theme/colors';
 import { RENDER_SERVER_URL } from './config';
 
 // 온보딩 유틸리티 Import
-import { checkOnboardingStatus } from './utils/onboardingUtils';
+import { checkOnboardingStatus, setOnboardingCompleted } from './utils/onboardingUtils';
 
 // 네트워크 초기화 Import
 import networkInitializer from './utils/networkInitializer';
@@ -617,32 +617,30 @@ function MainApp() {
 
     useEffect(() => {
         const checkStatus = async () => {
-            const completed = await checkOnboardingStatus();
-            if (completed) {
-                setHasCompletedOnboarding(true);
-                console.log('✅ [MainApp] 온보딩 완료 - 메인 화면으로 전환');
-                return true; // 온보딩 완료됨
+            // 사용자 정보가 있을 때만 온보딩 상태 확인
+            if (user && user.employee_id) {
+                const completed = await checkOnboardingStatus(user.employee_id);
+                if (completed) {
+                    setHasCompletedOnboarding(true);
+                    console.log(`✅ [MainApp] 사용자 ${user.employee_id} 온보딩 완료 - 메인 화면으로 전환`);
+                    return true; // 온보딩 완료됨
+                } else {
+                    console.log(`🔍 [MainApp] 사용자 ${user.employee_id} 온보딩 미완료 - 온보딩 화면 표시`);
+                    setHasCompletedOnboarding(false);
+                    return false; // 온보딩 미완료
+                }
+            } else {
+                console.log('🔍 [MainApp] 사용자 정보 없음 - 온보딩 미완료로 처리');
+                setHasCompletedOnboarding(false);
+                return false;
             }
-            return false; // 온보딩 미완료
         };
         
-        // 초기 상태 확인
-        checkStatus().then(completed => {
-            if (!completed) {
-                // 온보딩이 완료되지 않은 경우에만 폴링 시작
-                const interval = setInterval(async () => {
-                    const isCompleted = await checkStatus();
-                    if (isCompleted) {
-                        // 온보딩이 완료되면 폴링 중단
-                        clearInterval(interval);
-                    }
-                }, 1000); // 폴링 간격을 1초로 증가
-                
-                // cleanup 함수에서 interval 정리
-                return () => clearInterval(interval);
-            }
-        });
-    }, []);
+        // 사용자가 로그인했을 때만 온보딩 상태 확인
+        if (authState === 'authenticated' && user) {
+            checkStatus();
+        }
+    }, [authState, user]);
 
     // 로딩 중
     if (authState === 'loading') {

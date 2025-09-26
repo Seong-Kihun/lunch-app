@@ -11,6 +11,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RENDER_SERVER_URL } from '../../config';
+import { setOnboardingCompleted } from '../../utils/onboardingUtils';
 
 // 디버깅을 위한 로그
 console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
@@ -99,23 +100,25 @@ export default function OnboardingScreen() {
         } else {
             // 온보딩 완료, 사용자 설정 저장
             try {
-            await saveUserPreferences();
-            // AsyncStorage에 온보딩 완료 상태 저장
-            await AsyncStorage.setItem('onboardingCompleted', 'true');
-                console.log('✅ 온보딩 완료 상태 저장됨');
+                await saveUserPreferences();
                 
-                // 강제로 상태 변경을 트리거하기 위해 추가 저장
-                await AsyncStorage.setItem('onboardingCompleted', 'true');
-                console.log('🔄 온보딩 완료 상태 재저장 (상태 변경 트리거)');
-            
-            // 온보딩 완료 후 메인 앱으로 이동
-            // AsyncStorage에 온보딩 완료 상태가 저장되었으므로 
-            // MainApp의 useEffect에서 자동으로 hasCompletedOnboarding이 true로 설정됨
+                // 사용자별 온보딩 완료 상태 저장
+                if (user && user.employee_id) {
+                    await setOnboardingCompleted(user.employee_id);
+                    console.log(`✅ 사용자 ${user.employee_id} 온보딩 완료 상태 저장됨`);
+                } else {
+                    console.error('❌ 사용자 정보가 없어서 온보딩 완료 상태 저장 실패');
+                }
+                
+                // 온보딩 완료 후 메인 앱으로 이동
+                // setOnboardingCompleted가 호출되면 MainApp의 useEffect에서 자동으로 hasCompletedOnboarding이 true로 설정됨
             } catch (error) {
                 console.error('온보딩 완료 처리 중 오류:', error);
                 // 오류가 발생해도 온보딩 완료 상태는 저장
-                await AsyncStorage.setItem('onboardingCompleted', 'true');
-                console.log('🔄 오류 발생 시에도 온보딩 완료 상태 저장');
+                if (user && user.employee_id) {
+                    await setOnboardingCompleted(user.employee_id);
+                    console.log('🔄 오류 발생 시에도 온보딩 완료 상태 저장');
+                }
             }
         }
     };
