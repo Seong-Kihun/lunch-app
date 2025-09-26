@@ -304,15 +304,6 @@ const LoginScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
-            {/* 비밀번호 찾기 버튼 */}
-            <TouchableOpacity
-              style={styles.forgotPasswordButton}
-              onPress={() => setShowForgotPassword(true)}
-              disabled={isLoading}
-            >
-              <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
-            </TouchableOpacity>
-
             {/* 회원가입 버튼 */}
             <TouchableOpacity
               style={styles.registerButton}
@@ -323,6 +314,15 @@ const LoginScreen = ({ navigation }) => {
               disabled={isLoading}
             >
               <Text style={styles.registerButtonText}>회원가입</Text>
+            </TouchableOpacity>
+
+            {/* 비밀번호 찾기 버튼 */}
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => setShowForgotPassword(true)}
+              disabled={isLoading}
+            >
+              <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
             </TouchableOpacity>
 
           </View>
