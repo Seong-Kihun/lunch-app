@@ -161,16 +161,6 @@ const InquiryScreen = ({ navigation }) => {
 
           {/* 메인 카드 */}
           <View style={[styles.mainCard, { backgroundColor: currentColors.surface }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="chatbubbles" size={32} color={currentColors.primary} />
-              <Text style={[styles.cardTitle, { color: currentColors.text }]}>
-                고객센터 문의
-              </Text>
-              <Text style={[styles.cardSubtitle, { color: currentColors.textSecondary }]}>
-                문의사항은 퇴근 후에 확인하여 가능한 빠르게 답변드립니다.
-              </Text>
-            </View>
-
             {/* 폼 */}
             <View style={styles.form}>
 
