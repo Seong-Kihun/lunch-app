@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RENDER_SERVER_URL, IS_DEVELOPMENT } from '../../../config/config';
 import { apiClient } from '../../../utils/apiClient';
 import * as Notifications from 'expo-notifications';
-import { addLastLunchToVirtualUser } from '../../../utils/virtualUserData';
+// 가상 유저 데이터 import 제거
 
 const { width: screenWidth } = Dimensions.get('window');
 

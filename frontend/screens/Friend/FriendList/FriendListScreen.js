@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
 import { RENDER_SERVER_URL } from '../../../config';
-import { addLastLunchToVirtualUser } from '../../../utils/virtualUserData';
+// 가상 유저 데이터 import 제거
 
 const FriendListScreen = ({ navigation }) => {
     const [friends, setFriends] = useState([]);

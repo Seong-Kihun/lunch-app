@@ -47,7 +47,7 @@ if AUTH_AVAILABLE:
 # 그룹 매칭 관련 import
 if GROUP_MATCHING_AVAILABLE:
     try:
-        from backend.app.group_matching import calculate_group_score, get_virtual_users_data
+        from backend.app.group_matching import calculate_group_score
         print("[SUCCESS] 그룹 매칭 시스템이 활성화되었습니다.")
     except ImportError as e:
         print(f"[WARNING] 그룹 매칭 모듈 import 실패: {e}")
@@ -6163,8 +6163,16 @@ def get_nickname_by_id(employee_id):
                         friend_id = friendship.requester_id
                     # 가상 유저 데이터에서 친구 정보 가져오기
                     if GROUP_MATCHING_AVAILABLE:
-                        virtual_users = get_virtual_users_data()
-                        friend_data = virtual_users.get(friend_id)
+                        # 실제 데이터베이스에서 친구 정보 조회
+                        from backend.auth.models import User
+                        friend = User.query.filter_by(employee_id=friend_id).first()
+                        friend_data = {
+                            'nickname': friend.nickname if friend else f'사용자{friend_id}',
+                            'foodPreferences': getattr(friend, 'food_preferences', '').split(',') if friend and getattr(friend, 'food_preferences', '') else [],
+                            'lunchStyle': getattr(friend, 'lunch_style', '').split(',') if friend and getattr(friend, 'lunch_style', '') else [],
+                            'allergies': getattr(friend, 'allergies', '').split(',') if friend and getattr(friend, 'allergies', '') else [],
+                            'preferredTime': getattr(friend, 'preferred_time', '12:00') if friend else '12:00'
+                        } if friend else None
                     else:
                         # fallback: 기본 데이터
                         friend_data = {

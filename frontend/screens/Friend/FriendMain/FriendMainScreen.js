@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
 import { RENDER_SERVER_URL } from '../../../config';
-import { addLastLunchToVirtualUser } from '../../../utils/virtualUserData';
+// 가상 유저 데이터 import 제거
 import { apiClient } from '../../../utils/apiClient';
 
 const FriendMainScreen = ({ navigation, route }) => {
@@ -155,10 +155,8 @@ const FriendMainScreen = ({ navigation, route }) => {
                         friendIds: friendsData.map(f => f.employee_id)
                     });
                     
-                    // 친구 데이터에 마지막 점심 히스토리 추가
-                    const friendsWithLastLunch = friendsData.map(friend => 
-                        addLastLunchToVirtualUser(friend, global.myEmployeeId || '1')
-                    );
+                    // 실제 친구 데이터 사용 (마지막 점심 히스토리는 API에서 제공)
+                    const friendsWithLastLunch = friendsData;
                     
                     setFriends(friendsWithLastLunch);
                     setFilteredFriends(friendsWithLastLunch);
@@ -201,10 +199,8 @@ const FriendMainScreen = ({ navigation, route }) => {
                     friendNames: friendsData.map(f => f.nickname)
                 });
                     
-                    // 가상유저 데이터에 마지막 점심 히스토리 추가
-                    const friendsWithLastLunch = friendsData.map(friend => 
-                        addLastLunchToVirtualUser(friend, global.myEmployeeId || '1')
-                    );
+                    // 실제 친구 데이터 사용
+                    const friendsWithLastLunch = friendsData;
                     
                     setFriends(friendsWithLastLunch);
                     setFilteredFriends(friendsWithLastLunch);
