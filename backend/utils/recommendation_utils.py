@@ -5,6 +5,7 @@ import random
 from datetime import datetime, timedelta
 from backend.app.extensions import db
 from backend.models.app_models import Party, PartyMember, LunchProposal
+from backend.auth.models import User
 
 
 def get_available_users_for_date(date_str):
@@ -216,8 +217,7 @@ def get_user_preference(user_id, preference_type):
             elif preference_type == "lunch_style":
                 return getattr(user, 'lunch_preference', '').split(',')
         
-        # 가상 데이터 사용
-        from backend.auth.models import User
+        # 실제 데이터베이스에서 사용자 조회
         user = User.query.filter_by(employee_id=user_id).first()
         if user:
             user_data = {
@@ -326,7 +326,6 @@ def generate_recommendation_cache():
                     if other_user_id != user_id:
                         compatibility = calculate_compatibility_score_cached(user_id, other_user_id)
                         
-                        from backend.auth.models import User
                         other_user = User.query.filter_by(employee_id=other_user_id).first()
                         if other_user:
                             user_data = {
