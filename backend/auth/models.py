@@ -176,9 +176,9 @@ class User(db.Model):
             'match_request_time': self.match_request_time.isoformat() if self.match_request_time else None
         }
     
-    # 관계 정의
-    refresh_tokens = db.relationship('RefreshToken', back_populates='user')
-    revoked_tokens = db.relationship('RevokedToken', back_populates='user')
+    # 관계 정의 (단순화 - backref 사용)
+    # refresh_tokens = db.relationship('RefreshToken', back_populates='user')
+    # revoked_tokens = db.relationship('RevokedToken', back_populates='user')
 
 
 class RefreshToken(db.Model):
@@ -193,7 +193,7 @@ class RefreshToken(db.Model):
     is_revoked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('backend.auth.models.User', back_populates='refresh_tokens')
+    user = db.relationship('backend.auth.models.User', backref='refresh_tokens')
     
     def __repr__(self):
         return f'<RefreshToken {self.user_id}>'
@@ -222,7 +222,7 @@ class RevokedToken(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     revoked_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('backend.auth.models.User', back_populates='revoked_tokens')
+    user = db.relationship('backend.auth.models.User', backref='revoked_tokens')
     
     def __repr__(self):
         return f'<RevokedToken {self.user_id}>'
