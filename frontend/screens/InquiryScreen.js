@@ -26,7 +26,6 @@ const InquiryScreen = ({ navigation }) => {
   const currentColors = global.currentColors || COLORS.light;
 
   const [formData, setFormData] = useState({
-    name: userData?.nickname || '',
     email: userData?.email || '',
     subject: '',
     message: '',
@@ -52,10 +51,6 @@ const InquiryScreen = ({ navigation }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.name.trim()) {
-      newErrors.name = '이름을 입력해주세요.';
-    }
     
     if (!formData.email.trim()) {
       newErrors.email = '이메일을 입력해주세요.';
@@ -105,7 +100,6 @@ const InquiryScreen = ({ navigation }) => {
               onPress: () => {
                 // 폼 초기화
                 setFormData({
-                  name: userData?.nickname || '',
                   email: userData?.email || '',
                   subject: '',
                   message: '',
@@ -180,30 +174,6 @@ const InquiryScreen = ({ navigation }) => {
 
             {/* 폼 */}
             <View style={styles.form}>
-              {/* 이름 입력 */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: currentColors.text }]}>
-                  이름 <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={[
-                  styles.inputContainer, 
-                  { 
-                    borderColor: errors.name ? currentColors.red : currentColors.border,
-                    backgroundColor: currentColors.surface
-                  }
-                ]}>
-                  <Ionicons name="person" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, { color: currentColors.text }]}
-                    placeholder="이름을 입력하세요"
-                    placeholderTextColor={currentColors.textSecondary}
-                    value={formData.name}
-                    onChangeText={(value) => handleInputChange('name', value)}
-                    editable={!isLoading}
-                  />
-                </View>
-                {errors.name && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.name}</Text>}
-              </View>
 
               {/* 이메일 입력 */}
               <View style={styles.inputGroup}>

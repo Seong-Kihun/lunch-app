@@ -23,7 +23,7 @@ def create_inquiry():
             return jsonify({'error': '문의사항 데이터가 필요합니다.'}), 400
         
         # 필수 필드 검증
-        required_fields = ['name', 'email', 'subject', 'message']
+        required_fields = ['email', 'subject', 'message']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field}는 필수입니다.'}), 400
@@ -33,9 +33,11 @@ def create_inquiry():
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             return jsonify({'error': '올바른 이메일 형식이 아닙니다.'}), 400
         
-        # 문의사항 생성
+        # 문의사항 생성 (이름은 이메일에서 자동 추출)
+        name = email.split('@')[0]  # 이메일 아이디 부분을 이름으로 사용
+        
         inquiry = Inquiry(
-            name=data['name'].strip(),
+            name=name,
             email=email,
             subject=data['subject'].strip(),
             message=data['message'].strip(),
