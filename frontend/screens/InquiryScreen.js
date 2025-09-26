@@ -10,70 +10,73 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../theme/colors';
+import { RENDER_SERVER_URL } from '../config';
+import { useAuth } from '../auth/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 const InquiryScreen = ({ navigation }) => {
+  const { userData, accessToken } = useAuth();
+  const currentColors = global.currentColors || COLORS.light;
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: userData?.nickname || '',
+    email: userData?.email || '',
     subject: '',
     message: '',
     category: 'general',
     priority: 'normal'
   });
   const [isLoading, setIsLoading] = useState(false);
-
-  const currentColors = global.currentColors || COLORS.light;
-
-  const categories = [
-    { value: 'general', label: '일반문의' },
-    { value: 'bug', label: '버그신고' },
-    { value: 'feature', label: '기능요청' },
-    { value: 'account', label: '계정문의' },
-    { value: 'payment', label: '결제문의' },
-    { value: 'technical', label: '기술문의' },
-    { value: 'other', label: '기타' }
-  ];
-
-  const priorities = [
-    { value: 'low', label: '낮음' },
-    { value: 'normal', label: '보통' },
-    { value: 'high', label: '높음' },
-    { value: 'urgent', label: '긴급' }
-  ];
+  const [errors, setErrors] = useState({});
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    // 입력 시 해당 필드의 에러 제거
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
   };
 
   const validateForm = () => {
+    const newErrors = {};
+    
     if (!formData.name.trim()) {
-      Alert.alert('입력 오류', '이름을 입력해주세요.');
-      return false;
+      newErrors.name = '이름을 입력해주세요.';
     }
+    
     if (!formData.email.trim()) {
-      Alert.alert('입력 오류', '이메일을 입력해주세요.');
-      return false;
+      newErrors.email = '이메일을 입력해주세요.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = '올바른 이메일 형식을 입력해주세요.';
     }
+    
     if (!formData.subject.trim()) {
-      Alert.alert('입력 오류', '제목을 입력해주세요.');
-      return false;
+      newErrors.subject = '제목을 입력해주세요.';
+    } else if (formData.subject.length < 5) {
+      newErrors.subject = '제목은 5자 이상 입력해주세요.';
     }
+    
     if (!formData.message.trim()) {
-      Alert.alert('입력 오류', '문의 내용을 입력해주세요.');
-      return false;
+      newErrors.message = '문의 내용을 입력해주세요.';
+    } else if (formData.message.length < 10) {
+      newErrors.message = '문의 내용은 10자 이상 입력해주세요.';
     }
-    if (formData.message.trim().length < 10) {
-      Alert.alert('입력 오류', '문의 내용은 최소 10자 이상 입력해주세요.');
-      return false;
-    }
-    return true;
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
@@ -81,86 +84,66 @@ const InquiryScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('https://lunch-app-backend-ra12.onrender.com/api/inquiries/', {
+      const response = await fetch(`${RENDER_SERVER_URL}/api/inquiries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       const result = await response.json();
 
       if (response.ok) {
         Alert.alert(
-          '문의사항 등록 완료',
-          '문의사항이 성공적으로 등록되었습니다.\n빠른 시일 내에 답변드리겠습니다.',
+          '문의 접수 완료',
+          '문의사항이 성공적으로 접수되었습니다.\n빠른 시일 내에 답변드리겠습니다.',
           [
             {
               text: '확인',
               onPress: () => {
                 // 폼 초기화
                 setFormData({
-                  name: '',
-                  email: '',
+                  name: userData?.nickname || '',
+                  email: userData?.email || '',
                   subject: '',
                   message: '',
                   category: 'general',
                   priority: 'normal'
                 });
+                setErrors({});
+                // 이전 화면으로 이동
                 navigation.goBack();
               }
             }
           ]
         );
       } else {
-        Alert.alert('등록 실패', result.error || '문의사항 등록 중 오류가 발생했습니다.');
+        Alert.alert('문의 접수 실패', result.error || '문의 접수 중 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.error('문의사항 등록 오류:', error);
+      console.error('문의 접수 오류:', error);
       Alert.alert('오류', '네트워크 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderPicker = (field, options, label) => (
-    <View style={styles.pickerContainer}>
-      <Text style={[styles.pickerLabel, { color: currentColors.text }]}>{label}</Text>
-      <View style={styles.pickerOptions}>
-        {options.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.pickerOption,
-              {
-                backgroundColor: formData[field] === option.value 
-                  ? currentColors.primary 
-                  : currentColors.surface,
-                borderColor: formData[field] === option.value 
-                  ? currentColors.primary 
-                  : currentColors.border
-              }
-            ]}
-            onPress={() => handleInputChange(field, option.value)}
-          >
-            <Text
-              style={[
-                styles.pickerOptionText,
-                {
-                  color: formData[field] === option.value 
-                    ? '#FFFFFF' 
-                    : currentColors.text
-                }
-              ]}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+  const categoryOptions = [
+    { label: '일반 문의', value: 'general' },
+    { label: '버그 신고', value: 'bug_report' },
+    { label: '기능 요청', value: 'feature_request' },
+    { label: '계정 문의', value: 'account_inquiry' },
+    { label: '기타', value: 'other' }
+  ];
+
+  const priorityOptions = [
+    { label: '낮음', value: 'low' },
+    { label: '보통', value: 'normal' },
+    { label: '높음', value: 'high' },
+    { label: '긴급', value: 'urgent' }
+  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
@@ -178,129 +161,222 @@ const InquiryScreen = ({ navigation }) => {
               <Ionicons name="arrow-back" size={24} color={currentColors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: currentColors.text }]}>
-              문의하기
+              고객센터 문의
             </Text>
             <View style={styles.placeholder} />
           </View>
 
-          {/* 안내 메시지 */}
-          <View style={[styles.infoCard, { backgroundColor: currentColors.surface }]}>
-            <Ionicons name="information-circle" size={24} color={currentColors.primary} />
-            <Text style={[styles.infoText, { color: currentColors.text }]}>
-              문의사항을 남겨주시면 빠른 시일 내에 답변드리겠습니다.
-            </Text>
-          </View>
-
-          {/* 폼 */}
-          <View style={styles.form}>
-            {/* 이름 */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: currentColors.text }]}>
-                이름 <Text style={styles.required}>*</Text>
+          {/* 메인 카드 */}
+          <View style={[styles.mainCard, { backgroundColor: currentColors.surface }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="chatbubbles" size={32} color={currentColors.primary} />
+              <Text style={[styles.cardTitle, { color: currentColors.text }]}>
+                문의사항을 남겨주세요
               </Text>
-              <TextInput
-                style={[styles.textInput, { 
-                  backgroundColor: currentColors.surface,
-                  borderColor: currentColors.border,
-                  color: currentColors.text
-                }]}
-                value={formData.name}
-                onChangeText={(text) => handleInputChange('name', text)}
-                placeholder="이름을 입력해주세요"
-                placeholderTextColor={currentColors.textSecondary}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* 이메일 */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: currentColors.text }]}>
-                이메일 <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.textInput, { 
-                  backgroundColor: currentColors.surface,
-                  borderColor: currentColors.border,
-                  color: currentColors.text
-                }]}
-                value={formData.email}
-                onChangeText={(text) => handleInputChange('email', text)}
-                placeholder="이메일을 입력해주세요"
-                placeholderTextColor={currentColors.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* 제목 */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: currentColors.text }]}>
-                제목 <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.textInput, { 
-                  backgroundColor: currentColors.surface,
-                  borderColor: currentColors.border,
-                  color: currentColors.text
-                }]}
-                value={formData.subject}
-                onChangeText={(text) => handleInputChange('subject', text)}
-                placeholder="문의 제목을 입력해주세요"
-                placeholderTextColor={currentColors.textSecondary}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* 카테고리 선택 */}
-            {renderPicker('category', categories, '카테고리')}
-
-            {/* 우선순위 선택 */}
-            {renderPicker('priority', priorities, '우선순위')}
-
-            {/* 문의 내용 */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: currentColors.text }]}>
-                문의 내용 <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.textArea, { 
-                  backgroundColor: currentColors.surface,
-                  borderColor: currentColors.border,
-                  color: currentColors.text
-                }]}
-                value={formData.message}
-                onChangeText={(text) => handleInputChange('message', text)}
-                placeholder="문의 내용을 자세히 입력해주세요 (최소 10자)"
-                placeholderTextColor={currentColors.textSecondary}
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-                editable={!isLoading}
-              />
-              <Text style={[styles.charCount, { color: currentColors.textSecondary }]}>
-                {formData.message.length}/500
+              <Text style={[styles.cardSubtitle, { color: currentColors.textSecondary }]}>
+                궁금한 점이나 개선사항을 알려주시면 빠르게 답변드리겠습니다
               </Text>
             </View>
 
-            {/* 제출 버튼 */}
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                {
-                  backgroundColor: currentColors.primary,
-                  opacity: isLoading ? 0.6 : 1
-                }
-              ]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>문의사항 등록</Text>
-              )}
-            </TouchableOpacity>
+            {/* 폼 */}
+            <View style={styles.form}>
+              {/* 이름 입력 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  이름 <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    borderColor: errors.name ? currentColors.red : currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="person" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: currentColors.text }]}
+                    placeholder="이름을 입력하세요"
+                    placeholderTextColor={currentColors.textSecondary}
+                    value={formData.name}
+                    onChangeText={(value) => handleInputChange('name', value)}
+                    editable={!isLoading}
+                  />
+                </View>
+                {errors.name && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.name}</Text>}
+              </View>
+
+              {/* 이메일 입력 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  이메일 <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    borderColor: errors.email ? currentColors.red : currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="mail" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: currentColors.text }]}
+                    placeholder="이메일을 입력하세요"
+                    placeholderTextColor={currentColors.textSecondary}
+                    value={formData.email}
+                    onChangeText={(value) => handleInputChange('email', value)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                </View>
+                {errors.email && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.email}</Text>}
+              </View>
+
+              {/* 카테고리 선택 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  문의 유형
+                </Text>
+                <View style={[
+                  styles.pickerContainer,
+                  { 
+                    borderColor: currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="list" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
+                  <Picker
+                    selectedValue={formData.category}
+                    onValueChange={(value) => handleInputChange('category', value)}
+                    style={[styles.picker, { color: currentColors.text }]}
+                    enabled={!isLoading}
+                  >
+                    {categoryOptions.map((option) => (
+                      <Picker.Item
+                        key={option.value}
+                        label={option.label}
+                        value={option.value}
+                        color={currentColors.text}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              {/* 우선순위 선택 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  우선순위
+                </Text>
+                <View style={[
+                  styles.pickerContainer,
+                  { 
+                    borderColor: currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="flag" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
+                  <Picker
+                    selectedValue={formData.priority}
+                    onValueChange={(value) => handleInputChange('priority', value)}
+                    style={[styles.picker, { color: currentColors.text }]}
+                    enabled={!isLoading}
+                  >
+                    {priorityOptions.map((option) => (
+                      <Picker.Item
+                        key={option.value}
+                        label={option.label}
+                        value={option.value}
+                        color={currentColors.text}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              {/* 제목 입력 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  제목 <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    borderColor: errors.subject ? currentColors.red : currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="document-text" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: currentColors.text }]}
+                    placeholder="문의 제목을 입력하세요"
+                    placeholderTextColor={currentColors.textSecondary}
+                    value={formData.subject}
+                    onChangeText={(value) => handleInputChange('subject', value)}
+                    editable={!isLoading}
+                  />
+                </View>
+                {errors.subject && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.subject}</Text>}
+              </View>
+
+              {/* 문의 내용 입력 */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: currentColors.text }]}>
+                  문의 내용 <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.textAreaContainer, 
+                  { 
+                    borderColor: errors.message ? currentColors.red : currentColors.border,
+                    backgroundColor: currentColors.surface
+                  }
+                ]}>
+                  <Ionicons name="chatbubble" size={20} color={currentColors.textSecondary} style={styles.textAreaIcon} />
+                  <TextInput
+                    style={[styles.textArea, { color: currentColors.text }]}
+                    placeholder="문의 내용을 자세히 입력해주세요"
+                    placeholderTextColor={currentColors.textSecondary}
+                    value={formData.message}
+                    onChangeText={(value) => handleInputChange('message', value)}
+                    multiline
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                    editable={!isLoading}
+                  />
+                </View>
+                {errors.message && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.message}</Text>}
+              </View>
+
+              {/* 제출 버튼 */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  { backgroundColor: currentColors.primary },
+                  isLoading && styles.disabledButton
+                ]}
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={currentColors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="send" size={20} color={currentColors.white} style={styles.buttonIcon} />
+                    <Text style={[styles.submitButtonText, { color: currentColors.white }]}>
+                      문의 접수하기
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* 안내 메시지 */}
+              <View style={[styles.infoCard, { backgroundColor: currentColors.primaryLight }]}>
+                <Ionicons name="information-circle" size={20} color={currentColors.primary} />
+                <Text style={[styles.infoText, { color: currentColors.text }]}>
+                  문의사항은 평일 09:00-18:00에 확인하여 24시간 내에 답변드립니다.
+                </Text>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -317,49 +393,63 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    alignItems: 'center',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 4,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   placeholder: {
     width: 40,
   },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 20,
-    padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
+  mainCard: {
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    elevation: 3,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
-  infoText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    lineHeight: 20,
+  cardHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   form: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    gap: 20,
   },
-  inputContainer: {
-    marginBottom: 20,
+  inputGroup: {
+    marginBottom: 4,
   },
-  inputLabel: {
+  label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
@@ -367,59 +457,97 @@ const styles = StyleSheet.create({
   required: {
     color: '#EF4444',
   },
-  textInput: {
-    borderWidth: 1,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 52,
   },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 120,
+  inputIcon: {
+    marginRight: 12,
   },
-  charCount: {
-    fontSize: 12,
-    textAlign: 'right',
-    marginTop: 4,
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 4,
   },
   pickerContainer: {
-    marginBottom: 20,
-  },
-  pickerLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  pickerOptions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pickerOption: {
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+    minHeight: 52,
   },
-  pickerOptionText: {
+  picker: {
+    flex: 1,
+    fontSize: 16,
+  },
+  textAreaContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 120,
+  },
+  textAreaIcon: {
+    marginRight: 12,
+    marginTop: 8,
+  },
+  textArea: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 4,
+    minHeight: 100,
+  },
+  errorText: {
     fontSize: 14,
-    fontWeight: '500',
+    marginTop: 6,
+    marginLeft: 4,
   },
   submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
+    marginTop: 8,
+    elevation: 2,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    marginLeft: 12,
+    lineHeight: 20,
   },
 });
 
