@@ -26,6 +26,7 @@ const RegisterScreen = ({ navigation }) => {
     password: '',
     confirmPassword: ''
   });
+  const [emailPrefix, setEmailPrefix] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -45,13 +46,30 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
+  const handleEmailPrefixChange = (value) => {
+    setEmailPrefix(value);
+    // 이메일 프리픽스가 변경될 때마다 전체 이메일 업데이트
+    const fullEmail = value ? `${value}@koica.go.kr` : '';
+    setFormData(prev => ({
+      ...prev,
+      email: fullEmail
+    }));
+    // 이메일 에러가 있다면 제거
+    if (errors.email) {
+      setErrors(prev => ({
+        ...prev,
+        email: ''
+      }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.email.trim()) {
+    if (!emailPrefix.trim()) {
       newErrors.email = '이메일을 입력해주세요.';
-    } else if (!formData.email.endsWith('@koica.go.kr')) {
-      newErrors.email = 'KOICA 이메일 주소를 입력해주세요.';
+    } else if (!/^[a-zA-Z0-9._%+-]+$/.test(emailPrefix)) {
+      newErrors.email = '유효한 이메일 형식이 아닙니다.';
     }
     
     if (!formData.password.trim()) {
@@ -148,7 +166,7 @@ const RegisterScreen = ({ navigation }) => {
                   이메일 <Text style={styles.required}>*</Text>
                 </Text>
                 <View style={[
-                  styles.inputContainer, 
+                  styles.emailInputContainer, 
                   { 
                     borderColor: errors.email ? currentColors.red : currentColors.border,
                     backgroundColor: currentColors.surface
@@ -156,15 +174,18 @@ const RegisterScreen = ({ navigation }) => {
                 ]}>
                   <Ionicons name="mail" size={20} color={currentColors.textSecondary} style={styles.inputIcon} />
                   <TextInput
-                    style={[styles.input, { color: currentColors.text }]}
-                    placeholder="이메일을 입력하세요"
+                    style={[styles.emailInput, { color: currentColors.text }]}
+                    placeholder="이메일 아이디"
                     placeholderTextColor={currentColors.textSecondary}
-                    value={formData.email}
-                    onChangeText={(value) => handleInputChange('email', value)}
+                    value={emailPrefix}
+                    onChangeText={handleEmailPrefixChange}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     editable={!isLoading}
                   />
+                  <Text style={[styles.emailSuffix, { color: currentColors.textSecondary }]}>
+                    @koica.go.kr
+                  </Text>
                 </View>
                 {errors.email && <Text style={[styles.errorText, { color: currentColors.red }]}>{errors.email}</Text>}
               </View>
@@ -351,6 +372,25 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 4,
+  },
+  emailInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 52,
+  },
+  emailInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  emailSuffix: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   errorText: {
     fontSize: 14,
