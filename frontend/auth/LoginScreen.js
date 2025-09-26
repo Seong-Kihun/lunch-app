@@ -32,7 +32,7 @@ const LoginScreen = ({ navigation }) => {
     setEmailPrefix(value);
     const fullEmail = value ? `${value}@koica.go.kr` : '';
     setEmail(fullEmail);
-    if (authError) { clearError(); }
+    clearError(); // authError 체크 제거
   };
 
   // 이메일 유효성 검사
