@@ -17,9 +17,6 @@ import { useAuth } from '../../auth/AuthContext';
 // 디버깅을 위한 로그
 console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
 
-// 컨텍스트
-import { useAuth } from '../../auth/AuthContext';
-
 export default function OnboardingScreen() {
     const { user, updateUser } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
