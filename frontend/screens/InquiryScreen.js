@@ -336,7 +336,7 @@ const InquiryScreen = ({ navigation }) => {
               <View style={[styles.infoCard, { backgroundColor: currentColors.primaryLight }]}>
                 <Ionicons name="information-circle" size={20} color={currentColors.primary} />
                 <Text style={[styles.infoText, { color: currentColors.text }]}>
-                  문의사항은 평일 09:00-18:00에 확인하여 24시간 내에 답변드립니다.
+                  문의사항은 퇴근 후에 확인하여 가능한 빠르게 답변드립니다.
                 </Text>
               </View>
             </View>
