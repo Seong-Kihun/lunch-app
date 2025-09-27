@@ -7,13 +7,19 @@
 import os
 import sys
 from flask import Flask
-from extensions import db
-from auth.models import User
+
+# 프로젝트 루트를 Python 경로에 추가
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+from backend.app.extensions import db
+from backend.auth.models import User
 
 def create_app_context():
     """Flask 앱 컨텍스트 생성"""
     try:
-        from app import app
+        from backend.app.app_factory import create_app
+        app = create_app()
         return app
     except Exception as e:
         print(f"❌ 앱 컨텍스트 생성 실패: {e}")
@@ -82,7 +88,7 @@ def test_auth_token_generation(app):
     
     try:
         with app.app_context():
-            from auth.utils import AuthUtils
+            from backend.auth.utils import AuthUtils
             
             # 사용자 조회
             user = User.query.first()
@@ -118,7 +124,7 @@ def test_api_endpoints(app):
     
     try:
         with app.app_context():
-            from auth.utils import AuthUtils
+            from backend.auth.utils import AuthUtils
             
             # 사용자 조회
             user = User.query.first()
