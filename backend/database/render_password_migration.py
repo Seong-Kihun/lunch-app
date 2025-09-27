@@ -6,9 +6,16 @@
 
 import os
 import sys
-import psycopg2
 from datetime import datetime
 import logging
+
+# 조건부 import - 렌더 환경에서만 psycopg2 사용
+try:
+    import psycopg2  # type: ignore
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    psycopg2 = None
+    PSYCOPG2_AVAILABLE = False
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 def get_render_database_connection():
     """렌더 PostgreSQL 데이터베이스 연결"""
+    if not PSYCOPG2_AVAILABLE:
+        logger.error("psycopg2가 설치되지 않았습니다. PostgreSQL 연결을 사용할 수 없습니다.")
+        return None
+        
     try:
         # 환경변수에서 렌더 데이터베이스 URL 가져오기
         database_url = os.getenv('DATABASE_URL')
@@ -208,6 +219,12 @@ def main():
         logger.info("=" * 60)
         logger.info("렌더 PostgreSQL 비밀번호 컬럼 마이그레이션 시작")
         logger.info("=" * 60)
+        
+        # psycopg2 사용 가능 여부 확인
+        if not PSYCOPG2_AVAILABLE:
+            logger.warning("psycopg2가 설치되지 않았습니다. 로컬 환경에서는 마이그레이션을 건너뜁니다.")
+            logger.info("렌더 환경에서는 정상적으로 작동할 것입니다.")
+            return True
         
         # 1. 마이그레이션 실행
         migration_success = add_password_columns_to_users_table()
