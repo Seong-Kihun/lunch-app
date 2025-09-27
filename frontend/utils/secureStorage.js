@@ -127,28 +127,6 @@ export const clearAllTokens = async () => {
   }
 };
 
-/**
- * 모든 토큰 삭제 (로그아웃 시 사용)
- */
-export const clearAllTokens = async () => {
-  try {
-    // 보안 저장소의 토큰들 삭제
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-    
-    // 일반 저장소의 토큰들 삭제
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.ACCESS_TOKEN,
-      STORAGE_KEYS.USER_DATA,
-      STORAGE_KEYS.AUTH_STATUS
-    ]);
-    
-    console.log('모든 토큰 삭제 완료');
-    return true;
-  } catch (error) {
-    console.error('토큰 삭제 실패', error);
-    return false;
-  }
-};
 
 /**
  * 액세스 토큰 저장 (메모리 + 일반 저장소)
