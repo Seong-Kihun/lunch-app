@@ -3,7 +3,7 @@
 """
 
 from flask import Blueprint, jsonify
-from backend.database.init_db import get_db_connection
+from backend.app.extensions import db
 import os
 import sys
 from datetime import datetime
@@ -49,18 +49,12 @@ def detailed_health_check():
         
         # 데이터베이스 연결 확인
         try:
-            conn = get_db_connection()
-            if conn:
-                health_status['checks']['database'] = {
-                    'status': 'healthy',
-                    'message': 'Database connection successful'
-                }
-                conn.close()
-            else:
-                health_status['checks']['database'] = {
-                    'status': 'unhealthy',
-                    'message': 'Database connection failed'
-                }
+            # 간단한 쿼리로 데이터베이스 연결 테스트
+            db.session.execute('SELECT 1')
+            health_status['checks']['database'] = {
+                'status': 'healthy',
+                'message': 'Database connection successful'
+            }
         except Exception as e:
             health_status['checks']['database'] = {
                 'status': 'unhealthy',
@@ -104,14 +98,7 @@ def readiness_check():
     """
     try:
         # 데이터베이스 연결 확인
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({
-                'status': 'not_ready',
-                'message': 'Database not available'
-            }), 503
-        
-        conn.close()
+        db.session.execute('SELECT 1')
         
         return jsonify({
             'status': 'ready',

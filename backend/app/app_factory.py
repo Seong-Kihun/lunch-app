@@ -185,10 +185,13 @@ def create_app(config_name=None):
     # 데이터베이스 최적화 도구 설정
     try:
         from backend.database.database_optimization import DatabaseOptimizer
-        DatabaseOptimizer.setup_optimization(app)
-        print("[SUCCESS] 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
-        print("   - 인덱스 최적화")
-        print("   - 쿼리 성능 분석")
+        if hasattr(DatabaseOptimizer, 'setup_optimization'):
+            DatabaseOptimizer.setup_optimization(app)
+            print("[SUCCESS] 데이터베이스 최적화 도구가 성공적으로 설정되었습니다.")
+            print("   - 인덱스 최적화")
+            print("   - 쿼리 성능 분석")
+        else:
+            print("[INFO] 데이터베이스 최적화 도구는 사용할 수 없습니다.")
     except ImportError as e:
         print(f"[WARNING] 데이터베이스 최적화 도구 설정 실패: {e}")
 

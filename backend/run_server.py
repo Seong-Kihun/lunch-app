@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 
 # 프로젝트 루트를 Python 경로에 추가
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent  # backend의 부모 디렉토리 (프로젝트 루트)
 sys.path.insert(0, str(project_root))
 
 def main():
@@ -30,7 +30,7 @@ def main():
     
     try:
         # 앱 팩토리에서 앱 생성
-        from app.app_factory import create_app
+        from backend.app.app_factory import create_app
         app = create_app()
         
         print("=" * 60)
@@ -45,7 +45,7 @@ def main():
         
         # Socket.IO 지원 확인
         try:
-            from app.realtime_system import socketio
+            from backend.app.realtime_system import socketio
             if socketio:
                 print("🔌 Socket.IO 지원 활성화")
                 socketio.run(app, host=args.host, port=args.port, debug=args.debug)

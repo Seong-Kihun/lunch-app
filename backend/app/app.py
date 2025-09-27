@@ -6863,6 +6863,14 @@ with app.app_context():
     except Exception as e:
         print(f"[ERROR] 문의사항 Blueprint 등록 실패: {e}")
 
+    # 헬스체크 Blueprint 등록
+    try:
+        from routes.health import health_bp
+        app.register_blueprint(health_bp)
+        print("[SUCCESS] 헬스체크 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"[ERROR] 헬스체크 Blueprint 등록 실패: {e}")
+
     # 루트 레벨 호환성 API 등록 (모바일 앱 호환성)
     try:
         import sys
