@@ -566,15 +566,14 @@ export default function RandomLunchScreen({ navigation, route }) {
                         party_time: '12:00',
                         users: data.members.slice(0, 3).map(memberId => { // 최대 3명까지만
                             // memberId를 기반으로 실제 닉네임 가져오기
-                            const nicknames = {
-                                '1': '김철수', '2': '이영희', '3': '박민수', '4': '최지은', '5': '정현우',
-                                '6': '한소영', '7': '윤준호', '8': '송미라', '9': '강동현', '10': '임서연',
-                                '11': '오태호', '12': '신유진', '13': '조성민', '14': '백하은', '15': '남준석',
-                                '16': '류지현', '17': '차준호', '18': '구미영', '19': '홍성훈', '20': '전소연'
+                            // 실제 사용자 데이터에서 닉네임 가져오기
+                            const getNickname = (employeeId) => {
+                                const user = data.users.find(u => u.employee_id === employeeId);
+                                return user ? user.nickname : `사용자${employeeId}`;
                             };
                             return {
                                 employee_id: memberId,
-                                nickname: nicknames[memberId] || `사용자${memberId}`,
+                                nickname: getNickname(memberId),
                                 profile_image: null
                             };
                         })
@@ -845,17 +844,15 @@ export default function RandomLunchScreen({ navigation, route }) {
                         can_join: data.can_join || true, // 현재 사용자가 참여 가능
                         is_recommended: true, // 추천 그룹임을 명시
                         users: data.users.map(user => {
-                            // 공통 함수를 사용하여 마지막 점심 히스토리 추가
-                            const userWithLastLunch = addLastLunchToVirtualUser(user, global.myEmployeeId || '1');
                             return {
                                 employee_id: user.employee_id,
                                 nickname: user.nickname || `사용자${user.employee_id}`,
-                                profile_url: null,
+                                profile_url: user.profile_url || null,
                                 main_dish_genre: user.main_dish_genre || '한식,중식',
                                 lunch_preference: user.lunch_preference || '맛집 탐방',
-                                preferred_time: user.preferredTime || '12:00',
+                                preferred_time: user.preferred_time || '12:00',
                                 allergies: Array.isArray(user.allergies) ? user.allergies.join(', ') : (user.allergies || '없음'),
-                                last_lunch: userWithLastLunch.last_lunch || '처음'
+                                last_lunch: user.last_lunch || '처음'
                             };
                         })
                     };

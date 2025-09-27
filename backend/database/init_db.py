@@ -106,23 +106,8 @@ def create_default_users():
             return
             
         # 가상 사용자 데이터 (개발 환경에서만)
-        default_users = [
-            {
-                'email': 'kim@example.com',
-                'nickname': '김철수',
-                'employee_id': '1'
-            },
-            {
-                'email': 'lee@example.com',
-                'nickname': '이영희',
-                'employee_id': '2'
-            },
-            {
-                'email': 'park@example.com',
-                'nickname': '박민수',
-                'employee_id': '3'
-            }
-        ]
+        # 프로덕션 환경에서는 기본 사용자 생성하지 않음
+        default_users = []
         
         for user_data in default_users:
             # password_hash 필드가 있는지 확인하고 기본값 설정

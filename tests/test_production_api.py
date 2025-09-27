@@ -100,9 +100,10 @@ class ProductionAPITester:
         """실제 사용자 시나리오 테스트"""
         print("\n👥 사용자 시나리오 테스트")
         
-        # 테스트용 사용자 선택
-        test_user = PRODUCTION_TEST_USERS[0]  # 김철수
-        headers = get_auth_headers(test_user["employee_id"])
+        # 실제 사용자 데이터 사용 (하드코딩된 테스트 사용자 제거)
+        # TODO: 실제 프로덕션 환경의 사용자 데이터로 교체 필요
+        print("⚠️ 테스트 사용자 데이터가 제거되었습니다. 실제 사용자 인증이 필요합니다.")
+        return
         
         # 시나리오 1: 사용자 프로필 조회
         try:

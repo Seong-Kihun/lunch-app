@@ -5372,30 +5372,17 @@ def create_recurring_instances(master_schedule):
 
 
 def get_nickname_by_id(employee_id):
-    """employee_id로 닉네임을 반환하는 헬퍼 함수"""
-    nicknames = {
-        "1": "김철수",
-        "2": "이영희",
-        "3": "박민수",
-        "4": "최지은",
-        "5": "정현우",
-        "6": "한소영",
-        "7": "윤준호",
-        "8": "송미라",
-        "9": "강동현",
-        "10": "임서연",
-        "11": "오태호",
-        "12": "신유진",
-        "13": "조성민",
-        "14": "백하은",
-        "15": "남준석",
-        "16": "류지현",
-        "17": "차준호",
-        "18": "구미영",
-        "19": "홍성훈",
-        "20": "전소연",
-    }
-    return nicknames.get(employee_id, f"사용자{employee_id}")
+    """employee_id로 닉네임을 반환하는 헬퍼 함수 - 실제 데이터베이스에서 조회"""
+    try:
+        from backend.auth.models import User
+        user = User.query.filter_by(employee_id=employee_id).first()
+        if user:
+            return user.nickname
+        else:
+            return f"사용자{employee_id}"
+    except Exception as e:
+        print(f"[WARNING] 닉네임 조회 실패: {e}")
+        return f"사용자{employee_id}"
 
 
 # 🚀 개발용 채팅 API

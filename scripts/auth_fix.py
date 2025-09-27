@@ -56,42 +56,8 @@ def create_test_users(app):
             print(f"📊 기존 사용자 수: {len(existing_users)}")
             
             if len(existing_users) == 0:
-                # 테스트 사용자 생성
-                test_users = [
-                    {
-                        'employee_id': 'EMP001',
-                        'email': 'kim@koica.go.kr',
-                        'nickname': '김철수',
-                        'is_active': True,
-                        'main_dish_genre': '한식',
-                        'lunch_preference': '맛집 탐방',
-                        'allergies': '없음',
-                        'preferred_time': '12:00',
-                        'frequent_areas': '강남구,서초구'
-                    },
-                    {
-                        'employee_id': 'EMP002',
-                        'email': 'lee@koica.go.kr',
-                        'nickname': '이영희',
-                        'is_active': True,
-                        'main_dish_genre': '일식',
-                        'lunch_preference': '건강한 식사',
-                        'allergies': '견과류',
-                        'preferred_time': '12:30',
-                        'frequent_areas': '강남구,송파구'
-                    },
-                    {
-                        'employee_id': 'EMP003',
-                        'email': 'park@koica.go.kr',
-                        'nickname': '박민수',
-                        'is_active': True,
-                        'main_dish_genre': '중식',
-                        'lunch_preference': '다양한 맛',
-                        'allergies': '없음',
-                        'preferred_time': '12:15',
-                        'frequent_areas': '서초구,강남구'
-                    }
-                ]
+                # 프로덕션 환경에서는 테스트 사용자 생성하지 않음
+                test_users = []
                 
                 for user_data in test_users:
                     user = User(**user_data)

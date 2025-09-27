@@ -5,14 +5,12 @@ import { RENDER_SERVER_URL } from '../config';
 // 기본 사용자 정보 (Context에서 가져와야 함)
 const getCurrentUser = () => {
     try {
-        // TODO: Context에서 사용자 정보를 가져오도록 수정 필요
-        return {
-            employee_id: '1',
-            nickname: '김철수'
-        };
+        // 실제 AuthContext에서 사용자 정보를 가져오도록 수정
+        // TODO: AuthContext에서 현재 사용자 정보를 가져오도록 구현 필요
+        return null; // 실제 사용자 정보가 없으면 null 반환
     } catch (error) {
         console.error('사용자 정보 가져오기 실패:', error);
-        return { employee_id: '1', nickname: '김철수' };
+        return null;
     }
 };
 

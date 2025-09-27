@@ -20,27 +20,14 @@ class UserManager {
         this.currentUser = JSON.parse(savedUser);
         console.log('✅ 저장된 사용자 정보 로드됨:', this.currentUser.nickname);
       } else {
-        // 개발 환경에서만 기본 사용자 설정
-        if (__DEV__) {
-          this.currentUser = {
-            employee_id: '1',
-            nickname: '김철수',
-            email: 'user1@example.com'
-          };
-          console.log('🔧 개발 환경: 가상 유저 정보 설정됨');
-        }
+        // 프로덕션 환경에서는 기본 사용자 설정하지 않음
+        console.log('⚠️ 저장된 사용자 정보가 없습니다. 로그인이 필요합니다.');
       }
       this.isInitialized = true;
     } catch (error) {
       console.error('사용자 정보 초기화 실패:', error);
-      // 개발 환경에서만 기본값 사용
-      if (__DEV__) {
-        this.currentUser = {
-          employee_id: '1',
-          nickname: '김철수',
-          email: 'user1@example.com'
-        };
-      }
+      // 프로덕션 환경에서는 기본값 설정하지 않음
+      this.currentUser = null;
       this.isInitialized = true;
     }
   }
