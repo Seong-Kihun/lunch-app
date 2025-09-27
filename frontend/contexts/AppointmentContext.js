@@ -5,9 +5,21 @@ import { RENDER_SERVER_URL } from '../config';
 // 기본 사용자 정보 (Context에서 가져와야 함)
 const getCurrentUser = () => {
     try {
-        // 실제 AuthContext에서 사용자 정보를 가져오도록 수정
-        // TODO: AuthContext에서 현재 사용자 정보를 가져오도록 구현 필요
-        return null; // 실제 사용자 정보가 없으면 null 반환
+        // global.currentUser에서 사용자 정보 가져오기
+        if (global.currentUser && global.currentUser.employee_id) {
+            return global.currentUser;
+        }
+        
+        // fallback: AuthManager에서 사용자 정보 가져오기
+        if (global.authManager && global.authManager.getCurrentUser) {
+            const user = global.authManager.getCurrentUser();
+            if (user && user.employee_id) {
+                return user;
+            }
+        }
+        
+        console.warn('⚠️ [AppointmentContext] 사용자 정보를 찾을 수 없음');
+        return null;
     } catch (error) {
         console.error('사용자 정보 가져오기 실패:', error);
         return null;
@@ -78,6 +90,14 @@ export const AppointmentProvider = ({ children }) => {
     const loadLegacyData = useCallback(async () => {
         try {
             const currentUser = getCurrentUser();
+            
+            // 사용자 정보가 없으면 빈 데이터 반환
+            if (!currentUser || !currentUser.employee_id) {
+                console.warn('⚠️ [AppointmentContext] 사용자 정보가 없어서 기존 데이터 로드를 건너뜀');
+                setSyncStatus('error');
+                return {};
+            }
+            
             const response = await fetch(`${RENDER_SERVER_URL}/events/${currentUser.employee_id}`);
             
             if (response.ok) {

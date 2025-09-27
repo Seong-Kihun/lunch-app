@@ -48,13 +48,8 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      // 개발 모드에서는 기본 인증 상태 설정
-      if (__DEV__) {
-        console.log('🔧 개발 환경: 기본 인증 상태 설정됨');
-        setAuthState(AUTH_STATES.UNAUTHENTICATED);
-        setIsLoading(false);
-        return;
-      }
+      // 개발 모드에서도 실제 인증 시스템 사용 (프로덕션 환경과 동일)
+      console.log('🔧 실제 인증 시스템 사용');
 
       // 저장된 토큰들 확인
       const authStatus = await checkAuthStatus();
