@@ -97,16 +97,14 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
                     party_date: data.date,
                     party_time: '12:00',
                     users: data.members.map(memberId => {
-                        // memberId를 기반으로 실제 닉네임 가져오기
-                        const nicknames = {
-                            '1': '김철수', '2': '이영희', '3': '박민수', '4': '최지은', '5': '정현우',
-                            '6': '한소영', '7': '윤준호', '8': '송미라', '9': '강동현', '10': '임서연',
-                            '11': '오태호', '12': '신유진', '13': '조성민', '14': '백하은', '15': '남준석',
-                            '16': '류지현', '17': '차준호', '18': '구미영', '19': '홍성훈', '20': '전소연'
+                        // 실제 사용자 데이터에서 닉네임 가져오기
+                        const getNickname = (employeeId) => {
+                            const user = data.users.find(u => u.employee_id === employeeId);
+                            return user ? user.nickname : `사용자${employeeId}`;
                         };
                         return {
                             employee_id: memberId,
-                            nickname: nicknames[memberId] || `사용자${memberId}`,
+                            nickname: getNickname(memberId),
                             profile_image: null
                         };
                     })

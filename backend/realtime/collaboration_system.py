@@ -543,7 +543,7 @@ if __name__ == '__main__':
         print(f"✅ 세션 생성 성공: {session_id}")
         
         # 세션 참가 테스트
-        success = collaboration_system.join_session(session_id, "user456", "김철수")
+        success = collaboration_system.join_session(session_id, "user456", "테스트사용자")
         print(f"세션 참가 테스트 결과: {success}")
         
         # 세션 정보 조회

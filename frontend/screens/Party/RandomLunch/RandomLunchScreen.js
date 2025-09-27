@@ -2411,26 +2411,9 @@ export default function RandomLunchScreen({ navigation, route }) {
     const generateLocalVirtualGroupsForDate = (date) => {
         const currentUserId = user?.employee_id || global.myEmployeeId || '1';
         
-        // 가상 유저 닉네임 매핑
-        const nicknames = {
-            '1': '김철수', '2': '이영희', '3': '박민수', '4': '최지은', '5': '정현우',
-            '6': '한소영', '7': '윤준호', '8': '송미라', '9': '강동현', '10': '임서연',
-            '11': '오태호', '12': '신유진', '13': '조성민', '14': '백하은', '15': '남준석',
-            '16': '류지현', '17': '차준호', '18': '구미영', '19': '홍성훈', '20': '전소연'
-        };
-        
-        // 현재 사용자를 제외한 가상 유저들
-        const availableUsers = Object.keys(nicknames)
-            .filter(id => id !== currentUserId)
-            .map(id => ({
-                employee_id: id,
-                nickname: nicknames[id],
-                profile_image: null,
-                main_dish_genre: ['한식', '중식', '일식', '양식'][Math.floor(Math.random() * 4)],
-                lunch_preference: ['맛집 탐방', '건강식', '빠른 식사', '새로운 맛'][Math.floor(Math.random() * 4)],
-                preferred_time: ['11:30', '12:00', '12:30'][Math.floor(Math.random() * 3)],
-                allergies: Math.random() > 0.8 ? ['견과류', '해산물'][Math.floor(Math.random() * 2)] : []
-            }));
+        // 프로덕션 환경에서는 가상 유저 데이터 사용하지 않음
+        console.log('⚠️ 프로덕션 환경: 가상 유저 데이터가 제거되었습니다. 실제 사용자 데이터를 사용하세요.');
+        const availableUsers = [];
         
         // 3명 그룹으로만 랜덤하게 조합 (최대 3명 제한)
         const groups = [];

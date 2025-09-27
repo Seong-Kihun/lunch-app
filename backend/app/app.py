@@ -6560,14 +6560,10 @@ def get_dev_user_data(employee_id):
 def create_default_users():
     """기본 사용자들을 생성합니다."""
     try:
-        from auth.models import User
+        from backend.auth.models import User
 
-        # 가상 사용자 데이터
-        default_users = [
-            {"email": "kim@example.com", "nickname": "김철수", "employee_id": "1"},
-            {"email": "lee@example.com", "nickname": "이영희", "employee_id": "2"},
-            {"email": "park@example.com", "nickname": "박민수", "employee_id": "3"},
-        ]
+        # 프로덕션 환경에서는 기본 사용자 생성하지 않음
+        default_users = []
 
         # 세션 상태 확인 및 재설정
         try:
