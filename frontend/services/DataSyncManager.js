@@ -3,7 +3,7 @@
  * 서버와 클라이언트 간의 데이터 동기화를 중앙에서 관리하는 시스템
  */
 
-import AsyncStorage from '@react-native-async-storage/asyncStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from './ApiClient';
 import authManager from './AuthManager';
 import networkManager from './NetworkManager';

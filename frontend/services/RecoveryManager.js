@@ -3,7 +3,7 @@
  * 시스템 장애 시 자동 복구 및 백업 서버 전환을 담당하는 시스템
  */
 
-import AsyncStorage from '@react-native-async-storage/asyncStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import networkManager from './NetworkManager';
 import authManager from './AuthManager';
 import dataSyncManager from './DataSyncManager';

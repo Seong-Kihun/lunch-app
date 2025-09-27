@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useReducer } from 'react';
-import AsyncStorage from '@react-native-async-storage/asyncStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 앱 상태 타입
 export const APP_STATE = {

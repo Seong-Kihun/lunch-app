@@ -4,7 +4,7 @@
  */
 
 import { Alert, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/asyncStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 에러 타입
 export const ERROR_TYPE = {

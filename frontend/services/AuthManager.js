@@ -3,7 +3,7 @@
  * 로그인, 로그아웃, 토큰 관리, 사용자 세션을 중앙에서 관리하는 단일 진실의 원천
  */
 
-import AsyncStorage from '@react-native-async-storage/asyncStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // 인증 상태 상수
