@@ -12,9 +12,10 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from 'react-native-vector-icons';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useSchedule } from '../contexts/ScheduleContext';
-import { storeAccessToken, storeRefreshToken, storeUserData } from '../utils/secureStorage';
+import { useNetwork } from '../contexts/NetworkContext';
+import authManager from '../services/AuthManager';
 import { RENDER_SERVER_URL } from '../config';
 
 const LoginScreen = ({ navigation }) => {
@@ -26,6 +27,29 @@ const LoginScreen = ({ navigation }) => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
+  
+  // 네트워크 상태 관리
+  const { 
+    isConnected, 
+    isInitialized, 
+    serverURL, 
+    getServerURL,
+    getStatusText,
+    getStatusIcon,
+    reconnect,
+    error: networkError 
+  } = useNetwork();
+
+  // 네트워크 상태 변화 모니터링
+  useEffect(() => {
+    if (isInitialized) {
+      if (isConnected) {
+        console.log('✅ [LoginScreen] 네트워크 준비 완료');
+      } else if (networkError) {
+        console.log('❌ [LoginScreen] 네트워크 오류:', networkError);
+      }
+    }
+  }, [isInitialized, isConnected, networkError]);
 
   // 이메일 prefix 핸들러
   const handleEmailPrefixChange = (value) => {
@@ -52,76 +76,72 @@ const LoginScreen = ({ navigation }) => {
       if (!email.trim()) {
         console.log('❌ [LoginScreen] 이메일이 비어있음');
         setAuthError('이메일을 입력해주세요.');
+        setIsLoading(false);
         return;
       }
       
       if (!password.trim()) {
         console.log('❌ [LoginScreen] 비밀번호가 비어있음');
         setAuthError('비밀번호를 입력해주세요.');
+        setIsLoading(false);
         return;
       }
       
       if (!isValidEmail(email)) {
         console.log('❌ [LoginScreen] 이메일 형식이 잘못됨:', email);
         setAuthError('올바른 KOICA 이메일 주소를 입력해주세요.');
+        setIsLoading(false);
         return;
       }
       
       console.log('✅ [LoginScreen] 입력값 검증 통과:', { email, passwordLength: password.length });
       
-      // 동적 서버 URL 사용
-      const { getServerURL } = await import('../utils/networkUtils');
-      const serverURL = await getServerURL();
+      // 네트워크 상태 확인
+      if (!isConnected) {
+        console.log('🔧 [LoginScreen] 네트워크 연결 대기 중...');
+        setAuthError('네트워크를 준비하고 있습니다. 잠시만 기다려주세요.');
+        setIsLoading(false);
+        return;
+      }
       
-      // 비밀번호 로그인 API 호출
-      const response = await fetch(`${serverURL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim()
-        })
+      // 새로운 AuthManager를 통한 로그인
+      console.log('🔐 [LoginScreen] AuthManager를 통한 로그인 시도');
+      const result = await authManager.login({
+        email: email.trim(),
+        password: password.trim()
       });
       
-      const data = await response.json();
+      console.log('✅ [LoginScreen] 로그인 성공:', result.user.nickname);
       
-      if (response.ok && data.access_token) {
-        // 로그인 성공 처리
-        await storeAccessToken(data.access_token);
-        await storeRefreshToken(data.refresh_token);
-        await storeUserData(data.user);
-        
-        // Context에 액세스 토큰 설정
-        setScheduleAccessToken(data.access_token);
-        
-        Alert.alert(
-          '로그인 성공',
-          `환영합니다, ${data.user.nickname}님!`,
-          [{ text: '확인' }]
-        );
-        
-        // AuthContext를 통해 로그인 성공 처리
-        handleLoginSuccess(data.user, data.access_token, data.refresh_token);
-      } else {
-        // 로그인 실패 시 팝업 표시
-        const errorMessage = data.error || '로그인에 실패했습니다.';
-        Alert.alert(
-          '로그인 실패',
-          '아이디와 비밀번호를 확인해주세요.',
-          [{ text: '확인' }]
-        );
-        setAuthError(errorMessage);
+      // ScheduleContext에 액세스 토큰 설정
+      if (setScheduleAccessToken) {
+        setScheduleAccessToken(result.accessToken);
       }
+      
+      // 로그인 성공 처리
+      handleLoginSuccess(result.user, result.accessToken, result.refreshToken);
+      
+      // 에러 상태 클리어
+      clearError();
     } catch (error) {
       console.error('비밀번호 로그인 실패:', error);
-      Alert.alert(
-        '로그인 오류',
-        '네트워크 오류가 발생했습니다. 다시 시도해주세요.',
-        [{ text: '확인' }]
-      );
-      setAuthError('로그인 중 오류가 발생했습니다.');
+      
+      // 네트워크 연결 문제인지 확인
+      if (error.message && (error.message.includes('Network request failed') || error.message.includes('네트워크'))) {
+        console.log('🔧 [LoginScreen] 네트워크 연결 문제 감지, 재연결 시도');
+        setAuthError('네트워크 연결에 문제가 있습니다. 재연결을 시도합니다.');
+        
+        // 재연결 시도
+        try {
+          await reconnect();
+          setAuthError('네트워크 재연결 완료. 다시 로그인해주세요.');
+        } catch (reconnectError) {
+          setAuthError('네트워크 재연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        }
+      } else {
+        // AuthManager에서 이미 에러 메시지가 설정됨
+        setAuthError(error.message || '로그인 중 오류가 발생했습니다.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -275,6 +295,15 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.header}>
             <Text style={styles.logo}>밥플떼기</Text>
             <Text style={styles.subtitle}>점심이 설레는 이유</Text>
+            
+            {/* 네트워크 상태 표시 */}
+            <View style={styles.networkStatus}>
+              <View style={styles.networkStatusItem}>
+                <Text style={[styles.networkStatusText, { color: isConnected ? '#10B981' : '#F59E0B' }]}>
+                  {getStatusIcon()} {getStatusText()}
+                </Text>
+              </View>
+            </View>
           </View>
 
 
@@ -310,16 +339,18 @@ const LoginScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!email.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled
+                (!email.trim() || !password.trim() || isLoading || !isConnected) && styles.submitButtonDisabled
               ]}
               onPress={() => {
                 console.log('🔘 [LoginScreen] 로그인 버튼 클릭됨');
                 handlePasswordLogin();
               }}
-              disabled={(!email.trim() || !password.trim() || isLoading)}
+              disabled={(!email.trim() || !password.trim() || isLoading || !isConnected)}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
+              ) : !isConnected ? (
+                <Text style={styles.submitButtonText}>네트워크 준비 중...</Text>
               ) : (
                 <Text style={styles.submitButtonText}>로그인</Text>
               )}
@@ -454,6 +485,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#64748B',
     textAlign: 'center',
+  },
+  networkStatus: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  networkStatusItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  networkStatusText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   form: {
     marginBottom: 32,

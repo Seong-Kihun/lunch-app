@@ -1,7 +1,11 @@
-// 네트워크 유틸리티 함수들
-import { Platform } from 'react-native';
+/**
+ * 네트워크 유틸리티 함수들
+ * 새로운 NetworkManager와 호환성을 위한 래퍼 함수들
+ */
 
-// 현재 네트워크 IP를 자동으로 감지하는 함수
+import networkManager from '../services/NetworkManager';
+
+// 현재 네트워크 IP를 자동으로 감지하는 함수 (레거시 호환성)
 export const getCurrentNetworkIP = async () => {
     try {
         // Expo 환경에서는 Constants를 사용하여 IP 감지
@@ -50,34 +54,35 @@ export const getCurrentNetworkIP = async () => {
     }
 };
 
-// 통합된 네트워크 설정 사용
-import { getServerURL as getUnifiedServerURL } from '../config/networkConfig';
+// 네트워크 초기화 상태를 안전하게 확인하는 함수 (레거시 호환성)
+export const waitForNetworkInitialization = async (timeoutMs = 10000) => {
+    const startTime = Date.now();
+    
+    while (!networkManager.isInitialized && (Date.now() - startTime) < timeoutMs) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    if (networkManager.isInitialized) {
+        console.log('✅ [NetworkUtils] 네트워크 초기화 완료 확인');
+        return true;
+    } else {
+        console.warn('⚠️ [NetworkUtils] 네트워크 초기화 타임아웃');
+        return false;
+    }
+};
 
-// 기존 함수를 통합 설정으로 리다이렉트
+// 서버 URL 가져오기 (새로운 NetworkManager 사용)
 export const getServerURL = async () => {
     try {
-        // 네트워크 초기화 상태 확인
-        if (!global.networkInitialized) {
-            console.warn('⚠️ [NetworkUtils] 네트워크가 아직 초기화되지 않음');
-            // 네트워크 초기화 대기
-            let attempts = 0;
-            while (!global.networkInitialized && attempts < 50) { // 5초 대기
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
-            
-            if (!global.networkInitialized) {
-                console.error('❌ [NetworkUtils] 네트워크 초기화 타임아웃');
-                throw new Error('네트워크 초기화 타임아웃');
-            }
-        }
-        
-        // 통합된 네트워크 설정 사용
-        return getUnifiedServerURL();
+        console.log('🔧 [NetworkUtils] NetworkManager를 통한 서버 URL 요청');
+        return await networkManager.getServerURL();
     } catch (error) {
         console.error('🔧 [NetworkUtils] 서버 URL 생성 실패:', error);
-        // fallback
-        return __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+        
+        // 최종 fallback
+        const fallbackURL = __DEV__ ? 'http://localhost:5000' : 'https://lunch-app-backend-ra12.onrender.com';
+        console.log('🔧 [NetworkUtils] 최종 fallback URL 사용:', fallbackURL);
+        return fallbackURL;
     }
 };
 

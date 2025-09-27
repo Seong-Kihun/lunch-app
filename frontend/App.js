@@ -20,6 +20,9 @@ import LoginScreen from './auth/LoginScreen';
 import RegisterScreen from './auth/RegisterScreen';
 import InquiryScreen from './screens/InquiryScreen';
 
+// 네트워크 관련
+import { NetworkProvider, useNetwork } from './contexts/NetworkContext';
+
 // 핵심 화면 컴포넌트 Import
 import HomeScreen from './screens/Home/HomeScreen';
 import OnboardingScreen from './screens/Onboarding/OnboardingScreen';
@@ -578,6 +581,17 @@ function MainApp() {
         restoreBackupData
     } = useSchedule();
 
+    // 네트워크 상태 관리
+    const { 
+        isConnected, 
+        isInitialized, 
+        serverURL, 
+        error: networkError, 
+        reconnect,
+        getStatusText,
+        getStatusIcon 
+    } = useNetwork();
+
     // 전역 변수 초기화 - currentColors 설정
     useEffect(() => {
         const initializeApp = async () => {
@@ -608,14 +622,7 @@ function MainApp() {
                     console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
                 }
 
-                // 2. 네트워크 초기화 (완료될 때까지 대기)
-                console.log('🔧 [MainApp] 네트워크 초기화 시작...');
-                const serverURL = await initializeNetwork();
-                console.log('✅ [MainApp] 네트워크 초기화 완료:', serverURL);
-                
-                // 3. 네트워크 초기화 완료 후 전역 변수 설정
-                global.serverURL = serverURL;
-                global.networkInitialized = true;
+                console.log('✅ [MainApp] 앱 초기화 완료');
                 
             } catch (error) {
                 console.error('❌ [MainApp] 앱 초기화 실패:', error);
@@ -626,6 +633,21 @@ function MainApp() {
 
         initializeApp();
     }, []);
+
+    // 네트워크 상태 변화 모니터링
+    useEffect(() => {
+        if (isInitialized) {
+            if (isConnected && serverURL) {
+                console.log('✅ [MainApp] 네트워크 연결됨:', serverURL);
+                // 전역 변수 업데이트 (레거시 호환성)
+                global.serverURL = serverURL;
+                global.networkInitialized = true;
+            } else if (networkError) {
+                console.error('❌ [MainApp] 네트워크 오류:', networkError);
+                setShowNetworkStatus(true);
+            }
+        }
+    }, [isConnected, isInitialized, serverURL, networkError]);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -710,23 +732,25 @@ const queryClient = new QueryClient();
 export default function App() {
     return (
         <QueryClientProvider client={queryClient}>
+        <NetworkProvider>
         <AuthProvider>
         <ThemeProvider>
             <UserProvider>
                 <PointsProvider>
                     <MissionProvider>
                         <AppointmentProvider>
-                                                    <ScheduleProvider>
-                            <NewScheduleProvider>
-                                <MainApp />
-                            </NewScheduleProvider>
-                        </ScheduleProvider>
+                            <ScheduleProvider>
+                                <NewScheduleProvider>
+                                    <MainApp />
+                                </NewScheduleProvider>
+                            </ScheduleProvider>
                         </AppointmentProvider>
                     </MissionProvider>
                 </PointsProvider>
             </UserProvider>
         </ThemeProvider>
         </AuthProvider>
+        </NetworkProvider>
         </QueryClientProvider>
     );
 }
