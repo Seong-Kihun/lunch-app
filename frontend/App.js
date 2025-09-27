@@ -614,12 +614,10 @@ function MainApp() {
                     console.log('✅ [MainApp] global.currentColors 초기화 완료:', global.currentColors);
                 }
                 
+                // 프로덕션 환경에서는 기본 사용자 설정하지 않음
+                // 실제 인증된 사용자 정보만 사용
                 if (!global.currentUser) {
-                    global.currentUser = {
-                        employee_id: '1',
-                        nickname: '사용자'
-                    };
-                    console.log('✅ [MainApp] global.currentUser 초기화 완료:', global.currentUser);
+                    console.log('⚠️ [MainApp] global.currentUser가 설정되지 않음 - 로그인이 필요합니다');
                 }
 
                 console.log('✅ [MainApp] 앱 초기화 완료');

@@ -60,11 +60,25 @@ export const AuthProvider = ({ children }) => {
         if (userData) {
           setUser(userData);
           setAuthState(AUTH_STATES.AUTHENTICATED);
+          
+          // 실제 인증된 사용자만 global.currentUser에 설정
+          global.currentUser = {
+            employee_id: userData.employee_id,
+            nickname: userData.nickname || userData.name
+          };
+          global.myEmployeeId = userData.employee_id;
+          console.log('✅ [AuthContext] 실제 인증된 사용자 정보 설정:', global.currentUser);
         } else {
           setAuthState(AUTH_STATES.UNAUTHENTICATED);
+          // 사용자 정보가 없으면 global 변수 초기화
+          global.currentUser = null;
+          global.myEmployeeId = null;
         }
       } else {
         setAuthState(AUTH_STATES.UNAUTHENTICATED);
+        // 인증되지 않았으면 global 변수 초기화
+        global.currentUser = null;
+        global.myEmployeeId = null;
       }
     } catch (error) {
       console.error('인증 상태 초기화 실패:', error);
@@ -113,6 +127,11 @@ export const AuthProvider = ({ children }) => {
       setAuthState(AUTH_STATES.UNAUTHENTICATED);
       setError(null);
       
+      // global 변수 초기화
+      global.currentUser = null;
+      global.myEmployeeId = null;
+      console.log('✅ [AuthContext] 로그아웃 시 global 변수 초기화');
+      
       // 로컬 상태도 정리
       setIsLoading(false);
     } catch (error) {
@@ -122,6 +141,10 @@ export const AuthProvider = ({ children }) => {
       setAuthState(AUTH_STATES.UNAUTHENTICATED);
       setError(null);
       setIsLoading(false);
+      
+      // 에러 발생 시에도 global 변수 초기화
+      global.currentUser = null;
+      global.myEmployeeId = null;
     }
   };
 
