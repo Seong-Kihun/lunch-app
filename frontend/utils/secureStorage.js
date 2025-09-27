@@ -76,10 +76,53 @@ export const removeToken = async (key, isHighSecurity = false) => {
       await storage.removeItem(key);
     }
     
-    console.log(`토큰 삭제 성공: ${key}`);
     return true;
   } catch (error) {
     console.error(`토큰 삭제 실패: ${key}`, error);
+    return false;
+  }
+};
+
+/**
+ * 모든 인증 관련 데이터 삭제 (완전 초기화)
+ */
+export const clearAllTokens = async () => {
+  try {
+    console.log('🔄 [secureStorage] 모든 인증 데이터 삭제 시작');
+    
+    // AsyncStorage에서 모든 인증 관련 키 삭제
+    const keysToRemove = [
+      'access_token',
+      'refresh_token', 
+      'user_data',
+      'auth_status',
+      'auth_manager_access_token',
+      'auth_manager_refresh_token',
+      'auth_manager_user_data',
+      'auth_manager_token_expiry',
+      'currentUser',
+      'onboardingCompleted_KOICA356',
+      'onboardingCompleted_1',
+      'onboardingCompleted'
+    ];
+    
+    // 모든 키 삭제
+    await AsyncStorage.multiRemove(keysToRemove);
+    
+    // SecureStore에서도 삭제 시도
+    try {
+      await SecureStore.deleteItemAsync('access_token');
+      await SecureStore.deleteItemAsync('refresh_token');
+      await SecureStore.deleteItemAsync('user_data');
+    } catch (secureError) {
+      // SecureStore 오류는 무시 (키가 없을 수 있음)
+      console.log('🔍 [secureStorage] SecureStore 키 삭제 중 일부 오류 (정상):', secureError.message);
+    }
+    
+    console.log('✅ [secureStorage] 모든 인증 데이터 삭제 완료');
+    return true;
+  } catch (error) {
+    console.error('❌ [secureStorage] 인증 데이터 삭제 실패:', error);
     return false;
   }
 };

@@ -568,7 +568,7 @@ function TabNavigator() {
 function MainApp() {
     const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
     const [showNetworkStatus, setShowNetworkStatus] = useState(false);
-    const { authState, user } = useAuth();
+    const { authState, user, forceLogout } = useAuth();
     const { 
         appointments, 
         setAppointments, 
@@ -596,7 +596,11 @@ function MainApp() {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                // 1. 전역 변수 초기화
+                // 1. 개발 환경에서 강제 로그아웃 (저장된 토큰 삭제)
+                console.log('🔄 [MainApp] 개발 환경 - 저장된 인증 정보 초기화');
+                await forceLogout();
+                
+                // 2. 전역 변수 초기화
                 if (!global.currentColors) {
                     global.currentColors = {
                         background: '#F1F5F9', // 파란색 테마와 어울리는 연한 블루 그레이
@@ -630,7 +634,7 @@ function MainApp() {
         };
 
         initializeApp();
-    }, []);
+    }, [forceLogout]);
 
     // 네트워크 상태 변화 모니터링
     useEffect(() => {

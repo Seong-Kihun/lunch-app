@@ -148,6 +148,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 강제 로그아웃 (모든 저장된 데이터 삭제)
+  const forceLogout = async () => {
+    try {
+      console.log('🔄 [AuthContext] 강제 로그아웃 시작');
+      
+      // 모든 저장된 토큰과 사용자 정보 삭제
+      const { clearAllTokens } = await import('../utils/secureStorage');
+      await clearAllTokens();
+      
+      // 상태 초기화
+      setUser(null);
+      setAuthState(AUTH_STATES.UNAUTHENTICATED);
+      setError(null);
+      setIsLoading(false);
+      
+      // global 변수 초기화
+      global.currentUser = null;
+      global.myEmployeeId = null;
+      
+      console.log('✅ [AuthContext] 강제 로그아웃 완료');
+    } catch (error) {
+      console.error('❌ [AuthContext] 강제 로그아웃 실패:', error);
+    }
+  };
+
   // 사용자 정보 업데이트
   const updateUser = (updatedUserData) => {
     setUser(updatedUserData);
@@ -176,6 +201,7 @@ export const AuthProvider = ({ children }) => {
     enterRegistrationMode,
     handleRegistrationSuccess,
     handleLogout,
+    forceLogout,
     updateUser,
     setAuthError,
     clearError,
