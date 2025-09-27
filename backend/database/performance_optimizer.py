@@ -12,7 +12,8 @@ import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask
 from backend.app.extensions import db
-from backend.models.app_models import User, Party, PartyMember
+from backend.models.app_models import Party, PartyMember
+from backend.auth.models import User
 from backend.models.restaurant_models import RestaurantV2, RestaurantVisitV2
 from backend.models.schedule_models import PersonalSchedule
 

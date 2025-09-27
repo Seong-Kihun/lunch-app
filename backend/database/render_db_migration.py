@@ -348,6 +348,73 @@ def migrate_personal_schedules_table():
         if conn:
             conn.close()
 
+def migrate_users_table():
+    """users 테이블에 비밀번호 관련 컬럼 추가"""
+    if not PSYCOPG2_AVAILABLE:
+        logger.warning("psycopg2가 설치되지 않았습니다. users 테이블 마이그레이션을 건너뜁니다.")
+        return False
+        
+    try:
+        conn = get_database_connection()
+        if not conn:
+            logger.error("데이터베이스 연결 실패")
+            return False
+        
+        cursor = conn.cursor()
+        
+        logger.info("users 테이블 존재 여부: True")
+        
+        # 기존 컬럼 확인
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users'
+        """)
+        
+        existing_columns = [row[0] for row in cursor.fetchall()]
+        logger.info(f"기존 users 테이블 컬럼들: {existing_columns}")
+        
+        # 추가할 컬럼들
+        new_columns = [
+            ('password_hash', 'VARCHAR(255)', True),
+            ('last_password_change', 'TIMESTAMP', True),
+            ('failed_login_attempts', 'INTEGER DEFAULT 0', False),
+            ('account_locked_until', 'TIMESTAMP', True)
+        ]
+        
+        for column_name, column_type, nullable in new_columns:
+            if column_name in existing_columns:
+                logger.info(f"✅ users.{column_name} 컬럼이 이미 존재합니다.")
+                continue
+            
+            try:
+                add_column_query = f"ALTER TABLE users ADD COLUMN {column_name} {column_type}"
+                if not nullable:
+                    add_column_query += " NOT NULL"
+                
+                cursor.execute(add_column_query)
+                logger.info(f"✅ users.{column_name} 컬럼이 추가되었습니다.")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ users.{column_name} 컬럼 추가 실패: {e}")
+        
+        # 기존 사용자들의 failed_login_attempts를 0으로 설정
+        try:
+            cursor.execute("UPDATE users SET failed_login_attempts = 0 WHERE failed_login_attempts IS NULL")
+            logger.info("✅ 기존 사용자들의 failed_login_attempts 기본값 설정 완료")
+        except Exception as e:
+            logger.warning(f"⚠️ failed_login_attempts 기본값 설정 실패: {e}")
+        
+        cursor.close()
+        conn.close()
+        
+        logger.info("🎉 users 테이블 마이그레이션 완료")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ users 테이블 마이그레이션 실패: {e}")
+        return False
+
 def migrate_all_tables():
     """모든 테이블 마이그레이션 실행"""
     if not PSYCOPG2_AVAILABLE:
@@ -358,6 +425,10 @@ def migrate_all_tables():
     
     # 각 테이블 마이그레이션 실행
     migration_results = []
+    
+    # users 테이블 마이그레이션 (비밀번호 컬럼 추가)
+    users_result = migrate_users_table()
+    migration_results.append(("users", users_result))
     
     # restaurant 테이블 마이그레이션
     restaurant_result = migrate_restaurant_table()

@@ -2,10 +2,11 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import desc, or_, and_, func
 from backend.app.extensions import db
 from backend.models.app_models import (
-    ChatRoom, ChatMessage, ChatParticipant, Party, PartyMember, User,
+    ChatRoom, ChatMessage, ChatParticipant, Party, PartyMember,
     MessageStatus, MessageReaction, MessageAttachment, ChatRoomMember,
     ChatRoomSettings, NotificationSettings, ChatNotification, MessageSearchIndex
 )
+from backend.auth.models import User
 from datetime import datetime, timedelta
 import random
 import os
