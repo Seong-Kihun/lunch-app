@@ -44,7 +44,7 @@ const UNIFIED_CONFIG = {
   },
   
   // 설정 버전
-  CONFIG_VERSION: '3.1.0'
+  CONFIG_VERSION: '3.2.0'
 };
 
 class UnifiedNetworkManager {
@@ -75,12 +75,17 @@ class UnifiedNetworkManager {
       const environment = this.detectEnvironment();
       console.log(`🔍 [UnifiedNetworkManager] 환경: ${environment}`);
 
-      // 2. 저장된 URL 확인 (빠른 타임아웃)
-      const savedURL = await this.getSavedURLWithTimeout(1000);
-      if (savedURL && await this.quickTest(savedURL)) {
-        console.log('✅ [UnifiedNetworkManager] 저장된 URL 사용:', savedURL);
-        await this.setServerURL(savedURL);
-        return savedURL;
+      // 2. 개발 환경에서는 저장된 URL 무시하고 로컬 서버 우선
+      if (environment === 'development') {
+        console.log('🔧 [UnifiedNetworkManager] 개발 환경 - 로컬 서버 우선 연결');
+      } else {
+        // 프로덕션 환경에서만 저장된 URL 확인
+        const savedURL = await this.getSavedURLWithTimeout(1000);
+        if (savedURL && await this.quickTest(savedURL)) {
+          console.log('✅ [UnifiedNetworkManager] 저장된 URL 사용:', savedURL);
+          await this.setServerURL(savedURL);
+          return savedURL;
+        }
       }
 
       // 3. 기본 URL 목록에서 빠른 테스트
