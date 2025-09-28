@@ -29,7 +29,14 @@ const LoginScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const { enterRegistrationMode, setAuthError, clearError, handleLoginSuccess } = useAuth();
+  const { 
+    enterRegistrationMode, 
+    setAuthError, 
+    clearError, 
+    handleLoginSuccess,
+    setUser,
+    setAuthState
+  } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
   
   // 네트워크 상태 관리
@@ -132,6 +139,11 @@ const LoginScreen = ({ navigation }) => {
       if (setScheduleAccessToken) {
         setScheduleAccessToken(result.accessToken);
       }
+      
+      // AuthContext 상태 직접 업데이트 (리스너가 없는 경우 대비)
+      console.log('🔧 [LoginScreen] AuthContext 상태 직접 업데이트');
+      setUser(result.user);
+      setAuthState('authenticated');
       
       // 로그인 성공 처리
       handleLoginSuccess(result.user, result.accessToken, result.refreshToken);

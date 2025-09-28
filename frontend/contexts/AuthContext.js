@@ -207,12 +207,17 @@ export const AuthProvider = ({ children }) => {
     setAuthError,
     setIsLoading,
     
+    // 직접 상태 업데이트 (디버깅용)
+    setUser,
+    setAuthState,
+    
     // 상수
     AUTH_STATES
   };
 
-  // 초기화 및 리스너 설정
+  // 초기화 및 리스너 설정 - 즉시 실행
   useEffect(() => {
+    console.log('🚀 [AuthContext] useEffect 실행됨');
     let unsubscribe;
     
     const setupAuth = async () => {
@@ -244,12 +249,13 @@ export const AuthProvider = ({ children }) => {
 
     // 정리
     return () => {
+      console.log('🧹 [AuthContext] 정리 실행');
       clearTimeout(timeoutId);
       if (unsubscribe) {
         unsubscribe();
       }
     };
-  }, [handleAuthStatusChange, initializeAuth]);
+  }, []); // 의존성 배열을 비워서 마운트 시에만 실행
 
   return (
     <AuthContext.Provider value={contextValue}>
