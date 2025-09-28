@@ -61,73 +61,61 @@ class NetworkMonitor {
   }
 
   /**
-   * 스마트 헬스 체크 수행 - 실제 API 사용 가능성 테스트
+   * 백엔드 상태 분석 기반 헬스 체크 수행
    */
   async performHealthCheck() {
     try {
-      console.log('🔍 [NetworkMonitor] 스마트 헬스 체크 수행');
+      console.log('🔍 [NetworkMonitor] 백엔드 상태 분석 기반 헬스 체크 수행');
       
       const startTime = Date.now();
       
-      // 실제 API 호출로 서버 상태 확인 (로그인 API는 항상 존재해야 함)
-      let isHealthy = false;
-      let healthCheckMethod = '';
-      
-      try {
-        // 1차: 로그인 API 존재 확인 (가장 기본적인 API)
-        console.log('🔍 [NetworkMonitor] 로그인 API 존재 확인');
-        const response = await unifiedApiClient.get('/api/auth/login', {}, { timeout: 8000 });
-        isHealthy = true;
-        healthCheckMethod = 'login_api';
-        console.log('✅ [NetworkMonitor] 로그인 API 존재 확인 성공');
-      } catch (loginError) {
-        console.warn('⚠️ [NetworkMonitor] 로그인 API 확인 실패:', loginError.message);
-        
-        try {
-          // 2차: 레스토랑 API 확인
-          console.log('🔍 [NetworkMonitor] 레스토랑 API 존재 확인');
-          const response = await unifiedApiClient.get('/api/restaurants', {}, { timeout: 8000 });
-          isHealthy = true;
-          healthCheckMethod = 'restaurants_api';
-          console.log('✅ [NetworkMonitor] 레스토랑 API 존재 확인 성공');
-        } catch (restaurantError) {
-          console.warn('⚠️ [NetworkMonitor] 레스토랑 API 확인 실패:', restaurantError.message);
-          
-          try {
-            // 3차: 서버 기본 응답 확인
-            console.log('🔍 [NetworkMonitor] 서버 기본 응답 확인');
-            const response = await unifiedApiClient.get('/', {}, { timeout: 10000 });
-            isHealthy = true;
-            healthCheckMethod = 'server_root';
-            console.log('✅ [NetworkMonitor] 서버 기본 응답 확인 성공');
-          } catch (serverError) {
-            console.warn('⚠️ [NetworkMonitor] 서버 기본 응답 확인 실패:', serverError.message);
-            isHealthy = false;
-            healthCheckMethod = 'all_failed';
-          }
-        }
-      }
+      // UnifiedApiClient의 백엔드 상태 분석 활용
+      const analysis = await unifiedApiClient.analyzeBackendStatus();
       
       const responseTime = Date.now() - startTime;
+      
+      // 백엔드가 부분적으로라도 작동하면 건강한 것으로 간주
+      const isHealthy = analysis.serverReachable || analysis.apiEndpointsWorking || analysis.authenticationWorking;
+      
+      let healthStatus = 'unknown';
+      if (analysis.serverReachable && analysis.apiEndpointsWorking && analysis.authenticationWorking) {
+        healthStatus = 'fully_healthy';
+      } else if (isHealthy) {
+        healthStatus = 'partially_healthy';
+      } else {
+        healthStatus = 'unhealthy';
+      }
       
       this.lastHealthCheck = {
         timestamp: new Date().toISOString(),
         isHealthy,
         responseTime,
-        method: healthCheckMethod,
+        healthStatus,
+        analysis,
         serverURL: await unifiedApiClient.getServerURL()
       };
 
       if (isHealthy) {
-        console.log(`✅ [NetworkMonitor] 스마트 헬스 체크 성공: ${healthCheckMethod} (${responseTime}ms)`);
+        console.log(`✅ [NetworkMonitor] 백엔드 상태 분석 완료: ${healthStatus} (${responseTime}ms)`);
+        console.log(`📊 [NetworkMonitor] 분석 결과:`, {
+          serverReachable: analysis.serverReachable,
+          apiEndpointsWorking: analysis.apiEndpointsWorking,
+          authenticationWorking: analysis.authenticationWorking,
+          issuesCount: analysis.issues.length,
+          recommendations: analysis.recommendations
+        });
+        
         this.consecutiveFailures = 0;
         this.notifyListeners({
           type: 'HEALTH_CHECK_SUCCESS',
           data: this.lastHealthCheck
         });
       } else {
-        console.warn(`⚠️ [NetworkMonitor] 스마트 헬스 체크 실패: ${healthCheckMethod} (${responseTime}ms)`);
-        this.handleHealthCheckFailure();
+        console.warn(`⚠️ [NetworkMonitor] 백엔드 상태 분석 실패: ${healthStatus} (${responseTime}ms)`);
+        console.warn(`📊 [NetworkMonitor] 문제점:`, analysis.issues);
+        console.warn(`📊 [NetworkMonitor] 권장사항:`, analysis.recommendations);
+        
+        this.handleHealthCheckFailure(null, analysis);
       }
 
     } catch (error) {
@@ -137,20 +125,33 @@ class NetworkMonitor {
   }
 
   /**
-   * 헬스 체크 실패 처리
+   * 헬스 체크 실패 처리 - 백엔드 분석 결과 포함
    */
-  async handleHealthCheckFailure(error = null) {
+  async handleHealthCheckFailure(error = null, analysis = null) {
     this.consecutiveFailures++;
     
     console.warn(`⚠️ [NetworkMonitor] 연속 실패 ${this.consecutiveFailures}/${this.maxConsecutiveFailures}`);
     
+    const failureData = {
+      consecutiveFailures: this.consecutiveFailures,
+      error: error?.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    };
+    
+    // 백엔드 분석 결과가 있으면 포함
+    if (analysis) {
+      failureData.backendAnalysis = {
+        serverReachable: analysis.serverReachable,
+        apiEndpointsWorking: analysis.apiEndpointsWorking,
+        authenticationWorking: analysis.authenticationWorking,
+        issues: analysis.issues,
+        recommendations: analysis.recommendations
+      };
+    }
+    
     this.notifyListeners({
       type: 'HEALTH_CHECK_FAILURE',
-      data: {
-        consecutiveFailures: this.consecutiveFailures,
-        error: error?.message || 'Unknown error',
-        timestamp: new Date().toISOString()
-      }
+      data: failureData
     });
 
     // 최대 연속 실패 횟수에 도달하면 자동 복구 시도

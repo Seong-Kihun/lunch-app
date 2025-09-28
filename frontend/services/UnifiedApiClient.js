@@ -298,7 +298,7 @@ class UnifiedApiClient {
       originalError: originalError.message
     };
     
-    // 네트워크 관련 에러 분류
+    // 네트워크 관련 에러 분류 - 백엔드 API 문제 대응 강화
     if (originalError.message.includes('Network request failed')) {
       error.type = 'NETWORK_ERROR';
       error.userMessage = '네트워크 연결을 확인해주세요.';
@@ -308,12 +308,24 @@ class UnifiedApiClient {
     } else if (originalError.message.includes('401')) {
       error.type = 'AUTH_ERROR';
       error.userMessage = '인증이 필요합니다. 다시 로그인해주세요.';
+    } else if (originalError.message.includes('423')) {
+      error.type = 'ACCOUNT_LOCKED';
+      error.userMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
+    } else if (originalError.message.includes('400') && originalError.message.includes('browser (or proxy)')) {
+      error.type = 'API_ENDPOINT_ERROR';
+      error.userMessage = '서버 API에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.';
     } else if (originalError.message.includes('Table') && originalError.message.includes('already defined')) {
       error.type = 'DATABASE_ERROR';
       error.userMessage = '서버 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     } else if (originalError.message.includes('500')) {
       error.type = 'SERVER_ERROR';
       error.userMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    } else if (originalError.message.includes('비밀번호가 올바르지 않습니다')) {
+      error.type = 'INVALID_CREDENTIALS';
+      error.userMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+    } else if (originalError.message.includes('계정이 잠겨있습니다')) {
+      error.type = 'ACCOUNT_LOCKED';
+      error.userMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
     } else {
       error.type = 'UNKNOWN_ERROR';
       error.userMessage = '요청 처리 중 오류가 발생했습니다.';
@@ -367,81 +379,142 @@ class UnifiedApiClient {
   }
 
   /**
-   * 스마트 헬스 체크 - 실제 API 엔드포인트 사용
+   * 백엔드 API 상태 분석 및 대응 전략
    */
-  async healthCheck() {
+  async analyzeBackendStatus() {
     try {
       const serverURL = await this.getServerURL();
-      console.log(`🔍 [UnifiedApiClient] 스마트 헬스 체크 시작: ${serverURL}`);
+      console.log(`🔍 [UnifiedApiClient] 백엔드 API 상태 분석 시작: ${serverURL}`);
       
-      // 1단계: 전용 헬스 체크 엔드포인트 시도
-      const dedicatedEndpoints = ['/health', '/api/health', '/api/health/status'];
+      const analysis = {
+        serverReachable: false,
+        apiEndpointsWorking: false,
+        authenticationWorking: false,
+        issues: [],
+        recommendations: []
+      };
       
-      for (const endpoint of dedicatedEndpoints) {
-        try {
-          console.log(`🔍 [UnifiedApiClient] 전용 헬스 체크 시도: ${serverURL}${endpoint}`);
-          const response = await this.fetchWithTimeout(`${serverURL}${endpoint}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 5000 // 헬스 체크는 빠르게
-          });
-          
-          if (response.ok) {
-            console.log(`✅ [UnifiedApiClient] 전용 헬스 체크 성공: ${endpoint}`);
-            return true;
-          }
-        } catch (endpointError) {
-          console.warn(`⚠️ [UnifiedApiClient] 전용 헬스 체크 실패 (${endpoint}):`, endpointError.message);
-          continue;
+      // 1단계: 서버 기본 연결성 확인
+      try {
+        const response = await this.fetchWithTimeout(serverURL, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 5000
+        });
+        
+        if (response.status === 200) {
+          analysis.serverReachable = true;
+          console.log('✅ [UnifiedApiClient] 서버 기본 연결성 확인됨');
+        } else {
+          analysis.issues.push(`서버 응답 상태: ${response.status}`);
         }
+      } catch (error) {
+        analysis.issues.push(`서버 연결 실패: ${error.message}`);
+        console.warn('⚠️ [UnifiedApiClient] 서버 연결 실패:', error.message);
       }
       
-      // 2단계: 실제 API 엔드포인트로 연결성 테스트
-      const apiTestEndpoints = [
-        '/api/auth/status',  // 인증 상태 확인 (가장 가벼운 엔드포인트)
-        '/api/restaurants',  // 레스토랑 목록 (일반적으로 존재)
-        '/api/users/profile' // 사용자 프로필 (존재할 가능성 높음)
+      // 2단계: API 엔드포인트 상태 확인
+      const apiEndpoints = [
+        { path: '/api/auth/login', method: 'POST', critical: true },
+        { path: '/api/restaurants', method: 'GET', critical: false },
+        { path: '/api/users/profile', method: 'GET', critical: false }
       ];
       
-      for (const endpoint of apiTestEndpoints) {
+      let workingEndpoints = 0;
+      
+      for (const endpoint of apiEndpoints) {
         try {
-          console.log(`🔍 [UnifiedApiClient] API 연결성 테스트: ${serverURL}${endpoint}`);
-          const response = await this.fetchWithTimeout(`${serverURL}${endpoint}`, {
-            method: 'GET',
+          const response = await this.fetchWithTimeout(`${serverURL}${endpoint.path}`, {
+            method: endpoint.method,
             headers: { 'Content-Type': 'application/json' },
             timeout: 8000
           });
           
-          // 200, 401, 403 등은 서버가 살아있음을 의미
+          // 200, 400, 401, 403 등은 엔드포인트가 존재함을 의미
           if (response.status < 500) {
-            console.log(`✅ [UnifiedApiClient] API 연결성 테스트 성공: ${endpoint} (${response.status})`);
-            return true;
+            workingEndpoints++;
+            console.log(`✅ [UnifiedApiClient] API 엔드포인트 확인됨: ${endpoint.path} (${response.status})`);
+          } else {
+            analysis.issues.push(`API 엔드포인트 ${endpoint.path} 서버 오류: ${response.status}`);
           }
-        } catch (endpointError) {
-          console.warn(`⚠️ [UnifiedApiClient] API 연결성 테스트 실패 (${endpoint}):`, endpointError.message);
-          continue;
+        } catch (error) {
+          analysis.issues.push(`API 엔드포인트 ${endpoint.path} 접근 실패: ${error.message}`);
+          console.warn(`⚠️ [UnifiedApiClient] API 엔드포인트 확인 실패 (${endpoint.path}):`, error.message);
         }
       }
       
-      // 3단계: 최종 폴백 - 서버 URL 자체의 연결성 테스트
+      analysis.apiEndpointsWorking = workingEndpoints > 0;
+      
+      // 3단계: 인증 시스템 상태 확인
       try {
-        console.log(`🔍 [UnifiedApiClient] 최종 폴백 테스트: ${serverURL}`);
-        const response = await this.fetchWithTimeout(serverURL, {
-          method: 'GET',
+        const response = await this.fetchWithTimeout(`${serverURL}/api/auth/login`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'test@test.com', password: 'test123' }),
           timeout: 10000
         });
         
-        console.log(`✅ [UnifiedApiClient] 최종 폴백 테스트 성공: ${response.status}`);
-        return true;
-      } catch (fallbackError) {
-        console.warn(`⚠️ [UnifiedApiClient] 최종 폴백 테스트 실패:`, fallbackError.message);
+        // 400, 401, 423 등은 인증 시스템이 작동 중임을 의미
+        if (response.status < 500) {
+          analysis.authenticationWorking = true;
+          console.log(`✅ [UnifiedApiClient] 인증 시스템 확인됨: ${response.status}`);
+        } else {
+          analysis.issues.push(`인증 시스템 서버 오류: ${response.status}`);
+        }
+      } catch (error) {
+        analysis.issues.push(`인증 시스템 접근 실패: ${error.message}`);
+        console.warn('⚠️ [UnifiedApiClient] 인증 시스템 확인 실패:', error.message);
       }
       
-      console.error('❌ [UnifiedApiClient] 모든 헬스 체크 방법 실패');
-      return false;
+      // 4단계: 권장사항 생성
+      if (analysis.serverReachable && analysis.apiEndpointsWorking && analysis.authenticationWorking) {
+        analysis.recommendations.push('백엔드 API가 정상적으로 작동하고 있습니다.');
+      } else {
+        if (!analysis.serverReachable) {
+          analysis.recommendations.push('서버 연결 문제가 있습니다. 네트워크 상태를 확인해주세요.');
+        }
+        if (!analysis.apiEndpointsWorking) {
+          analysis.recommendations.push('API 엔드포인트에 접근할 수 없습니다. 백엔드 서버 상태를 확인해주세요.');
+        }
+        if (!analysis.authenticationWorking) {
+          analysis.recommendations.push('인증 시스템에 문제가 있습니다. 계정 잠금 상태를 확인해주세요.');
+        }
+      }
+      
+      console.log('📊 [UnifiedApiClient] 백엔드 상태 분석 완료:', analysis);
+      return analysis;
+      
     } catch (error) {
-      console.error('❌ [UnifiedApiClient] 헬스 체크 실패:', error);
+      console.error('❌ [UnifiedApiClient] 백엔드 상태 분석 실패:', error);
+      return {
+        serverReachable: false,
+        apiEndpointsWorking: false,
+        authenticationWorking: false,
+        issues: [`분석 실패: ${error.message}`],
+        recommendations: ['백엔드 서버에 심각한 문제가 있습니다. 관리자에게 문의해주세요.']
+      };
+    }
+  }
+
+  /**
+   * 스마트 헬스 체크 - 백엔드 상태 분석 기반
+   */
+  async healthCheck() {
+    try {
+      const analysis = await this.analyzeBackendStatus();
+      
+      // 백엔드가 부분적으로라도 작동하면 건강한 것으로 간주
+      const isHealthy = analysis.serverReachable || analysis.apiEndpointsWorking || analysis.authenticationWorking;
+      
+      if (isHealthy) {
+        console.log('✅ [UnifiedApiClient] 스마트 헬스 체크 성공 - 백엔드 부분 작동 중');
+      } else {
+        console.error('❌ [UnifiedApiClient] 스마트 헬스 체크 실패 - 백엔드 완전 불가');
+      }
+      
+      return isHealthy;
+    } catch (error) {
+      console.error('❌ [UnifiedApiClient] 스마트 헬스 체크 실패:', error);
       return false;
     }
   }

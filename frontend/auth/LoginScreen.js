@@ -178,19 +178,39 @@ const LoginScreen = ({ navigation }) => {
       } catch (loginError) {
         console.error('❌ [LoginScreen] AuthManager 로그인 실패:', loginError);
         
-        // 더 구체적인 에러 메시지 제공
+        // 더 구체적인 에러 메시지 제공 - 백엔드 API 문제 대응 강화
         let errorMessage = '로그인에 실패했습니다.';
+        let showRetryOption = false;
         
         if (loginError.message) {
-          if (loginError.message.includes('401') || loginError.message.includes('인증')) {
+          if (loginError.message.includes('계정이 잠겨있습니다') || loginError.message.includes('423')) {
+            errorMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
+            showRetryOption = true;
+          } else if (loginError.message.includes('비밀번호가 올바르지 않습니다') || loginError.message.includes('401')) {
             errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+          } else if (loginError.message.includes('browser (or proxy)') || loginError.message.includes('400')) {
+            errorMessage = '서버 API에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.';
+            showRetryOption = true;
           } else if (loginError.message.includes('네트워크') || loginError.message.includes('Network')) {
             errorMessage = '네트워크 연결을 확인해주세요.';
+            showRetryOption = true;
           } else if (loginError.message.includes('서버')) {
             errorMessage = '서버 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.';
+            showRetryOption = true;
           } else {
             errorMessage = loginError.message;
           }
+        }
+        
+        // 계정 잠금 상태인 경우 사용자에게 추가 안내
+        if (showRetryOption) {
+          setTimeout(() => {
+            Alert.alert(
+              '로그인 안내',
+              errorMessage + '\n\n문제가 지속되면 관리자에게 문의해주세요.',
+              [{ text: '확인' }]
+            );
+          }, 100);
         }
         
         setAuthError(errorMessage);
