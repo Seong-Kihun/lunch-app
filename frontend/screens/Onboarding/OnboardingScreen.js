@@ -14,12 +14,12 @@ import { setOnboardingCompleted } from '../../utils/onboardingUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnifiedNetwork } from '../../contexts/UnifiedNetworkContext';
 
-// 디버깅을 위한 로그
-console.log('🔧 [OnboardingScreen] serverURL:', serverURL);
-
 export default function OnboardingScreen() {
     const { user, updateUser } = useAuth();
     const { serverURL, getServerURL, isConnected, isInitialized } = useUnifiedNetwork();
+    
+    // 디버깅을 위한 로그 - 컴포넌트 내부에서 호출
+    console.log('🔧 [OnboardingScreen] serverURL:', serverURL);
     const [currentStep, setCurrentStep] = useState(0);
     const [userPreferences, setUserPreferences] = useState({
         nickname: '',
