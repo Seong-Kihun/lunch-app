@@ -69,10 +69,25 @@ class NetworkMonitor {
       
       const startTime = Date.now();
       
-      // 일반 헬스 체크
-      let isHealthy = await unifiedApiClient.healthCheck();
+      // 일반 헬스 체크 (더 관대한 처리)
+      let isHealthy = false;
+      try {
+        isHealthy = await unifiedApiClient.healthCheck();
+      } catch (healthError) {
+        console.warn('⚠️ [NetworkMonitor] 헬스 체크 실패, 기본 엔드포인트로 재시도:', healthError.message);
+        
+        // 헬스 체크 실패 시 기본 API 엔드포인트로 재시도
+        try {
+          await unifiedApiClient.get('/api/health', {}, { timeout: 5000 });
+          isHealthy = true;
+          console.log('✅ [NetworkMonitor] 기본 엔드포인트 헬스 체크 성공');
+        } catch (fallbackError) {
+          console.warn('⚠️ [NetworkMonitor] 기본 엔드포인트도 실패:', fallbackError.message);
+          isHealthy = false;
+        }
+      }
       
-      // 백엔드 데이터베이스 상태 체크
+      // 백엔드 데이터베이스 상태 체크 (헬스 체크가 성공한 경우에만)
       if (isHealthy) {
         try {
           // 간단한 API 호출로 데이터베이스 상태 확인
@@ -80,7 +95,7 @@ class NetworkMonitor {
         } catch (dbError) {
           if (dbError.message.includes('Table') && dbError.message.includes('already defined')) {
             console.warn('⚠️ [NetworkMonitor] 백엔드 데이터베이스 스키마 오류 감지');
-            isHealthy = false; // 데이터베이스 오류 시 비정상으로 처리
+            // 데이터베이스 오류는 치명적이지 않음 - 네트워크는 정상으로 처리
           }
         }
       }

@@ -5,6 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import unifiedApiClient from './UnifiedApiClient';
 
 // 인증 상태 상수 정의 (AUTH_STATES와 통일화)
 export const AUTH_STATUS = {
@@ -167,27 +168,27 @@ class AuthManager {
   async login(credentials) {
     try {
       console.log('🔐 [AuthManager] 로그인 시도 시작');
+      console.log('🔐 [AuthManager] 로그인 정보:', {
+        email: credentials.email,
+        passwordLength: credentials.password ? credentials.password.length : 0,
+        hasPassword: !!credentials.password
+      });
+      
       this.status = 'authenticating';
       this.notifyListeners();
 
-      // 서버 URL 가져오기 - 통합 시스템 사용
-      const { getServerURL } = await import('../utils/networkUnifiedManager');
-      const serverURL = getServerURL();
-
-      // 로그인 API 호출
-      const response = await fetch(`${serverURL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials)
+      // 통합 API 클라이언트를 사용한 로그인 요청
+      console.log('🔐 [AuthManager] 통합 API 클라이언트를 통한 로그인 요청');
+      
+      const data = await unifiedApiClient.post('/api/auth/login', credentials);
+      
+      console.log('🔐 [AuthManager] 로그인 응답 데이터:', {
+        hasAccessToken: !!data.access_token,
+        hasRefreshToken: !!data.refresh_token,
+        hasUser: !!data.user,
+        userKeys: data.user ? Object.keys(data.user) : [],
+        message: data.message
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || '로그인에 실패했습니다');
-      }
 
       if (!data.access_token || !data.user) {
         throw new Error('서버에서 유효하지 않은 응답을 받았습니다');
@@ -206,13 +207,29 @@ class AuthManager {
       // 토큰 갱신 타이머 시작
       this.startTokenRefreshTimer();
 
-      // 전역 변수 업데이트 (레거시 호환성)
+      // 전역 변수 업데이트 (레거시 호환성) - 강화된 동기화
       global.currentUser = data.user;
+      global.accessToken = data.access_token;
+      global.refreshToken = data.refresh_token;
+      
+      console.log('🔐 [AuthManager] 전역 변수 설정:', {
+        hasCurrentUser: !!global.currentUser,
+        hasAccessToken: !!global.accessToken,
+        hasRefreshToken: !!global.refreshToken,
+        userEmployeeId: global.currentUser?.employee_id
+      });
 
       // 인증 상태를 AUTHENTICATED로 설정
       this.status = 'authenticated';
       this.isAuthenticated = true;
       this.user = data.user;
+      
+      console.log('🔐 [AuthManager] 인스턴스 상태 업데이트:', {
+        status: this.status,
+        isAuthenticated: this.isAuthenticated,
+        hasUser: !!this.user,
+        userEmployeeId: this.user?.employee_id
+      });
 
       console.log('✅ [AuthManager] 로그인 성공:', data.user.nickname);
       

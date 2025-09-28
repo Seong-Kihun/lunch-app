@@ -365,12 +365,30 @@ class UnifiedApiClient {
   async healthCheck() {
     try {
       const serverURL = await this.getServerURL();
-      const response = await this.fetchWithTimeout(`${serverURL}/health`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
       
-      return response.ok;
+      // 여러 헬스 체크 엔드포인트 시도
+      const healthEndpoints = ['/health', '/api/health', '/api/health/status'];
+      
+      for (const endpoint of healthEndpoints) {
+        try {
+          console.log(`🔍 [UnifiedApiClient] 헬스 체크 시도: ${serverURL}${endpoint}`);
+          const response = await this.fetchWithTimeout(`${serverURL}${endpoint}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            console.log(`✅ [UnifiedApiClient] 헬스 체크 성공: ${endpoint}`);
+            return true;
+          }
+        } catch (endpointError) {
+          console.warn(`⚠️ [UnifiedApiClient] 헬스 체크 실패 (${endpoint}):`, endpointError.message);
+          continue;
+        }
+      }
+      
+      console.error('❌ [UnifiedApiClient] 모든 헬스 체크 엔드포인트 실패');
+      return false;
     } catch (error) {
       console.error('❌ [UnifiedApiClient] 헬스 체크 실패:', error);
       return false;
