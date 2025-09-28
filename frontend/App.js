@@ -670,6 +670,13 @@ function MainApp() {
         const checkStatus = async () => {
             // 사용자 정보가 있을 때만 온보딩 상태 확인
             if (user && user.employee_id) {
+                // kseong 계정은 이미 온보딩을 완료한 것으로 처리
+                if (user.employee_id === 'KOICA356' || user.nickname === 'kseong') {
+                    setHasCompletedOnboarding(true);
+                    console.log(`✅ [MainApp] 사용자 ${user.employee_id} (kseong) 온보딩 완료 - 메인 화면으로 전환`);
+                    return true;
+                }
+                
                 // 사용자 정보에 온보딩 완료 상태가 있으면 바로 설정
                 if (user.onboardingCompleted) {
                     setHasCompletedOnboarding(true);

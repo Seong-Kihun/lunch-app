@@ -271,6 +271,12 @@ class NetworkManager {
   getFallbackURL() {
     const environment = this.detectEnvironment();
     const urls = SERVER_CONFIG[environment];
+    
+    // 개발 환경에서는 첫 번째 URL (로컬 서버) 우선 사용
+    if (environment === 'development') {
+      return urls[0]; // 첫 번째 URL (로컬 서버)
+    }
+    
     return urls[urls.length - 1]; // 마지막 URL (보통 프로덕션)
   }
 

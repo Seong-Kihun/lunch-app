@@ -5,10 +5,11 @@ export const checkOnboardingStatus = async (userId = null) => {
     try {
         // userId가 없으면 현재 로그인한 사용자 ID 가져오기
         if (!userId) {
-            const userData = await AsyncStorage.getItem('user_data');
-            if (userData) {
-                const parsedUserData = JSON.parse(userData);
-                userId = parsedUserData.employee_id || parsedUserData.id;
+            // AuthManager에서 현재 사용자 정보 가져오기
+            const { default: authManager } = await import('../services/AuthManager');
+            const currentUser = authManager.getCurrentUser();
+            if (currentUser) {
+                userId = currentUser.employee_id || currentUser.id;
             }
         }
         
@@ -34,10 +35,11 @@ export const setOnboardingCompleted = async (userId = null) => {
     try {
         // userId가 없으면 현재 로그인한 사용자 ID 가져오기
         if (!userId) {
-            const userData = await AsyncStorage.getItem('user_data');
-            if (userData) {
-                const parsedUserData = JSON.parse(userData);
-                userId = parsedUserData.employee_id || parsedUserData.id;
+            // AuthManager에서 현재 사용자 정보 가져오기
+            const { default: authManager } = await import('../services/AuthManager');
+            const currentUser = authManager.getCurrentUser();
+            if (currentUser) {
+                userId = currentUser.employee_id || currentUser.id;
             }
         }
         

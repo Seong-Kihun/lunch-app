@@ -13,12 +13,14 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RENDER_SERVER_URL } from '../../config';
 import { setOnboardingCompleted } from '../../utils/onboardingUtils';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUnifiedNetwork } from '../../contexts/UnifiedNetworkContext';
 
 // 디버깅을 위한 로그
 console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
 
 export default function OnboardingScreen() {
     const { user, updateUser } = useAuth();
+    const { serverURL } = useUnifiedNetwork();
     const [currentStep, setCurrentStep] = useState(0);
     const [userPreferences, setUserPreferences] = useState({
         nickname: '',
@@ -79,7 +81,9 @@ export default function OnboardingScreen() {
                 return;
             }
             try {
-                    const res = await fetch(`${RENDER_SERVER_URL}/users/check-nickname?nickname=${encodeURIComponent(nickname)}`);
+                    const serverURLToUse = serverURL || RENDER_SERVER_URL;
+                    console.log('🔍 [OnboardingScreen] 닉네임 중복 확인 서버 URL:', serverURLToUse);
+                    const res = await fetch(`${serverURLToUse}/users/check-nickname?nickname=${encodeURIComponent(nickname)}`);
                     const data = await res.json();
                     if (data.exists) {
                         setNicknameError('이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.');
@@ -87,10 +91,11 @@ export default function OnboardingScreen() {
                         return;
                     }
                 } catch (e) {
-                setNicknameError('닉네임 중복 확인 중 오류가 발생했습니다.');
-                        setCheckingNickname(false);
-                        return;
-                    }
+                    console.error('❌ [OnboardingScreen] 닉네임 중복 확인 오류:', e);
+                    setNicknameError('닉네임 중복 확인 중 오류가 발생했습니다.');
+                    setCheckingNickname(false);
+                    return;
+                }
             setCheckingNickname(false);
         }
         if (currentStep < onboardingSteps.length - 1) {
