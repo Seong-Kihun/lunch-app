@@ -215,17 +215,12 @@ export default function OnboardingScreen() {
             
             console.log('🔧 [OnboardingScreen] 서버 URL 사용:', currentServerURL);
             
-            const userResponse = await fetch(`${currentServerURL}/users/${currentUser.employee_id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
-            });
+            // UnifiedApiClient를 사용하여 인증 토큰 포함
+            const { default: unifiedApiClient } = await import('../../services/UnifiedApiClient');
             
-            if (!userResponse.ok) {
-                console.warn('⚠️ 사용자 기본 정보 저장 실패:', userResponse.status);
-            } else {
-                console.log('✅ 사용자 기본 정보 저장 성공');
-            }
+            const userResponse = await unifiedApiClient.put(`/users/${currentUser.employee_id}`, userData);
+            
+            console.log('✅ 사용자 기본 정보 저장 성공');
             
             // 사용자 선호도 정보 저장
             const preferencesData = {
@@ -235,17 +230,9 @@ export default function OnboardingScreen() {
                 frequentAreas: []
             };
             
-            const preferencesResponse = await fetch(`${currentServerURL}/users/${currentUser.employee_id}/preferences`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(preferencesData)
-            });
+            const preferencesResponse = await unifiedApiClient.put(`/users/${currentUser.employee_id}/preferences`, preferencesData);
             
-            if (!preferencesResponse.ok) {
-                console.warn('⚠️ 사용자 선호도 저장 실패:', preferencesResponse.status);
-            } else {
-                console.log('✅ 사용자 선호도 저장 성공');
-            }
+            console.log('✅ 사용자 선호도 저장 성공');
             
             console.log('🔧 사용자 설정 저장 완료');
         } catch (error) {

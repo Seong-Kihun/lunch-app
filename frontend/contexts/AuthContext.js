@@ -170,6 +170,27 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  // 사용자 정보 업데이트 함수
+  const updateUser = useCallback((updatedUserData) => {
+    console.log('🔄 [AuthContext] 사용자 정보 업데이트:', updatedUserData);
+    
+    // 사용자 정보 업데이트
+    setUser(prevUser => ({
+      ...prevUser,
+      ...updatedUserData
+    }));
+    
+    // 전역 변수도 동기화
+    if (updatedUserData) {
+      global.currentUser = {
+        ...global.currentUser,
+        ...updatedUserData
+      };
+    }
+    
+    console.log('✅ [AuthContext] 사용자 정보 업데이트 완료');
+  }, []);
+
   // 기존 호환성 함수들
   const enterRegistrationMode = useCallback(() => {
     setAuthState(AUTH_STATES.REGISTERING);
@@ -238,6 +259,9 @@ export const AuthProvider = ({ children }) => {
     setAuthState: setAuthState,
     setAccessToken: setAccessToken,
     setRefreshToken: setRefreshToken,
+    
+    // 사용자 정보 업데이트
+    updateUser,
     
     // 상수
     AUTH_STATES
