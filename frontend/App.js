@@ -601,6 +601,8 @@ function MainApp() {
                     global.appInitialized = true;
                 } else if (__DEV__) {
                     console.log('🔄 [MainApp] 개발 환경 - 앱 재시작, 인증 상태 유지');
+                } else {
+                    console.log('🔄 [MainApp] 프로덕션 환경 - 인증 상태 유지');
                 }
                 
                 // 2. 전역 변수 초기화
@@ -697,7 +699,7 @@ function MainApp() {
 
     // 로딩 중
     if (authState === 'loading') {
-    return (
+        return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#3B82F6" />
                 <Text style={{ marginTop: 10 }}>로딩 중...</Text>
@@ -705,8 +707,16 @@ function MainApp() {
         );
     }
 
+    // 디버깅을 위한 인증 상태 로그
+    console.log('🔍 [MainApp] 인증 상태 체크:', {
+        authState,
+        isAuthenticated,
+        user: user?.nickname,
+        hasCompletedOnboarding
+    });
+
     // 인증되지 않은 경우 로그인 화면
-    if (authState === 'unauthenticated') {
+    if (authState === AUTH_STATES.UNAUTHENTICATED) {
         return (
             <NavigationContainer>
                 <Stack.Navigator screenOptions={{ headerShown: false }}>

@@ -56,10 +56,20 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(newStatus.isAuthenticated);
     setError(null); // 상태 변경 시 에러 클리어
     
+    // 전역 변수 동기화
+    if (newStatus.isAuthenticated && newStatus.user) {
+      global.currentUser = newStatus.user;
+      global.myEmployeeId = newStatus.user.employee_id;
+    } else {
+      global.currentUser = null;
+      global.myEmployeeId = null;
+    }
+    
     console.log('✅ [AuthContext] 상태 동기화 완료:', {
       authState: newStatus.status,
       isAuthenticated: newStatus.isAuthenticated,
-      user: newStatus.user?.nickname
+      user: newStatus.user?.nickname,
+      globalUser: global.currentUser?.nickname
     });
   }, []);
 

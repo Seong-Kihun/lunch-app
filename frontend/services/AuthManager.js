@@ -5,12 +5,12 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { AUTH_STATES } from '../auth/AuthContext';
 
-// 인증 상태 상수
+// AuthContext의 AUTH_STATES 사용 (통일화)
 export const AUTH_STATUS = {
-  UNAUTHENTICATED: 'unauthenticated',
+  ...AUTH_STATES,
   AUTHENTICATING: 'authenticating',
-  AUTHENTICATED: 'authenticated',
   REFRESHING: 'refreshing',
   ERROR: 'error'
 };
