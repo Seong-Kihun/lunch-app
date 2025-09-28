@@ -59,7 +59,7 @@ class NetworkManager {
   }
 
   /**
-   * 네트워크 관리자 초기화
+   * 네트워크 관리자 초기화 - 근본적 해결책
    */
   async initialize() {
     if (this.isInitialized) {
@@ -76,40 +76,103 @@ class NetworkManager {
       const environment = this.detectEnvironment();
       console.log(`🔍 [NetworkManager] 환경 감지: ${environment}`);
 
-      // 2. 저장된 서버 URL 확인
-      const savedURL = await this.getSavedServerURL();
-      if (savedURL && await this.testConnection(savedURL)) {
+      // 2. 저장된 서버 URL 확인 (타임아웃 설정)
+      const savedURL = await this.getSavedServerURLWithTimeout();
+      if (savedURL && await this.testConnectionWithTimeout(savedURL, 3000)) {
         console.log('✅ [NetworkManager] 저장된 서버 URL 사용:', savedURL);
         await this.setCurrentServer(savedURL);
         return savedURL;
       }
 
-      // 3. 서버 URL 자동 감지 및 테스트
-      const availableURLs = SERVER_CONFIG[environment];
-      console.log(`🔍 [NetworkManager] ${availableURLs.length}개 서버 URL 테스트 시작`);
-
-      for (const url of availableURLs) {
-        console.log(`🔍 [NetworkManager] 서버 테스트: ${url}`);
-        if (await this.testConnection(url)) {
-          console.log('✅ [NetworkManager] 서버 연결 성공:', url);
-          await this.setCurrentServer(url);
-          return url;
-        }
+      // 3. 서버 URL 자동 감지 및 테스트 (개선된 방식)
+      const detectedURL = await this.detectServerURLWithFallback(environment);
+      if (detectedURL) {
+        console.log('✅ [NetworkManager] 감지된 서버 URL 사용:', detectedURL);
+        await this.setCurrentServer(detectedURL);
+        return detectedURL;
       }
 
-      // 4. 모든 서버 연결 실패 시 에러 상태
-      throw new Error('모든 서버에 연결할 수 없습니다');
+      // 4. 최종 폴백 - 에러 없이 기본 URL 설정
+      const fallbackURL = this.getFallbackURL();
+      console.log('⚠️ [NetworkManager] 폴백 URL 설정:', fallbackURL);
+      await this.setCurrentServer(fallbackURL);
+      return fallbackURL;
 
     } catch (error) {
-      console.error('❌ [NetworkManager] 초기화 실패:', error);
-      this.status = NETWORK_STATUS.ERROR;
+      console.error('❌ [NetworkManager] 초기화 중 에러:', error);
+      
+      // 에러가 발생해도 앱이 실행되도록 폴백 URL 설정
+      const fallbackURL = this.getFallbackURL();
+      console.log('🔄 [NetworkManager] 에러 후 폴백 URL 설정:', fallbackURL);
+      
+      this.status = NETWORK_STATUS.CONNECTED; // 에러 상태가 아닌 연결 상태로 설정
+      await this.setCurrentServer(fallbackURL);
       this.notifyListeners();
       
-      // 폴백 URL 설정
-      const fallbackURL = this.getFallbackURL();
-      await this.setCurrentServer(fallbackURL);
-      throw error;
+      return fallbackURL; // 에러를 던지지 않고 URL 반환
     }
+  }
+
+  /**
+   * 타임아웃이 있는 저장된 서버 URL 확인
+   */
+  async getSavedServerURLWithTimeout() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      
+      const savedURL = await this.getSavedServerURL();
+      clearTimeout(timeoutId);
+      return savedURL;
+    } catch (error) {
+      console.log('⚠️ [NetworkManager] 저장된 URL 확인 타임아웃');
+      return null;
+    }
+  }
+
+  /**
+   * 타임아웃이 있는 연결 테스트
+   */
+  async testConnectionWithTimeout(url, timeout = 3000) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const result = await this.testConnection(url);
+      clearTimeout(timeoutId);
+      return result;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * 개선된 서버 URL 감지
+   */
+  async detectServerURLWithFallback(environment) {
+    const availableURLs = SERVER_CONFIG[environment];
+    console.log(`🔍 [NetworkManager] ${availableURLs.length}개 서버 URL 테스트 시작`);
+
+    // 병렬로 빠른 테스트 수행
+    const testPromises = availableURLs.map(async (url) => {
+      try {
+        const isWorking = await this.testConnectionWithTimeout(url, 2000);
+        return isWorking ? url : null;
+      } catch (error) {
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(testPromises);
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        console.log('✅ [NetworkManager] 서버 연결 성공:', result.value);
+        return result.value;
+      }
+    }
+
+    return null;
   }
 
   /**

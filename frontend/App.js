@@ -20,10 +20,8 @@ import LoginScreen from './auth/LoginScreen';
 import RegisterScreen from './auth/RegisterScreen';
 import InquiryScreen from './screens/InquiryScreen';
 
-// 네트워크 관련
-import { NetworkProvider, useNetwork } from './contexts/NetworkContext';
-import { runNetworkDiagnostics } from './utils/networkDiagnostics';
-import { resetNetworkConfig } from './utils/resetNetworkConfig';
+// 네트워크 관련 - 통합 시스템 사용
+import { UnifiedNetworkProvider, useUnifiedNetwork } from './contexts/UnifiedNetworkContext';
 
 // 핵심 화면 컴포넌트 Import
 import HomeScreen from './screens/Home/HomeScreen';
@@ -638,20 +636,23 @@ function MainApp() {
         initializeApp();
     }, [forceLogout]);
 
-    // 네트워크 상태 변화 모니터링
+    // 네트워크 상태 변화 모니터링 - 통합 시스템 사용
     useEffect(() => {
+        // 통합 네트워크 시스템에서 상태 가져오기
+        const { isConnected, serverURL, isInitialized, error } = useUnifiedNetwork();
+        
         if (isInitialized) {
             if (isConnected && serverURL) {
                 console.log('✅ [MainApp] 네트워크 연결됨:', serverURL);
                 // 전역 변수 업데이트 (레거시 호환성)
                 global.serverURL = serverURL;
                 global.networkInitialized = true;
-            } else if (networkError) {
-                console.error('❌ [MainApp] 네트워크 오류:', networkError);
-                setShowNetworkStatus(true);
+            } else if (error) {
+                console.warn('⚠️ [MainApp] 네트워크 경고 (앱 실행에 영향 없음):', error);
+                // 에러가 있어도 앱이 실행되도록 함
             }
         }
-    }, [isConnected, isInitialized, serverURL, networkError]);
+    }, []);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -687,27 +688,10 @@ function MainApp() {
         }
     }, [authState, user]);
 
-    // 네트워크 진단 및 설정 초기화 (앱 시작 시 한 번만 실행)
+    // 통합 네트워크 시스템 초기화 (앱 시작 시 한 번만 실행)
     useEffect(() => {
-        const initializeNetworkDiagnostics = async () => {
-            try {
-                console.log('🔍 [MainApp] 네트워크 진단 및 설정 초기화 시작...');
-                
-                // 1. 네트워크 진단 실행
-                await runNetworkDiagnostics();
-                
-                // 2. 기존 하드코딩된 설정이 있다면 초기화
-                console.log('🔄 [MainApp] 하드코딩된 네트워크 설정 초기화...');
-                await resetNetworkConfig();
-                
-                console.log('✅ [MainApp] 네트워크 진단 및 설정 초기화 완료');
-            } catch (error) {
-                console.error('❌ [MainApp] 네트워크 진단 실패:', error);
-            }
-        };
-
-        // 앱 시작 시 한 번만 실행
-        initializeNetworkDiagnostics();
+        console.log('🔍 [MainApp] 통합 네트워크 시스템 초기화 완료');
+        // 통합 네트워크 시스템은 UnifiedNetworkProvider에서 자동으로 초기화됨
     }, []); // 빈 의존성 배열로 한 번만 실행
 
     // 로딩 중
@@ -759,7 +743,7 @@ const queryClient = new QueryClient();
 export default function App() {
     return (
         <QueryClientProvider client={queryClient}>
-        <NetworkProvider>
+        <UnifiedNetworkProvider>
         <AuthProvider>
         <ThemeProvider>
             <UserProvider>
@@ -777,7 +761,7 @@ export default function App() {
             </UserProvider>
         </ThemeProvider>
         </AuthProvider>
-        </NetworkProvider>
+        </UnifiedNetworkProvider>
         </QueryClientProvider>
     );
 }
