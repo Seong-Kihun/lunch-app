@@ -5,14 +5,16 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { AUTH_STATES } from '../contexts/AuthContext';
 
-// AuthContext의 AUTH_STATES 사용 (통일화)
+// 인증 상태 상수 정의 (AUTH_STATES와 통일화)
 export const AUTH_STATUS = {
-  ...AUTH_STATES,
+  LOADING: 'loading',
+  UNAUTHENTICATED: 'unauthenticated',
+  AUTHENTICATED: 'authenticated',
   AUTHENTICATING: 'authenticating',
   REFRESHING: 'refreshing',
-  ERROR: 'error'
+  ERROR: 'error',
+  REGISTERING: 'registering'
 };
 
 // 저장소 키
@@ -37,7 +39,7 @@ class AuthManager {
     this.currentUser = null;
     this.accessToken = null;
     this.refreshToken = null;
-    this.status = AUTH_STATUS.UNAUTHENTICATED;
+    this.status = 'unauthenticated';
     this.isAuthenticated = false;
     this.user = null;
     this.isInitialized = false;
@@ -63,7 +65,7 @@ class AuthManager {
 
     try {
       console.log('🚀 [AuthManager] 초기화 시작...');
-      this.status = AUTH_STATUS.AUTHENTICATING;
+      this.status = 'authenticating';
       this.notifyListeners();
 
       // 저장된 토큰 확인
@@ -73,7 +75,7 @@ class AuthManager {
         // 토큰 유효성 확인
         if (await this.validateToken()) {
           console.log('✅ [AuthManager] 저장된 토큰으로 인증 완료');
-          this.status = AUTH_STATUS.AUTHENTICATED;
+          this.status = 'authenticated';
           this.startTokenRefreshTimer();
         } else {
           console.log('⚠️ [AuthManager] 저장된 토큰 만료, 갱신 시도');
@@ -85,7 +87,7 @@ class AuthManager {
         }
       } else {
         console.log('🔍 [AuthManager] 저장된 인증 정보 없음');
-        this.status = AUTH_STATUS.UNAUTHENTICATED;
+        this.status = 'unauthenticated';
       }
 
       this.isInitialized = true;
@@ -95,7 +97,7 @@ class AuthManager {
 
     } catch (error) {
       console.error('❌ [AuthManager] 초기화 실패:', error);
-      this.status = AUTH_STATUS.ERROR;
+      this.status = 'error';
       this.notifyListeners();
       throw error;
     }
@@ -165,7 +167,7 @@ class AuthManager {
   async login(credentials) {
     try {
       console.log('🔐 [AuthManager] 로그인 시도 시작');
-      this.status = AUTH_STATUS.AUTHENTICATING;
+      this.status = 'authenticating';
       this.notifyListeners();
 
       // 서버 URL 가져오기 - 통합 시스템 사용
@@ -198,7 +200,7 @@ class AuthManager {
       this.accessToken = data.access_token;
       this.refreshToken = data.refresh_token;
       this.currentUser = data.user;
-      this.status = AUTH_STATUS.AUTHENTICATED;
+      this.status = 'authenticated';
       this.retryCount = 0;
 
       // 토큰 갱신 타이머 시작
@@ -208,7 +210,7 @@ class AuthManager {
       global.currentUser = data.user;
 
       // 인증 상태를 AUTHENTICATED로 설정
-      this.status = AUTH_STATUS.AUTHENTICATED;
+      this.status = 'authenticated';
       this.isAuthenticated = true;
       this.user = data.user;
 
@@ -230,7 +232,7 @@ class AuthManager {
 
     } catch (error) {
       console.error('❌ [AuthManager] 로그인 실패:', error);
-      this.status = AUTH_STATUS.ERROR;
+      this.status = 'error';
       this.notifyListeners();
       throw error;
     }
@@ -271,7 +273,7 @@ class AuthManager {
       this.currentUser = null;
       this.accessToken = null;
       this.refreshToken = null;
-      this.status = AUTH_STATUS.UNAUTHENTICATED;
+      this.status = 'unauthenticated';
 
       // 전역 변수 초기화 (레거시 호환성)
       global.currentUser = null;
@@ -313,7 +315,7 @@ class AuthManager {
 
     try {
       console.log('🔄 [AuthManager] 토큰 갱신 시도');
-      this.status = AUTH_STATUS.REFRESHING;
+      this.status = 'refreshing';
       this.notifyListeners();
 
       const { getServerURL } = await import('../utils/networkUtils');
@@ -341,7 +343,7 @@ class AuthManager {
         this.refreshToken = data.refresh_token;
       }
 
-      this.status = AUTH_STATUS.AUTHENTICATED;
+      this.status = 'authenticated';
       this.retryCount = 0;
 
       console.log('✅ [AuthManager] 토큰 갱신 성공');

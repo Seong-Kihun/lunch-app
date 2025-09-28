@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import authManager, { AUTH_STATUS } from '../services/AuthManager';
+import authManager from '../services/AuthManager';
 
 // AuthManager 인스턴스 확인
 console.log('🔧 [AuthContext] AuthManager 인스턴스:', authManager);
@@ -12,10 +12,10 @@ console.log('🔧 [AuthContext] AuthManager ID:', authManager?.constructor?.name
 
 // 기존 AUTH_STATES와 새로운 AUTH_STATUS 통합
 export const AUTH_STATES = {
-  LOADING: AUTH_STATUS.AUTHENTICATING,
-  UNAUTHENTICATED: AUTH_STATUS.UNAUTHENTICATED,
-  AUTHENTICATED: AUTH_STATUS.AUTHENTICATED,
-  REGISTERING: 'registering' // 기존 호환성 유지
+  LOADING: 'loading',
+  UNAUTHENTICATED: 'unauthenticated',
+  AUTHENTICATED: 'authenticated',
+  REGISTERING: 'registering'
 };
 
 // Context 생성
