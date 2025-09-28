@@ -45,7 +45,7 @@ const UNIFIED_CONFIG = {
   },
   
   // 설정 버전
-  CONFIG_VERSION: '3.4.0'
+  CONFIG_VERSION: '3.5.0'
 };
 
 class UnifiedNetworkManager {

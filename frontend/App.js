@@ -566,9 +566,14 @@ function TabNavigator() {
 
 // 메인 앱 화면 컴포넌트
 function MainApp() {
+    console.log('🚀 [MainApp] 컴포넌트 렌더링됨');
+    
     const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
     const [showNetworkStatus, setShowNetworkStatus] = useState(false);
+    
+    console.log('🔧 [MainApp] useAuth 호출 전');
     const { authState, user, forceLogout } = useAuth();
+    console.log('🔧 [MainApp] useAuth 호출 후:', { authState, user: user?.nickname });
     const { 
         appointments, 
         setAppointments, 

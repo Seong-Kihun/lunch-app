@@ -217,6 +217,14 @@ export const AuthProvider = ({ children }) => {
     AUTH_STATES
   };
 
+  // 디버깅: contextValue 확인
+  console.log('🔧 [AuthContext] contextValue 생성됨:', {
+    setUserType: typeof contextValue.setUser,
+    setAuthStateType: typeof contextValue.setAuthState,
+    authState: contextValue.authState,
+    user: contextValue.user?.nickname
+  });
+
   // 초기화 및 리스너 설정 - 즉시 실행
   useEffect(() => {
     console.log('🚀 [AuthContext] useEffect 실행됨');

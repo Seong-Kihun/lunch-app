@@ -29,6 +29,14 @@ const LoginScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const authContext = useAuth();
+  console.log('🔧 [LoginScreen] useAuth 결과:', {
+    setUserType: typeof authContext.setUser,
+    setAuthStateType: typeof authContext.setAuthState,
+    authState: authContext.authState,
+    user: authContext.user?.nickname
+  });
+  
   const { 
     enterRegistrationMode, 
     setAuthError, 
@@ -37,7 +45,7 @@ const LoginScreen = ({ navigation }) => {
     setUser,
     setAuthState,
     AUTH_STATES
-  } = useAuth();
+  } = authContext;
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
   
   // 네트워크 상태 관리
