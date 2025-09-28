@@ -143,8 +143,21 @@ const LoginScreen = ({ navigation }) => {
       
       // AuthContext 상태 직접 업데이트 (리스너가 없는 경우 대비)
       console.log('🔧 [LoginScreen] AuthContext 상태 직접 업데이트');
-      setUser(result.user);
-      setAuthState(AUTH_STATES.AUTHENTICATED);
+      
+      // 함수가 정의되어 있는지 확인
+      if (typeof setUser === 'function') {
+        setUser(result.user);
+        console.log('✅ [LoginScreen] setUser 호출 완료');
+      } else {
+        console.warn('⚠️ [LoginScreen] setUser 함수가 정의되지 않음');
+      }
+      
+      if (typeof setAuthState === 'function') {
+        setAuthState(AUTH_STATES.AUTHENTICATED);
+        console.log('✅ [LoginScreen] setAuthState 호출 완료');
+      } else {
+        console.warn('⚠️ [LoginScreen] setAuthState 함수가 정의되지 않음');
+      }
       
       // 로그인 성공 처리
       handleLoginSuccess(result.user, result.accessToken, result.refreshToken);

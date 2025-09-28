@@ -44,6 +44,8 @@ const AuthContext = createContext({
 
 // Provider 컴포넌트
 export const AuthProvider = ({ children }) => {
+  console.log('🚀 [AuthProvider] 컴포넌트 렌더링됨');
+  
   const [authState, setAuthState] = useState(AUTH_STATES.LOADING);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -256,6 +258,21 @@ export const AuthProvider = ({ children }) => {
       }
     };
   }, []); // 의존성 배열을 비워서 마운트 시에만 실행
+
+  // 추가 초기화 시도 (컴포넌트 마운트 후)
+  useEffect(() => {
+    console.log('🔄 [AuthContext] 추가 초기화 시도');
+    const timeoutId = setTimeout(() => {
+      console.log('🔧 [AuthContext] 지연 초기화 실행');
+      // 리스너가 등록되지 않은 경우 다시 시도
+      if (authManager.listeners.size === 0) {
+        console.log('🔧 [AuthContext] 리스너 재등록 시도');
+        authManager.addStatusListener(handleAuthStatusChange);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   return (
     <AuthContext.Provider value={contextValue}>
