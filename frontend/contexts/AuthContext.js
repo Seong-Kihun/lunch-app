@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   
   // 토큰 상태 관리
   const [accessToken, setAccessToken] = useState(null);
-  const [refreshToken, setRefreshToken] = useState(null);
+  const [refreshTokenState, setRefreshToken] = useState(null);
 
   // AuthManager 상태 변화 핸들러
   const handleAuthStatusChange = useCallback((newStatus) => {
@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // 토큰 갱신 함수
-  const refreshToken = useCallback(async () => {
+  const refreshAccessToken = useCallback(async () => {
     try {
       console.log('🔄 [AuthContext] 토큰 갱신 시도');
       const newToken = await authManager.refreshAccessToken();
@@ -201,11 +201,12 @@ export const AuthProvider = ({ children }) => {
     
     // 토큰 상태
     accessToken,
-    refreshToken,
+    refreshToken: refreshTokenState,
     
     // 액션
     login,
     logout,
+    refreshToken: refreshAccessToken,
     clearError,
     
     // 기존 호환성
