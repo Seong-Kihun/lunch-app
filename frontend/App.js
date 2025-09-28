@@ -636,21 +636,19 @@ function MainApp() {
 
     // 네트워크 상태 변화 모니터링 - 통합 시스템 사용
     useEffect(() => {
-        // 통합 네트워크 시스템에서 상태 가져오기
-        const { isConnected, serverURL, isInitialized, error } = useUnifiedNetwork();
-        
+        // 이미 컴포넌트 레벨에서 가져온 네트워크 상태 사용
         if (isInitialized) {
             if (isConnected && serverURL) {
                 console.log('✅ [MainApp] 네트워크 연결됨:', serverURL);
                 // 전역 변수 업데이트 (레거시 호환성)
                 global.serverURL = serverURL;
                 global.networkInitialized = true;
-            } else if (error) {
-                console.warn('⚠️ [MainApp] 네트워크 경고 (앱 실행에 영향 없음):', error);
+            } else if (networkError) {
+                console.warn('⚠️ [MainApp] 네트워크 경고 (앱 실행에 영향 없음):', networkError);
                 // 에러가 있어도 앱이 실행되도록 함
             }
         }
-    }, []);
+    }, [isInitialized, isConnected, serverURL, networkError]);
 
     useEffect(() => {
         const checkStatus = async () => {
