@@ -22,6 +22,8 @@ import InquiryScreen from './screens/InquiryScreen';
 
 // 네트워크 관련 - 통합 시스템 사용
 import { UnifiedNetworkProvider, useUnifiedNetwork } from './contexts/UnifiedNetworkContext';
+import unifiedApiClient from './services/UnifiedApiClient';
+import networkMonitor from './services/NetworkMonitor';
 
 // 핵심 화면 컴포넌트 Import
 import HomeScreen from './screens/Home/HomeScreen';
@@ -636,6 +638,22 @@ function MainApp() {
                 // 실제 인증된 사용자 정보만 사용
                 if (!global.currentUser) {
                     console.log('⚠️ [MainApp] global.currentUser가 설정되지 않음 - 로그인이 필요합니다');
+                }
+
+                // 통합 API 클라이언트 초기화
+                try {
+                    console.log('🔗 [MainApp] 통합 API 클라이언트 초기화 시작');
+                    await unifiedApiClient.initialize();
+                    console.log('✅ [MainApp] 통합 API 클라이언트 초기화 완료');
+                    
+                    // 네트워크 모니터링 시작
+                    console.log('📡 [MainApp] 네트워크 모니터링 시작');
+                    networkMonitor.startMonitoring();
+                    console.log('✅ [MainApp] 네트워크 모니터링 활성화됨');
+                    
+                } catch (error) {
+                    console.error('❌ [MainApp] 통합 API 클라이언트 초기화 실패:', error);
+                    // API 클라이언트 초기화 실패는 앱 실행을 막지 않음
                 }
 
                 console.log('✅ [MainApp] 앱 초기화 완료');

@@ -1,9 +1,10 @@
 /**
  * 파티 서비스
  * 파티 관련 API 호출을 담당합니다.
+ * 통합 API 클라이언트를 사용하여 안정적인 네트워크 통신을 제공합니다.
  */
 
-import apiClient from '../api/apiClient';
+import unifiedApiClient from '../../services/UnifiedApiClient';
 
 class PartyService {
     /**
@@ -13,10 +14,12 @@ class PartyService {
      */
     async getParties(params = {}) {
         try {
-            const response = await apiClient.get('/api/parties/', params);
+            console.log('🔍 [PartyService] 파티 목록 조회 시작:', params);
+            const response = await unifiedApiClient.get('/api/parties/', params);
+            console.log('✅ [PartyService] 파티 목록 조회 성공:', response?.parties?.length || 0, '개');
             return response;
         } catch (error) {
-            console.error('파티 목록 조회 실패:', error);
+            console.error('❌ [PartyService] 파티 목록 조회 실패:', error);
             throw error;
         }
     }
@@ -28,10 +31,12 @@ class PartyService {
      */
     async getParty(partyId) {
         try {
-            const response = await apiClient.get(`/api/parties/${partyId}`);
+            console.log('🔍 [PartyService] 파티 상세 조회 시작:', partyId);
+            const response = await unifiedApiClient.get(`/api/parties/${partyId}`);
+            console.log('✅ [PartyService] 파티 상세 조회 성공');
             return response;
         } catch (error) {
-            console.error('파티 상세 조회 실패:', error);
+            console.error('❌ [PartyService] 파티 상세 조회 실패:', error);
             throw error;
         }
     }
@@ -43,10 +48,12 @@ class PartyService {
      */
     async createParty(partyData) {
         try {
-            const response = await apiClient.post('/api/parties/', partyData);
+            console.log('🔍 [PartyService] 파티 생성 시작:', partyData);
+            const response = await unifiedApiClient.post('/api/parties/', partyData);
+            console.log('✅ [PartyService] 파티 생성 성공:', response?.id);
             return response;
         } catch (error) {
-            console.error('파티 생성 실패:', error);
+            console.error('❌ [PartyService] 파티 생성 실패:', error);
             throw error;
         }
     }
@@ -58,10 +65,12 @@ class PartyService {
      */
     async joinParty(partyId) {
         try {
-            const response = await apiClient.post(`/api/parties/parties/${partyId}/join`);
+            console.log('🔍 [PartyService] 파티 참여 시작:', partyId);
+            const response = await unifiedApiClient.post(`/api/parties/${partyId}/join`);
+            console.log('✅ [PartyService] 파티 참여 성공');
             return response;
         } catch (error) {
-            console.error('파티 참여 실패:', error);
+            console.error('❌ [PartyService] 파티 참여 실패:', error);
             throw error;
         }
     }
@@ -73,10 +82,12 @@ class PartyService {
      */
     async leaveParty(partyId) {
         try {
-            const response = await apiClient.post(`/api/parties/parties/${partyId}/leave`);
+            console.log('🔍 [PartyService] 파티 나가기 시작:', partyId);
+            const response = await unifiedApiClient.post(`/api/parties/${partyId}/leave`);
+            console.log('✅ [PartyService] 파티 나가기 성공');
             return response;
         } catch (error) {
-            console.error('파티 나가기 실패:', error);
+            console.error('❌ [PartyService] 파티 나가기 실패:', error);
             throw error;
         }
     }
@@ -88,10 +99,12 @@ class PartyService {
      */
     async getMyParties(employeeId) {
         try {
-            const response = await apiClient.get('/api/parties/my_parties', { employee_id: employeeId });
+            console.log('🔍 [PartyService] 내 파티 목록 조회 시작:', employeeId);
+            const response = await unifiedApiClient.get('/api/parties/my_parties', { employee_id: employeeId });
+            console.log('✅ [PartyService] 내 파티 목록 조회 성공:', response?.parties?.length || 0, '개');
             return response;
         } catch (error) {
-            console.error('내 파티 목록 조회 실패:', error);
+            console.error('❌ [PartyService] 내 파티 목록 조회 실패:', error);
             throw error;
         }
     }
@@ -104,10 +117,12 @@ class PartyService {
      */
     async updateParty(partyId, updateData) {
         try {
-            const response = await apiClient.put(`/api/parties/parties/${partyId}`, updateData);
+            console.log('🔍 [PartyService] 파티 수정 시작:', partyId, updateData);
+            const response = await unifiedApiClient.put(`/api/parties/${partyId}`, updateData);
+            console.log('✅ [PartyService] 파티 수정 성공');
             return response;
         } catch (error) {
-            console.error('파티 수정 실패:', error);
+            console.error('❌ [PartyService] 파티 수정 실패:', error);
             throw error;
         }
     }
@@ -119,10 +134,12 @@ class PartyService {
      */
     async deleteParty(partyId) {
         try {
-            const response = await apiClient.delete(`/api/parties/parties/${partyId}`);
+            console.log('🔍 [PartyService] 파티 삭제 시작:', partyId);
+            const response = await unifiedApiClient.delete(`/api/parties/${partyId}`);
+            console.log('✅ [PartyService] 파티 삭제 성공');
             return response;
         } catch (error) {
-            console.error('파티 삭제 실패:', error);
+            console.error('❌ [PartyService] 파티 삭제 실패:', error);
             throw error;
         }
     }

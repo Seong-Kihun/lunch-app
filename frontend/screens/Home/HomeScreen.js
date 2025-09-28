@@ -24,6 +24,7 @@ import { useMission } from '../../contexts/MissionContext';
 import { usePoints } from '../../contexts/PointsContext';
 import { toLocalDateString, toKoreanDateString } from '../../utils/dateUtils';
 import { apiClient } from '../../utils/apiClient';
+import unifiedApiClient from '../../services/UnifiedApiClient';
 import { getKoreanToday, safeNavigateToTab } from '../../components/common/Utils';
 import { useToday } from '../../hooks/useToday';
 import ScheduleDetailModal from '../../components/schedule/ScheduleDetailModal';
@@ -153,15 +154,11 @@ export default function HomeScreen({ navigation, route }) {
                 endDateStr
             });
             
-        const response = await apiClient.get(
-            `http://172.30.1.43:5000/dev/schedules?employee_id=${myEmployeeId}&start_date=${startDateStr}&end_date=${endDateStr}`
-        );
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
+        const data = await unifiedApiClient.get('/dev/schedules', {
+            employee_id: myEmployeeId,
+            start_date: startDateStr,
+            end_date: endDateStr
+        });
             console.log('🔍 [HomeScreen] 수동 일정 조회 결과:', data);
             
             if (data.success) {
