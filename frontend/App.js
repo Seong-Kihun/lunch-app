@@ -668,8 +668,25 @@ function MainApp() {
 
     useEffect(() => {
         const checkStatus = async () => {
-            // 사용자 정보가 있을 때만 온보딩 상태 확인
-            if (user && user.employee_id) {
+            try {
+                // 사용자 정보 null 체크 강화
+                if (!user) {
+                    console.log('🔍 [MainApp] 사용자 정보 없음 - 온보딩 미완료로 처리');
+                    setHasCompletedOnboarding(false);
+                    return false;
+                }
+                
+                // employee_id 존재 여부 확인
+                if (!user.employee_id) {
+                    console.warn('⚠️ [MainApp] 사용자 정보에 employee_id가 없음:', { 
+                        hasUser: !!user, 
+                        userKeys: user ? Object.keys(user) : [],
+                        userObject: user 
+                    });
+                    setHasCompletedOnboarding(false);
+                    return false;
+                }
+                
                 // kseong 계정은 이미 온보딩을 완료한 것으로 처리
                 if (user.employee_id === 'KOICA356' || user.nickname === 'kseong') {
                     setHasCompletedOnboarding(true);
@@ -694,8 +711,8 @@ function MainApp() {
                     setHasCompletedOnboarding(false);
                     return false; // 온보딩 미완료
                 }
-            } else {
-                console.log('🔍 [MainApp] 사용자 정보 없음 - 온보딩 미완료로 처리');
+            } catch (error) {
+                console.error('❌ [MainApp] 온보딩 상태 확인 중 오류:', error);
                 setHasCompletedOnboarding(false);
                 return false;
             }

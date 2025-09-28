@@ -1,11 +1,11 @@
 // API 설정
-import { detectServerURL } from './utils/networkDetector';
+import { getServerURL } from './utils/networkUnifiedManager';
 
 // 개발 환경 감지 (더 안전한 방법)
 const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
 
-// 서버 URL - 동적으로 감지
-const RENDER_SERVER_URL = detectServerURL();
+// 서버 URL - 통합 네트워크 관리자 사용
+const RENDER_SERVER_URL = getServerURL();
 
 // 기본 설정
 const DEFAULT_LOCATION = {

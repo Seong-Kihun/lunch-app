@@ -68,11 +68,12 @@ export const waitForNetworkInitialization = async (timeoutMs = 10000) => {
     }
 };
 
-// 서버 URL 가져오기 (새로운 NetworkManager 사용)
+// 서버 URL 가져오기 (통합 네트워크 관리자 사용)
 export const getServerURL = async () => {
     try {
-        console.log('🔧 [NetworkUtils] NetworkManager를 통한 서버 URL 요청');
-        return await networkManager.getServerURL();
+        console.log('🔧 [NetworkUtils] 통합 네트워크 관리자를 통한 서버 URL 요청');
+        const { getServerURL: getUnifiedServerURL } = await import('./networkUnifiedManager');
+        return getUnifiedServerURL();
     } catch (error) {
         console.error('🔧 [NetworkUtils] 서버 URL 생성 실패:', error);
         

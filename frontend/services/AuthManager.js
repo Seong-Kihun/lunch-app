@@ -251,8 +251,9 @@ class AuthManager {
       // 서버에 로그아웃 요청 (선택적)
       if (this.accessToken) {
         try {
-          const { getServerURL } = await import('../utils/networkUtils');
-          const serverURL = await getServerURL();
+          // 통합 네트워크 시스템 사용으로 일관성 확보
+          const { getServerURL } = await import('../utils/networkUnifiedManager');
+          const serverURL = getServerURL();
           
           await fetch(`${serverURL}/api/auth/logout`, {
             method: 'POST',
@@ -274,6 +275,8 @@ class AuthManager {
       this.accessToken = null;
       this.refreshToken = null;
       this.status = 'unauthenticated';
+      this.isAuthenticated = false;
+      this.user = null;
 
       // 전역 변수 초기화 (레거시 호환성)
       global.currentUser = null;
@@ -318,8 +321,9 @@ class AuthManager {
       this.status = 'refreshing';
       this.notifyListeners();
 
-      const { getServerURL } = await import('../utils/networkUtils');
-      const serverURL = await getServerURL();
+      // 통합 네트워크 시스템 사용으로 일관성 확보
+      const { getServerURL } = await import('../utils/networkUnifiedManager');
+      const serverURL = getServerURL();
 
       const response = await fetch(`${serverURL}/api/auth/refresh`, {
         method: 'POST',

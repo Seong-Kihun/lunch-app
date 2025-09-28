@@ -105,7 +105,7 @@ export default function OnboardingScreen() {
             try {
                 await saveUserPreferences();
                 
-                // 사용자별 온보딩 완료 상태 저장
+                // 사용자별 온보딩 완료 상태 저장 - 강화된 null 체크
                 if (user && user.employee_id) {
                     await setOnboardingCompleted(user.employee_id);
                     console.log(`✅ 사용자 ${user.employee_id} 온보딩 완료 상태 저장됨`);
@@ -118,15 +118,30 @@ export default function OnboardingScreen() {
                     updateUser(updatedUser);
                     console.log(`🔄 사용자 정보 업데이트로 온보딩 완료 상태 반영`);
                 } else {
-                    console.error('❌ 사용자 정보가 없어서 온보딩 완료 상태 저장 실패');
+                    console.error('❌ 사용자 정보가 없어서 온보딩 완료 상태 저장 실패:', { 
+                        hasUser: !!user, 
+                        hasEmployeeId: !!user?.employee_id,
+                        userObject: user 
+                    });
+                    throw new Error('사용자 정보가 없어서 온보딩을 완료할 수 없습니다. 다시 로그인해주세요.');
                 }
             } catch (error) {
-                console.error('온보딩 완료 처리 중 오류:', error);
-                // 오류가 발생해도 온보딩 완료 상태는 저장
+                console.error('❌ 온보딩 완료 처리 중 오류:', error);
+                
+                // 사용자 정보가 있는 경우에만 온보딩 완료 상태 저장 시도
                 if (user && user.employee_id) {
-                    await setOnboardingCompleted(user.employee_id);
-                    console.log('🔄 오류 발생 시에도 온보딩 완료 상태 저장');
+                    try {
+                        await setOnboardingCompleted(user.employee_id);
+                        console.log('🔄 오류 발생 시에도 온보딩 완료 상태 저장 성공');
+                    } catch (onboardingError) {
+                        console.error('❌ 온보딩 완료 상태 저장도 실패:', onboardingError);
+                    }
+                } else {
+                    console.error('❌ 사용자 정보가 없어서 온보딩 완료 상태 저장 불가');
                 }
+                
+                // 에러를 다시 던져서 상위에서 처리할 수 있도록 함
+                throw error;
             }
         }
     };
@@ -159,6 +174,12 @@ export default function OnboardingScreen() {
         try {
             console.log('🔧 사용자 설정 저장 시작:', userPreferences);
             
+            // 사용자 정보 null 체크 강화
+            if (!user || !user.employee_id) {
+                console.error('❌ 사용자 정보가 없어서 설정 저장 불가:', { user: !!user, employee_id: user?.employee_id });
+                throw new Error('사용자 정보가 없습니다. 다시 로그인해주세요.');
+            }
+            
             // 사용자 기본 정보 저장
             const userData = {
                 nickname: userPreferences.nickname,
@@ -166,6 +187,8 @@ export default function OnboardingScreen() {
                 main_dish_genre: userPreferences.foodPreferences?.join(', ') || '',
                 main_dish: userPreferences.foodPreferences?.join(', ') || '', // 주종목으로 음식 선호도 저장
             };
+            
+            console.log('🔧 사용자 기본 정보 저장 시도:', { employee_id: user.employee_id, userData });
             
             const userResponse = await fetch(`${RENDER_SERVER_URL}/users/${user.employee_id}`, {
                 method: 'PUT',

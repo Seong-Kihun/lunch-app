@@ -137,12 +137,14 @@ const LoginScreen = ({ navigation }) => {
       
       // 새로운 AuthManager를 통한 로그인
       console.log('🔐 [LoginScreen] AuthManager를 통한 로그인 시도');
-      const result = await authManager.login({
-        email: email.trim(),
-        password: password.trim()
-      });
       
-      console.log('✅ [LoginScreen] 로그인 성공:', result.user.nickname);
+      try {
+        const result = await authManager.login({
+          email: email.trim(),
+          password: password.trim()
+        });
+        
+        console.log('✅ [LoginScreen] 로그인 성공:', result.user.nickname);
       
       // ScheduleContext에 액세스 토큰 설정 (ScheduleProvider 범위 밖이므로 주석 처리)
       // if (setScheduleAccessToken) {
@@ -170,10 +172,33 @@ const LoginScreen = ({ navigation }) => {
       // 로그인 성공 처리
       handleLoginSuccess(result.user, result.accessToken, result.refreshToken);
       
-      // 에러 상태 클리어
-      clearError();
+        // 에러 상태 클리어
+        clearError();
+        
+      } catch (loginError) {
+        console.error('❌ [LoginScreen] AuthManager 로그인 실패:', loginError);
+        
+        // 더 구체적인 에러 메시지 제공
+        let errorMessage = '로그인에 실패했습니다.';
+        
+        if (loginError.message) {
+          if (loginError.message.includes('401') || loginError.message.includes('인증')) {
+            errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+          } else if (loginError.message.includes('네트워크') || loginError.message.includes('Network')) {
+            errorMessage = '네트워크 연결을 확인해주세요.';
+          } else if (loginError.message.includes('서버')) {
+            errorMessage = '서버 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.';
+          } else {
+            errorMessage = loginError.message;
+          }
+        }
+        
+        setAuthError(errorMessage);
+        throw loginError; // 에러를 다시 던져서 상위에서 처리할 수 있도록 함
+      }
+      
     } catch (error) {
-      console.error('비밀번호 로그인 실패:', error);
+      console.error('❌ [LoginScreen] 로그인 처리 실패:', error);
       
       // 네트워크 연결 문제인지 확인
       if (error.message && (error.message.includes('Network request failed') || error.message.includes('네트워크'))) {
