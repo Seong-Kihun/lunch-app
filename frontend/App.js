@@ -95,6 +95,7 @@ import { checkOnboardingStatus, setOnboardingCompleted } from './utils/onboardin
 // 통합 네트워크 설정 Import
 import { initializeNetwork, getServerURL } from './config/networkConfig';
 import NetworkStatus from './components/NetworkStatus';
+import OfflineModeIndicator from './components/OfflineModeIndicator';
 
 // API_BASE_URL과 API 호출 함수 정의
 const API_BASE_URL = RENDER_SERVER_URL;
@@ -790,6 +791,7 @@ function MainApp() {
             <NavigationContainer>
                 <TabNavigator />
             </NavigationContainer>
+            <OfflineModeIndicator />
             <NetworkStatus 
                 visible={showNetworkStatus} 
                 onClose={() => setShowNetworkStatus(false)} 

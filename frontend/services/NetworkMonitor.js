@@ -5,6 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import unifiedApiClient from './UnifiedApiClient';
+import offlineModeManager from './OfflineModeManager';
 
 class NetworkMonitor {
   constructor() {
@@ -74,12 +75,14 @@ class NetworkMonitor {
       
       const responseTime = Date.now() - startTime;
       
-      // 백엔드가 부분적으로라도 작동하면 건강한 것으로 간주
-      const isHealthy = analysis.serverReachable || analysis.apiEndpointsWorking || analysis.authenticationWorking;
+          // 백엔드가 부분적으로라도 작동하면 건강한 것으로 간주 (데이터베이스 오류 고려)
+          const isHealthy = analysis.serverReachable || analysis.apiEndpointsWorking || analysis.authenticationWorking;
       
       let healthStatus = 'unknown';
-      if (analysis.serverReachable && analysis.apiEndpointsWorking && analysis.authenticationWorking) {
+      if (analysis.serverReachable && analysis.apiEndpointsWorking && analysis.authenticationWorking && analysis.databaseHealthy) {
         healthStatus = 'fully_healthy';
+      } else if (analysis.serverReachable && analysis.apiEndpointsWorking && analysis.authenticationWorking) {
+        healthStatus = 'partially_healthy_database_issues';
       } else if (isHealthy) {
         healthStatus = 'partially_healthy';
       } else {
@@ -97,15 +100,24 @@ class NetworkMonitor {
 
       if (isHealthy) {
         console.log(`✅ [NetworkMonitor] 백엔드 상태 분석 완료: ${healthStatus} (${responseTime}ms)`);
-        console.log(`📊 [NetworkMonitor] 분석 결과:`, {
-          serverReachable: analysis.serverReachable,
-          apiEndpointsWorking: analysis.apiEndpointsWorking,
-          authenticationWorking: analysis.authenticationWorking,
-          issuesCount: analysis.issues.length,
-          recommendations: analysis.recommendations
-        });
+            console.log(`📊 [NetworkMonitor] 분석 결과:`, {
+              serverReachable: analysis.serverReachable,
+              apiEndpointsWorking: analysis.apiEndpointsWorking,
+              authenticationWorking: analysis.authenticationWorking,
+              databaseHealthy: analysis.databaseHealthy,
+              issuesCount: analysis.issues.length,
+              recommendations: analysis.recommendations
+            });
         
         this.consecutiveFailures = 0;
+        
+        // 데이터베이스 문제가 해결되었고 오프라인 모드라면 온라인 모드로 전환
+        if (analysis.databaseHealthy && offlineModeManager.isInOfflineMode()) {
+          console.log('🌐 [NetworkMonitor] 데이터베이스 문제 해결 - 온라인 모드로 전환');
+          offlineModeManager.disableOfflineMode();
+          await offlineModeManager.syncOfflineData();
+        }
+        
         this.notifyListeners({
           type: 'HEALTH_CHECK_SUCCESS',
           data: this.lastHealthCheck
