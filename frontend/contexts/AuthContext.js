@@ -6,6 +6,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import authManager, { AUTH_STATUS } from '../services/AuthManager';
 
+// AuthManager 인스턴스 확인
+console.log('🔧 [AuthContext] AuthManager 인스턴스:', authManager);
+console.log('🔧 [AuthContext] AuthManager ID:', authManager?.constructor?.name);
+
 // 기존 AUTH_STATES와 새로운 AUTH_STATUS 통합
 export const AUTH_STATES = {
   LOADING: AUTH_STATUS.AUTHENTICATING,
@@ -229,8 +233,14 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    // 약간의 지연 후 초기화 (다른 컴포넌트들이 준비될 시간 확보)
-    const timeoutId = setTimeout(setupAuth, 100);
+    // 즉시 초기화 시도
+    setupAuth();
+    
+    // 백업 초기화 (지연 후)
+    const timeoutId = setTimeout(() => {
+      console.log('🔄 [AuthContext] 백업 초기화 실행');
+      setupAuth();
+    }, 500);
 
     // 정리
     return () => {

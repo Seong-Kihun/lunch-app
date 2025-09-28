@@ -16,6 +16,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchedule } from '../contexts/ScheduleContext';
 import { useUnifiedNetwork } from '../contexts/UnifiedNetworkContext';
 import authManager from '../services/AuthManager';
+
+// AuthManager 인스턴스 확인
+console.log('🔧 [LoginScreen] AuthManager 인스턴스:', authManager);
+console.log('🔧 [LoginScreen] AuthManager ID:', authManager?.constructor?.name);
 import { RENDER_SERVER_URL } from '../config';
 
 const LoginScreen = ({ navigation }) => {

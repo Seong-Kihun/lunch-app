@@ -43,6 +43,10 @@ class AuthManager {
     this.refreshTimer = null;
     this.retryCount = 0;
     
+    // 인스턴스 고유 ID 생성
+    this.instanceId = Math.random().toString(36).substr(2, 9);
+    console.log(`🔧 [AuthManager] 인스턴스 생성됨 (ID: ${this.instanceId})`);
+    
     console.log('🔐 [AuthManager] 인스턴스 생성됨');
   }
 
