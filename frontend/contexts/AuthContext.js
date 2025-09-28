@@ -50,10 +50,17 @@ export const AuthProvider = ({ children }) => {
   const handleAuthStatusChange = useCallback((newStatus) => {
     console.log('🔄 [AuthContext] 인증 상태 변경:', newStatus);
     
+    // AuthManager의 상태를 AuthContext에 동기화
     setAuthState(newStatus.status);
     setUser(newStatus.user);
     setIsAuthenticated(newStatus.isAuthenticated);
     setError(null); // 상태 변경 시 에러 클리어
+    
+    console.log('✅ [AuthContext] 상태 동기화 완료:', {
+      authState: newStatus.status,
+      isAuthenticated: newStatus.isAuthenticated,
+      user: newStatus.user?.nickname
+    });
   }, []);
 
   // 인증 관리자 초기화

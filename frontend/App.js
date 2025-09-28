@@ -594,9 +594,14 @@ function MainApp() {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                // 1. 개발 환경에서 강제 로그아웃 (저장된 토큰 삭제)
-                console.log('🔄 [MainApp] 개발 환경 - 저장된 인증 정보 초기화');
-                await forceLogout();
+                // 1. 개발 환경에서만 첫 실행 시에만 강제 로그아웃 (앱 재시작 시에만)
+                if (__DEV__ && !global.appInitialized) {
+                    console.log('🔄 [MainApp] 개발 환경 - 앱 첫 실행 시 인증 정보 초기화');
+                    await forceLogout();
+                    global.appInitialized = true;
+                } else if (__DEV__) {
+                    console.log('🔄 [MainApp] 개발 환경 - 앱 재시작, 인증 상태 유지');
+                }
                 
                 // 2. 전역 변수 초기화
                 if (!global.currentColors) {

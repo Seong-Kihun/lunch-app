@@ -201,6 +201,11 @@ class AuthManager {
       // 전역 변수 업데이트 (레거시 호환성)
       global.currentUser = data.user;
 
+      // 인증 상태를 AUTHENTICATED로 설정
+      this.status = AUTH_STATUS.AUTHENTICATED;
+      this.isAuthenticated = true;
+      this.user = data.user;
+
       console.log('✅ [AuthManager] 로그인 성공:', data.user.nickname);
       this.notifyListeners();
       
