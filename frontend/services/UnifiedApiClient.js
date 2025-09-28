@@ -394,23 +394,35 @@ class UnifiedApiClient {
         recommendations: []
       };
       
-      // 1단계: 서버 기본 연결성 확인
+      // 1단계: 서버 기본 연결성 확인 - 더 관대한 테스트
       try {
         const response = await this.fetchWithTimeout(serverURL, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          timeout: 5000
+          timeout: 8000 // 타임아웃 증가
         });
         
-        if (response.status === 200) {
+        // 200, 400, 404 등은 서버가 살아있음을 의미
+        if (response.status < 500) {
           analysis.serverReachable = true;
-          console.log('✅ [UnifiedApiClient] 서버 기본 연결성 확인됨');
+          console.log(`✅ [UnifiedApiClient] 서버 기본 연결성 확인됨: ${response.status}`);
+          
+          if (response.status !== 200) {
+            analysis.issues.push(`서버 루트 응답 상태: ${response.status} (정상적으로 작동 중)`);
+          }
         } else {
           analysis.issues.push(`서버 응답 상태: ${response.status}`);
         }
       } catch (error) {
-        analysis.issues.push(`서버 연결 실패: ${error.message}`);
-        console.warn('⚠️ [UnifiedApiClient] 서버 연결 실패:', error.message);
+        // 타임아웃이나 연결 실패 시에도 API 엔드포인트가 작동할 수 있음
+        console.warn('⚠️ [UnifiedApiClient] 서버 루트 연결 실패:', error.message);
+        
+        // 타임아웃은 서버가 느리게 응답하는 것일 수 있으므로 치명적이지 않음
+        if (error.message.includes('timeout')) {
+          analysis.issues.push('서버 루트 응답이 느립니다. API 엔드포인트는 정상 작동할 수 있습니다.');
+        } else {
+          analysis.issues.push(`서버 루트 연결 실패: ${error.message}`);
+        }
       }
       
       // 2단계: API 엔드포인트 상태 확인
@@ -445,7 +457,7 @@ class UnifiedApiClient {
       
       analysis.apiEndpointsWorking = workingEndpoints > 0;
       
-      // 3단계: 인증 시스템 상태 확인
+      // 3단계: 인증 시스템 상태 확인 - 계정 잠금 상태도 확인
       try {
         const response = await this.fetchWithTimeout(`${serverURL}/api/auth/login`, {
           method: 'POST',
@@ -458,6 +470,17 @@ class UnifiedApiClient {
         if (response.status < 500) {
           analysis.authenticationWorking = true;
           console.log(`✅ [UnifiedApiClient] 인증 시스템 확인됨: ${response.status}`);
+          
+          // 계정 잠금 상태 확인
+          if (response.status === 423) {
+            analysis.issues.push('계정 잠금 상태가 감지되었습니다.');
+            analysis.recommendations.push('계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도하거나 관리자에게 문의해주세요.');
+          } else if (response.status === 400) {
+            analysis.issues.push('API 엔드포인트 접근에 문제가 있습니다.');
+            analysis.recommendations.push('API 엔드포인트 설정을 확인해주세요.');
+          } else if (response.status === 401) {
+            analysis.recommendations.push('인증 시스템이 정상적으로 작동하고 있습니다.');
+          }
         } else {
           analysis.issues.push(`인증 시스템 서버 오류: ${response.status}`);
         }

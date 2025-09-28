@@ -174,6 +174,13 @@ class AuthManager {
         passwordPreview: credentials.password ? credentials.password.substring(0, 2) + '***' : 'null'
       });
       
+      // 개발 환경에서 백엔드 서버 문제 시 대응
+      const isDevelopment = __DEV__;
+      if (isDevelopment && credentials.email === 'kseong@koica.go.kr') {
+        console.log('🔧 [AuthManager] 개발 환경 - 특정 계정 감지');
+        console.log('🔧 [AuthManager] 백엔드 서버 상태 확인 중...');
+      }
+      
       this.status = 'authenticating';
       this.notifyListeners();
 
@@ -181,7 +188,26 @@ class AuthManager {
       console.log('🔐 [AuthManager] 통합 API 클라이언트를 통한 로그인 요청');
       
       const { default: unifiedApiClient } = await import('./UnifiedApiClient');
-      const data = await unifiedApiClient.post('/api/auth/login', credentials);
+      
+      let data;
+      try {
+        data = await unifiedApiClient.post('/api/auth/login', credentials);
+      } catch (loginError) {
+        // 개발 환경에서 백엔드 서버 문제 시 대안 처리
+        if (isDevelopment && loginError.message.includes('계정이 잠겨있습니다')) {
+          console.log('🔧 [AuthManager] 개발 환경 - 계정 잠금 상태 감지');
+          console.log('🔧 [AuthManager] 백엔드 서버 상태를 확인하고 대안을 제시합니다.');
+          
+          // 백엔드 상태 분석
+          const analysis = await unifiedApiClient.analyzeBackendStatus();
+          console.log('📊 [AuthManager] 백엔드 상태 분석 결과:', analysis);
+          
+          // 계정 잠금이 감지된 경우 사용자에게 명확한 안내
+          throw new Error('계정이 잠겨있습니다. 백엔드 서버에서 보안상의 이유로 계정을 일시적으로 잠금 처리했습니다. 15-30분 후에 자동으로 해제됩니다.');
+        }
+        
+        throw loginError;
+      }
       
       console.log('🔐 [AuthManager] 로그인 응답 데이터:', {
         hasAccessToken: !!data.access_token,
