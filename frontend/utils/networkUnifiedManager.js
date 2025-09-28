@@ -44,7 +44,7 @@ const UNIFIED_CONFIG = {
   },
   
   // 설정 버전
-  CONFIG_VERSION: '3.2.0'
+  CONFIG_VERSION: '3.3.0'
 };
 
 class UnifiedNetworkManager {
@@ -139,14 +139,15 @@ class UnifiedNetworkManager {
   }
 
   /**
-   * 빠른 연결 테스트
+   * 빠른 연결 테스트 - 루트 엔드포인트로 간단히 테스트
    */
   async quickTest(url) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 타임아웃 단축
       
-      const response = await fetch(`${url}/api/health`, {
+      // 루트 엔드포인트로 간단히 테스트
+      const response = await fetch(url, {
         method: 'GET',
         signal: controller.signal,
         headers: {
@@ -155,8 +156,10 @@ class UnifiedNetworkManager {
       });
       
       clearTimeout(timeoutId);
+      console.log(`🔍 [UnifiedNetworkManager] ${url} 테스트 결과:`, response.status);
       return response.ok;
     } catch (error) {
+      console.log(`❌ [UnifiedNetworkManager] ${url} 테스트 실패:`, error.message);
       return false;
     }
   }
