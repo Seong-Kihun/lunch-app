@@ -21,15 +21,20 @@ config.resolver.blockList = [
   /node_modules\/react-native-maps\/lib\/MapCircleNativeComponent\.js$/,
 ];
 
-// 터널 모드를 위한 서버 설정
+// 모든 네트워크 모드를 위한 서버 설정
 config.server = {
   ...config.server,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
-      // 터널 모드에서 CORS 헤더 추가
+      // 모든 네트워크 모드에서 CORS 헤더 추가
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, User-Agent');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      
+      // 로컬 네트워크 접근을 위한 추가 헤더
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
       
       if (req.method === 'OPTIONS') {
         res.status(200).end();

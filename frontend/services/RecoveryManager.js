@@ -28,8 +28,8 @@ export const RECOVERY_TYPE = {
 // 백업 서버 설정
 const BACKUP_SERVERS = [
   'https://lunch-app-backend-ra12.onrender.com',
-  'http://192.168.45.177:5000',
-  'http://localhost:5000'
+  'http://localhost:5000',
+  'http://127.0.0.1:5000'
 ];
 
 // 복구 설정

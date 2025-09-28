@@ -19,7 +19,6 @@ export const NETWORK_STATUS = {
 // 서버 URL 우선순위 설정
 const SERVER_CONFIG = {
   development: [
-    'http://192.168.45.177:5000',   // 현재 실행 중인 로컬 서버
     'http://localhost:5000',        // 로컬호스트
     'http://127.0.0.1:5000',        // 로컬호스트 IP
     'https://lunch-app-backend-ra12.onrender.com'  // 프로덕션 백업

@@ -31,7 +31,7 @@
               "NSExceptionMinimumTLSVersion": "1.0",
               "NSIncludesSubdomains": true
             },
-            "192.168.45.177": {
+            "192.168.0.31": {
               "NSExceptionAllowsInsecureHTTPLoads": true,
               "NSExceptionMinimumTLSVersion": "1.0",
               "NSIncludesSubdomains": true
@@ -46,11 +46,19 @@
       },
       "usesCleartextTraffic": true,
       "networkSecurityConfig": {
-        "cleartextTrafficPermitted": true
+        "cleartextTrafficPermitted": true,
+        "domainConfig": [
+          {
+            "domains": ["192.168.0.31", "192.168.0.1", "192.168.1.1", "10.0.0.1", "172.16.0.1", "localhost", "127.0.0.1"],
+            "cleartextTrafficPermitted": true
+          }
+        ]
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ]
     },
     "plugins": [

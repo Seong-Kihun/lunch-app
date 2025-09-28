@@ -22,6 +22,8 @@ import InquiryScreen from './screens/InquiryScreen';
 
 // 네트워크 관련
 import { NetworkProvider, useNetwork } from './contexts/NetworkContext';
+import { runNetworkDiagnostics } from './utils/networkDiagnostics';
+import { resetNetworkConfig } from './utils/resetNetworkConfig';
 
 // 핵심 화면 컴포넌트 Import
 import HomeScreen from './screens/Home/HomeScreen';
@@ -684,6 +686,29 @@ function MainApp() {
             checkStatus();
         }
     }, [authState, user]);
+
+    // 네트워크 진단 및 설정 초기화 (앱 시작 시 한 번만 실행)
+    useEffect(() => {
+        const initializeNetworkDiagnostics = async () => {
+            try {
+                console.log('🔍 [MainApp] 네트워크 진단 및 설정 초기화 시작...');
+                
+                // 1. 네트워크 진단 실행
+                await runNetworkDiagnostics();
+                
+                // 2. 기존 하드코딩된 설정이 있다면 초기화
+                console.log('🔄 [MainApp] 하드코딩된 네트워크 설정 초기화...');
+                await resetNetworkConfig();
+                
+                console.log('✅ [MainApp] 네트워크 진단 및 설정 초기화 완료');
+            } catch (error) {
+                console.error('❌ [MainApp] 네트워크 진단 실패:', error);
+            }
+        };
+
+        // 앱 시작 시 한 번만 실행
+        initializeNetworkDiagnostics();
+    }, []); // 빈 의존성 배열로 한 번만 실행
 
     // 로딩 중
     if (authState === 'loading') {
