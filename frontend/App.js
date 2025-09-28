@@ -710,7 +710,7 @@ function MainApp() {
     // 디버깅을 위한 인증 상태 로그
     console.log('🔍 [MainApp] 인증 상태 체크:', {
         authState,
-        isAuthenticated,
+        isAuthenticated: authState === AUTH_STATES.AUTHENTICATED,
         user: user?.nickname,
         hasCompletedOnboarding
     });
