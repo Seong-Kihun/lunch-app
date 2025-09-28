@@ -5,7 +5,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import unifiedApiClient from './UnifiedApiClient';
 
 // 인증 상태 상수 정의 (AUTH_STATES와 통일화)
 export const AUTH_STATUS = {
@@ -171,15 +170,17 @@ class AuthManager {
       console.log('🔐 [AuthManager] 로그인 정보:', {
         email: credentials.email,
         passwordLength: credentials.password ? credentials.password.length : 0,
-        hasPassword: !!credentials.password
+        hasPassword: !!credentials.password,
+        passwordPreview: credentials.password ? credentials.password.substring(0, 2) + '***' : 'null'
       });
       
       this.status = 'authenticating';
       this.notifyListeners();
 
-      // 통합 API 클라이언트를 사용한 로그인 요청
+      // 통합 API 클라이언트를 동적으로 import하여 순환 참조 방지
       console.log('🔐 [AuthManager] 통합 API 클라이언트를 통한 로그인 요청');
       
+      const { default: unifiedApiClient } = await import('./UnifiedApiClient');
       const data = await unifiedApiClient.post('/api/auth/login', credentials);
       
       console.log('🔐 [AuthManager] 로그인 응답 데이터:', {

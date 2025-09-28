@@ -5,7 +5,6 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import authManager from './AuthManager';
 
 class UnifiedApiClient {
   constructor() {
@@ -97,12 +96,14 @@ class UnifiedApiClient {
   }
 
   /**
-   * 인증 헤더 생성
+   * 인증 헤더 생성 (동적 import로 순환 참조 방지)
    */
-  getAuthHeaders() {
+  async getAuthHeaders() {
     const authHeaders = {};
     
     try {
+      // AuthManager를 동적으로 import하여 순환 참조 방지
+      const { default: authManager } = await import('./AuthManager');
       const accessToken = authManager.getAccessToken();
       if (accessToken) {
         authHeaders['Authorization'] = `Bearer ${accessToken}`;
@@ -120,11 +121,12 @@ class UnifiedApiClient {
   /**
    * 기본 헤더 생성
    */
-  getDefaultHeaders() {
+  async getDefaultHeaders() {
+    const authHeaders = await this.getAuthHeaders();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...this.getAuthHeaders()
+      ...authHeaders
     };
   }
 
@@ -141,7 +143,7 @@ class UnifiedApiClient {
         const serverURL = await this.getServerURL();
         const url = this.buildURL(serverURL, endpoint, params);
         const requestHeaders = {
-          ...this.getDefaultHeaders(),
+          ...(await this.getDefaultHeaders()),
           ...headers
         };
         
@@ -266,10 +268,15 @@ class UnifiedApiClient {
       throw new Error(errorMessage);
     }
     
-    // 인증 오류 처리
+    // 인증 오류 처리 (동적 import로 순환 참조 방지)
     if (response.status === 401) {
       console.log('🔐 [UnifiedApiClient] 인증 오류 - 로그아웃 처리');
-      await authManager.logout();
+      try {
+        const { default: authManager } = await import('./AuthManager');
+        await authManager.logout();
+      } catch (error) {
+        console.warn('⚠️ [UnifiedApiClient] 로그아웃 처리 실패:', error);
+      }
       throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
     }
     
@@ -348,7 +355,7 @@ class UnifiedApiClient {
    */
   async upload(endpoint, formData) {
     const headers = {
-      ...this.getAuthHeaders(),
+      ...(await this.getAuthHeaders()),
       // Content-Type은 FormData가 자동으로 설정
     };
     
@@ -360,34 +367,78 @@ class UnifiedApiClient {
   }
 
   /**
-   * 헬스 체크
+   * 스마트 헬스 체크 - 실제 API 엔드포인트 사용
    */
   async healthCheck() {
     try {
       const serverURL = await this.getServerURL();
+      console.log(`🔍 [UnifiedApiClient] 스마트 헬스 체크 시작: ${serverURL}`);
       
-      // 여러 헬스 체크 엔드포인트 시도
-      const healthEndpoints = ['/health', '/api/health', '/api/health/status'];
+      // 1단계: 전용 헬스 체크 엔드포인트 시도
+      const dedicatedEndpoints = ['/health', '/api/health', '/api/health/status'];
       
-      for (const endpoint of healthEndpoints) {
+      for (const endpoint of dedicatedEndpoints) {
         try {
-          console.log(`🔍 [UnifiedApiClient] 헬스 체크 시도: ${serverURL}${endpoint}`);
+          console.log(`🔍 [UnifiedApiClient] 전용 헬스 체크 시도: ${serverURL}${endpoint}`);
           const response = await this.fetchWithTimeout(`${serverURL}${endpoint}`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 5000 // 헬스 체크는 빠르게
           });
           
           if (response.ok) {
-            console.log(`✅ [UnifiedApiClient] 헬스 체크 성공: ${endpoint}`);
+            console.log(`✅ [UnifiedApiClient] 전용 헬스 체크 성공: ${endpoint}`);
             return true;
           }
         } catch (endpointError) {
-          console.warn(`⚠️ [UnifiedApiClient] 헬스 체크 실패 (${endpoint}):`, endpointError.message);
+          console.warn(`⚠️ [UnifiedApiClient] 전용 헬스 체크 실패 (${endpoint}):`, endpointError.message);
           continue;
         }
       }
       
-      console.error('❌ [UnifiedApiClient] 모든 헬스 체크 엔드포인트 실패');
+      // 2단계: 실제 API 엔드포인트로 연결성 테스트
+      const apiTestEndpoints = [
+        '/api/auth/status',  // 인증 상태 확인 (가장 가벼운 엔드포인트)
+        '/api/restaurants',  // 레스토랑 목록 (일반적으로 존재)
+        '/api/users/profile' // 사용자 프로필 (존재할 가능성 높음)
+      ];
+      
+      for (const endpoint of apiTestEndpoints) {
+        try {
+          console.log(`🔍 [UnifiedApiClient] API 연결성 테스트: ${serverURL}${endpoint}`);
+          const response = await this.fetchWithTimeout(`${serverURL}${endpoint}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 8000
+          });
+          
+          // 200, 401, 403 등은 서버가 살아있음을 의미
+          if (response.status < 500) {
+            console.log(`✅ [UnifiedApiClient] API 연결성 테스트 성공: ${endpoint} (${response.status})`);
+            return true;
+          }
+        } catch (endpointError) {
+          console.warn(`⚠️ [UnifiedApiClient] API 연결성 테스트 실패 (${endpoint}):`, endpointError.message);
+          continue;
+        }
+      }
+      
+      // 3단계: 최종 폴백 - 서버 URL 자체의 연결성 테스트
+      try {
+        console.log(`🔍 [UnifiedApiClient] 최종 폴백 테스트: ${serverURL}`);
+        const response = await this.fetchWithTimeout(serverURL, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        });
+        
+        console.log(`✅ [UnifiedApiClient] 최종 폴백 테스트 성공: ${response.status}`);
+        return true;
+      } catch (fallbackError) {
+        console.warn(`⚠️ [UnifiedApiClient] 최종 폴백 테스트 실패:`, fallbackError.message);
+      }
+      
+      console.error('❌ [UnifiedApiClient] 모든 헬스 체크 방법 실패');
       return false;
     } catch (error) {
       console.error('❌ [UnifiedApiClient] 헬스 체크 실패:', error);

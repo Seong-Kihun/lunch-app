@@ -61,41 +61,49 @@ class NetworkMonitor {
   }
 
   /**
-   * 헬스 체크 수행
+   * 스마트 헬스 체크 수행 - 실제 API 사용 가능성 테스트
    */
   async performHealthCheck() {
     try {
-      console.log('🔍 [NetworkMonitor] 헬스 체크 수행');
+      console.log('🔍 [NetworkMonitor] 스마트 헬스 체크 수행');
       
       const startTime = Date.now();
       
-      // 일반 헬스 체크 (더 관대한 처리)
+      // 실제 API 호출로 서버 상태 확인 (로그인 API는 항상 존재해야 함)
       let isHealthy = false;
-      try {
-        isHealthy = await unifiedApiClient.healthCheck();
-      } catch (healthError) {
-        console.warn('⚠️ [NetworkMonitor] 헬스 체크 실패, 기본 엔드포인트로 재시도:', healthError.message);
-        
-        // 헬스 체크 실패 시 기본 API 엔드포인트로 재시도
-        try {
-          await unifiedApiClient.get('/api/health', {}, { timeout: 5000 });
-          isHealthy = true;
-          console.log('✅ [NetworkMonitor] 기본 엔드포인트 헬스 체크 성공');
-        } catch (fallbackError) {
-          console.warn('⚠️ [NetworkMonitor] 기본 엔드포인트도 실패:', fallbackError.message);
-          isHealthy = false;
-        }
-      }
+      let healthCheckMethod = '';
       
-      // 백엔드 데이터베이스 상태 체크 (헬스 체크가 성공한 경우에만)
-      if (isHealthy) {
+      try {
+        // 1차: 로그인 API 존재 확인 (가장 기본적인 API)
+        console.log('🔍 [NetworkMonitor] 로그인 API 존재 확인');
+        const response = await unifiedApiClient.get('/api/auth/login', {}, { timeout: 8000 });
+        isHealthy = true;
+        healthCheckMethod = 'login_api';
+        console.log('✅ [NetworkMonitor] 로그인 API 존재 확인 성공');
+      } catch (loginError) {
+        console.warn('⚠️ [NetworkMonitor] 로그인 API 확인 실패:', loginError.message);
+        
         try {
-          // 간단한 API 호출로 데이터베이스 상태 확인
-          await unifiedApiClient.get('/api/health/database', {}, { timeout: 5000 });
-        } catch (dbError) {
-          if (dbError.message.includes('Table') && dbError.message.includes('already defined')) {
-            console.warn('⚠️ [NetworkMonitor] 백엔드 데이터베이스 스키마 오류 감지');
-            // 데이터베이스 오류는 치명적이지 않음 - 네트워크는 정상으로 처리
+          // 2차: 레스토랑 API 확인
+          console.log('🔍 [NetworkMonitor] 레스토랑 API 존재 확인');
+          const response = await unifiedApiClient.get('/api/restaurants', {}, { timeout: 8000 });
+          isHealthy = true;
+          healthCheckMethod = 'restaurants_api';
+          console.log('✅ [NetworkMonitor] 레스토랑 API 존재 확인 성공');
+        } catch (restaurantError) {
+          console.warn('⚠️ [NetworkMonitor] 레스토랑 API 확인 실패:', restaurantError.message);
+          
+          try {
+            // 3차: 서버 기본 응답 확인
+            console.log('🔍 [NetworkMonitor] 서버 기본 응답 확인');
+            const response = await unifiedApiClient.get('/', {}, { timeout: 10000 });
+            isHealthy = true;
+            healthCheckMethod = 'server_root';
+            console.log('✅ [NetworkMonitor] 서버 기본 응답 확인 성공');
+          } catch (serverError) {
+            console.warn('⚠️ [NetworkMonitor] 서버 기본 응답 확인 실패:', serverError.message);
+            isHealthy = false;
+            healthCheckMethod = 'all_failed';
           }
         }
       }
@@ -106,18 +114,19 @@ class NetworkMonitor {
         timestamp: new Date().toISOString(),
         isHealthy,
         responseTime,
+        method: healthCheckMethod,
         serverURL: await unifiedApiClient.getServerURL()
       };
 
       if (isHealthy) {
-        console.log(`✅ [NetworkMonitor] 헬스 체크 성공 (${responseTime}ms)`);
+        console.log(`✅ [NetworkMonitor] 스마트 헬스 체크 성공: ${healthCheckMethod} (${responseTime}ms)`);
         this.consecutiveFailures = 0;
         this.notifyListeners({
           type: 'HEALTH_CHECK_SUCCESS',
           data: this.lastHealthCheck
         });
       } else {
-        console.warn(`⚠️ [NetworkMonitor] 헬스 체크 실패 (${responseTime}ms)`);
+        console.warn(`⚠️ [NetworkMonitor] 스마트 헬스 체크 실패: ${healthCheckMethod} (${responseTime}ms)`);
         this.handleHealthCheckFailure();
       }
 

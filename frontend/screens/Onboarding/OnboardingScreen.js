@@ -105,9 +105,10 @@ export default function OnboardingScreen() {
                 await saveUserPreferences();
                 
                 // 사용자별 온보딩 완료 상태 저장 - 강화된 null 체크
-                if (user && user.employee_id) {
-                    await setOnboardingCompleted(user.employee_id);
-                    console.log(`✅ 사용자 ${user.employee_id} 온보딩 완료 상태 저장됨`);
+                const finalUser = currentUser || user;
+                if (finalUser && finalUser.employee_id) {
+                    await setOnboardingCompleted(finalUser.employee_id);
+                    console.log(`✅ 사용자 ${finalUser.employee_id} 온보딩 완료 상태 저장됨`);
                     
                     // 사용자 정보에 온보딩 완료 상태 추가하여 강제로 상태 업데이트
                     const updatedUser = {
@@ -128,9 +129,10 @@ export default function OnboardingScreen() {
                 console.error('❌ 온보딩 완료 처리 중 오류:', error);
                 
                 // 사용자 정보가 있는 경우에만 온보딩 완료 상태 저장 시도
-                if (user && user.employee_id) {
+                const fallbackUser = currentUser || user;
+                if (fallbackUser && fallbackUser.employee_id) {
                     try {
-                        await setOnboardingCompleted(user.employee_id);
+                        await setOnboardingCompleted(fallbackUser.employee_id);
                         console.log('🔄 오류 발생 시에도 온보딩 완료 상태 저장 성공');
                     } catch (onboardingError) {
                         console.error('❌ 온보딩 완료 상태 저장도 실패:', onboardingError);
@@ -173,9 +175,25 @@ export default function OnboardingScreen() {
         try {
             console.log('🔧 사용자 설정 저장 시작:', userPreferences);
             
-            // 사용자 정보 null 체크 강화
-            if (!user || !user.employee_id) {
-                console.error('❌ 사용자 정보가 없어서 설정 저장 불가:', { user: !!user, employee_id: user?.employee_id });
+            // 사용자 정보 null 체크 강화 - 전역 변수도 확인
+            let currentUser = user;
+            if (!currentUser || !currentUser.employee_id) {
+                console.warn('⚠️ [OnboardingScreen] AuthContext에서 사용자 정보 없음, 전역 변수 확인');
+                currentUser = global.currentUser;
+                console.log('🔧 [OnboardingScreen] 전역 사용자 정보:', {
+                    hasGlobalUser: !!global.currentUser,
+                    hasEmployeeId: !!global.currentUser?.employee_id,
+                    employeeId: global.currentUser?.employee_id
+                });
+            }
+            
+            if (!currentUser || !currentUser.employee_id) {
+                console.error('❌ 사용자 정보가 없어서 설정 저장 불가:', { 
+                    user: !!user, 
+                    employee_id: user?.employee_id,
+                    globalUser: !!global.currentUser,
+                    globalEmployeeId: global.currentUser?.employee_id
+                });
                 throw new Error('사용자 정보가 없습니다. 다시 로그인해주세요.');
             }
             
@@ -187,7 +205,7 @@ export default function OnboardingScreen() {
                 main_dish: userPreferences.foodPreferences?.join(', ') || '', // 주종목으로 음식 선호도 저장
             };
             
-            console.log('🔧 사용자 기본 정보 저장 시도:', { employee_id: user.employee_id, userData });
+            console.log('🔧 사용자 기본 정보 저장 시도:', { employee_id: currentUser.employee_id, userData });
             
             // 동적 서버 URL 가져오기
             const currentServerURL = getServerURL();
@@ -197,7 +215,7 @@ export default function OnboardingScreen() {
             
             console.log('🔧 [OnboardingScreen] 서버 URL 사용:', currentServerURL);
             
-            const userResponse = await fetch(`${currentServerURL}/users/${user.employee_id}`, {
+            const userResponse = await fetch(`${currentServerURL}/users/${currentUser.employee_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userData)
@@ -217,7 +235,7 @@ export default function OnboardingScreen() {
                 frequentAreas: []
             };
             
-            const preferencesResponse = await fetch(`${currentServerURL}/users/${user.employee_id}/preferences`, {
+            const preferencesResponse = await fetch(`${currentServerURL}/users/${currentUser.employee_id}/preferences`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(preferencesData)
