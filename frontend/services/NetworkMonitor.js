@@ -5,7 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import unifiedApiClient from './UnifiedApiClient';
-import offlineModeManager from './OfflineModeManager';
+// 오프라인 모드 제거 - 프로덕션 환경 최적화
 
 class NetworkMonitor {
   constructor() {
@@ -111,12 +111,7 @@ class NetworkMonitor {
         
         this.consecutiveFailures = 0;
         
-        // 데이터베이스 문제가 해결되었고 오프라인 모드라면 온라인 모드로 전환
-        if (analysis.databaseHealthy && offlineModeManager.isInOfflineMode()) {
-          console.log('🌐 [NetworkMonitor] 데이터베이스 문제 해결 - 온라인 모드로 전환');
-          offlineModeManager.disableOfflineMode();
-          await offlineModeManager.syncOfflineData();
-        }
+            // 프로덕션 환경 - 오프라인 모드 제거
         
         this.notifyListeners({
           type: 'HEALTH_CHECK_SUCCESS',

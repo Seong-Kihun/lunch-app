@@ -161,9 +161,18 @@ export default function HomeScreen({ navigation, route }) {
         });
             console.log('🔍 [HomeScreen] 수동 일정 조회 결과:', data);
             
-            if (data.success) {
-                // 백엔드 응답에서 schedules 배열 추출
-                const schedules = data.schedules || [];
+            // API 응답 구조 개선 - success 필드가 없어도 데이터가 있으면 성공으로 처리
+            if (data.success !== false && (data.schedules || Object.keys(data).length > 0)) {
+                // 백엔드 응답에서 schedules 배열 추출 (배열이 아니면 객체를 배열로 변환)
+                let schedules = data.schedules || [];
+                
+                // 오프라인 모드에서 반환된 객체 형태의 데이터를 배열로 변환
+                if (!Array.isArray(schedules) && typeof data === 'object') {
+                    schedules = Object.values(data).filter(item => 
+                        item && typeof item === 'object' && item.date
+                    );
+                }
+                
                 console.log('🔍 [HomeScreen] 추출된 일정 데이터:', schedules);
                 setSchedulesData(schedules);
             } else {

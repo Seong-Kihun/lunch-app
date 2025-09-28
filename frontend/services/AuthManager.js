@@ -246,17 +246,7 @@ class AuthManager {
             userEmployeeId: global.currentUser?.employee_id
           });
 
-          // 오프라인 모드에서도 올바른 사용자 정보 사용을 위해 강제 동기화
-          try {
-            const { default: offlineModeManager } = await import('./OfflineModeManager');
-            if (offlineModeManager.isInOfflineMode()) {
-              console.log('📴 [AuthManager] 오프라인 모드에서 사용자 정보 동기화');
-              // 오프라인 데이터에 새로운 사용자 정보 반영
-              await offlineModeManager.saveOfflineData('current_user', data.user);
-            }
-          } catch (error) {
-            console.warn('⚠️ [AuthManager] 오프라인 모드 동기화 실패:', error);
-          }
+          // 프로덕션 환경 - 오프라인 모드 제거
 
       // 인증 상태를 AUTHENTICATED로 설정
       this.status = 'authenticated';

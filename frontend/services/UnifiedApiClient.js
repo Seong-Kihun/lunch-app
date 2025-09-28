@@ -5,7 +5,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import offlineModeManager from './OfflineModeManager';
+// 오프라인 모드 제거 - 프로덕션 환경 최적화
 
 class UnifiedApiClient {
   constructor() {
@@ -34,8 +34,7 @@ class UnifiedApiClient {
       // 네트워크 관리자 초기화 대기
       await this.waitForNetworkInitialization();
       
-      // 오프라인 모드 관리자 초기화
-      await offlineModeManager.initialize();
+      // 오프라인 모드 제거 - 프로덕션 환경 최적화
       
       this.isInitialized = true;
       console.log('✅ [UnifiedApiClient] 초기화 완료');
@@ -185,11 +184,7 @@ class UnifiedApiClient {
       } catch (error) {
         console.error(`❌ [UnifiedApiClient] 요청 실패 (${attempt}/${this.retryAttempts}):`, error);
         
-        // 데이터베이스 오류나 네트워크 오류 시 오프라인 모드 활성화
-        if (error.message.includes('데이터베이스') || error.message.includes('Network request failed')) {
-          console.log('📴 [UnifiedApiClient] 백엔드 오류 감지 - 오프라인 모드 활성화');
-          offlineModeManager.enableOfflineMode('backend_error');
-        }
+        // 프로덕션 환경 - 오프라인 모드 제거
         
         // 마지막 시도가 아니면 재시도
         if (attempt < this.retryAttempts) {
@@ -275,7 +270,8 @@ class UnifiedApiClient {
         errorMessage = '서버 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       }
       
-      throw new Error(errorMessage);
+      const error = this.createDetailedError(new Error(errorMessage), response.url, 'GET');
+      throw error;
     }
     
     // 인증 오류 처리 (동적 import로 순환 참조 방지)
@@ -308,7 +304,7 @@ class UnifiedApiClient {
       originalError: originalError.message
     };
     
-    // 네트워크 관련 에러 분류 - 백엔드 API 문제 대응 강화
+    // 프로덕션 환경 - 단순화된 에러 분류
     if (originalError.message.includes('Network request failed')) {
       error.type = 'NETWORK_ERROR';
       error.userMessage = '네트워크 연결을 확인해주세요.';
@@ -318,42 +314,15 @@ class UnifiedApiClient {
     } else if (originalError.message.includes('401')) {
       error.type = 'AUTH_ERROR';
       error.userMessage = '인증이 필요합니다. 다시 로그인해주세요.';
-    } else if (originalError.message.includes('423')) {
+    } else if (originalError.message.includes('423') || originalError.message.includes('계정이 잠겨있습니다')) {
       error.type = 'ACCOUNT_LOCKED';
       error.userMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
-    } else if (originalError.message.includes('400') && originalError.message.includes('browser (or proxy)')) {
-      error.type = 'API_ENDPOINT_ERROR';
-      error.userMessage = '서버 API에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.';
-    } else if (originalError.message.includes('Table') && originalError.message.includes('already defined')) {
-      error.type = 'DATABASE_SCHEMA_ERROR';
-      error.userMessage = '서버 데이터베이스 스키마 오류가 발생했습니다. 관리자에게 문의해주세요.';
-      error.recommendations = [
-        '백엔드 데이터베이스 스키마를 확인해주세요.',
-        '일시적으로 오프라인 모드로 전환하여 기본 기능을 사용할 수 있습니다.',
-        '문제가 지속되면 관리자에게 문의해주세요.'
-      ];
-    } else if (originalError.message.includes('500') && originalError.message.includes('데이터베이스')) {
-      error.type = 'DATABASE_ERROR';
-      error.userMessage = '서버 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-      error.recommendations = [
-        '백엔드 데이터베이스 상태를 확인해주세요.',
-        '일시적으로 오프라인 모드로 전환하여 기본 기능을 사용할 수 있습니다.',
-        '문제가 지속되면 관리자에게 문의해주세요.'
-      ];
     } else if (originalError.message.includes('500')) {
       error.type = 'SERVER_ERROR';
       error.userMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     } else if (originalError.message.includes('비밀번호가 올바르지 않습니다')) {
       error.type = 'INVALID_CREDENTIALS';
       error.userMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
-    } else if (originalError.message.includes('계정이 잠겨있습니다')) {
-      error.type = 'ACCOUNT_LOCKED';
-      error.userMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
-      error.recommendations = [
-        '15-30분 후에 자동으로 해제됩니다.',
-        '정확한 비밀번호를 입력했는지 확인해주세요.',
-        '문제가 지속되면 관리자에게 문의해주세요.'
-      ];
     } else {
       error.type = 'UNKNOWN_ERROR';
       error.userMessage = '요청 처리 중 오류가 발생했습니다.';
@@ -367,59 +336,10 @@ class UnifiedApiClient {
    */
   async get(endpoint, params = {}) {
     try {
-      // 오프라인 모드 확인
-      if (offlineModeManager.isInOfflineMode()) {
-        console.log(`📴 [UnifiedApiClient] 오프라인 모드 - GET 요청: ${endpoint}`);
-        
-        // 특정 엔드포인트에 대한 오프라인 처리
-        if (endpoint.includes('/dev/schedules')) {
-          // 사용자 정보 우선순위: params > global.currentUser > AuthManager
-          let userEmployeeId = params.employee_id;
-          
-          if (!userEmployeeId) {
-            if (global.currentUser?.employee_id) {
-              userEmployeeId = global.currentUser.employee_id;
-            } else {
-              // AuthManager에서 동적으로 가져오기
-              try {
-                const { default: authManager } = await import('./AuthManager');
-                const currentUser = authManager.getCurrentUser();
-                userEmployeeId = currentUser?.employee_id;
-              } catch (error) {
-                console.warn('⚠️ [UnifiedApiClient] AuthManager에서 사용자 정보 가져오기 실패:', error);
-              }
-            }
-          }
-          
-          console.log(`📴 [UnifiedApiClient] 오프라인 일정 조회 - 사용자: ${userEmployeeId}`);
-          
-          if (userEmployeeId) {
-            return await offlineModeManager.getSchedulesOffline(
-              userEmployeeId, 
-              params.start_date, 
-              params.end_date
-            );
-          }
-        } else if (endpoint.includes('/api/restaurants')) {
-          return await offlineModeManager.getRestaurantsOffline();
-        }
-        
-        // 기본 오프라인 응답
-        return { message: '오프라인 모드에서 사용할 수 없습니다.' };
-      }
-      
-      // 온라인 모드 - 정상 요청
-      return this.executeRequest(endpoint, { method: 'GET', params });
+      // 프로덕션 환경 - 직접 API 호출
+      return await this.executeRequest(endpoint, { method: 'GET', params });
     } catch (error) {
-      // 오프라인 모드로 전환 후 재시도
-      if (!offlineModeManager.isInOfflineMode()) {
-        console.log('📴 [UnifiedApiClient] 네트워크 오류 - 오프라인 모드로 전환');
-        offlineModeManager.enableOfflineMode('network_error');
-        
-        // 오프라인 모드에서 재시도
-        return this.get(endpoint, params);
-      }
-      
+      console.error(`❌ [UnifiedApiClient] GET 요청 실패: ${endpoint}`, error);
       throw error;
     }
   }
@@ -595,11 +515,6 @@ class UnifiedApiClient {
         }
         if (!analysis.databaseHealthy) {
           analysis.recommendations.push('데이터베이스 스키마에 문제가 있습니다. 백엔드 관리자에게 문의해주세요.');
-          analysis.recommendations.push('일시적으로 오프라인 모드로 전환하여 기본 기능을 사용할 수 있습니다.');
-          
-          // 자동으로 오프라인 모드 활성화
-          console.log('📴 [UnifiedApiClient] 데이터베이스 오류 감지 - 오프라인 모드 활성화');
-          offlineModeManager.enableOfflineMode('database_error');
         }
       }
       

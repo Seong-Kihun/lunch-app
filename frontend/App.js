@@ -95,7 +95,7 @@ import { checkOnboardingStatus, setOnboardingCompleted } from './utils/onboardin
 // 통합 네트워크 설정 Import
 import { initializeNetwork, getServerURL } from './config/networkConfig';
 import NetworkStatus from './components/NetworkStatus';
-import OfflineModeIndicator from './components/OfflineModeIndicator';
+// 오프라인 모드 제거 - 프로덕션 환경 최적화
 
 // API_BASE_URL과 API 호출 함수 정의
 const API_BASE_URL = RENDER_SERVER_URL;
@@ -788,14 +788,13 @@ function MainApp() {
     // 메인 앱 화면 - NavigationContainer로 감싸서 TabNavigator 사용
     return (
         <>
-            <NavigationContainer>
-                <TabNavigator />
-            </NavigationContainer>
-            <OfflineModeIndicator />
-            <NetworkStatus 
-                visible={showNetworkStatus} 
-                onClose={() => setShowNetworkStatus(false)} 
-            />
+                  <NavigationContainer>
+                      <TabNavigator />
+                  </NavigationContainer>
+                  <NetworkStatus 
+                      visible={showNetworkStatus} 
+                      onClose={() => setShowNetworkStatus(false)} 
+                  />
         </>
     );
 }
