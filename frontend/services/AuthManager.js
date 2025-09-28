@@ -456,8 +456,18 @@ class AuthManager {
    * 상태 변경 리스너 추가
    */
   addStatusListener(listener) {
+    console.log('🔧 [AuthManager] 리스너 추가:', {
+      listenersCount: this.listeners.size,
+      newListenerType: typeof listener
+    });
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    console.log('✅ [AuthManager] 리스너 추가 완료:', {
+      listenersCount: this.listeners.size
+    });
+    return () => {
+      console.log('🗑️ [AuthManager] 리스너 제거');
+      this.listeners.delete(listener);
+    };
   }
 
   /**
@@ -465,11 +475,20 @@ class AuthManager {
    */
   notifyListeners() {
     const authStatus = this.getAuthStatus();
-    this.listeners.forEach(listener => {
+    console.log('🔔 [AuthManager] 리스너들에게 상태 변경 알림:', {
+      status: authStatus.status,
+      isAuthenticated: authStatus.isAuthenticated,
+      user: authStatus.user?.nickname,
+      listenersCount: this.listeners.size
+    });
+    
+    this.listeners.forEach((listener, index) => {
       try {
+        console.log(`🔔 [AuthManager] 리스너 ${index} 호출 중...`);
         listener(authStatus);
+        console.log(`✅ [AuthManager] 리스너 ${index} 호출 완료`);
       } catch (error) {
-        console.error('❌ [AuthManager] 리스너 실행 오류:', error);
+        console.error(`❌ [AuthManager] 리스너 ${index} 실행 오류:`, error);
       }
     });
   }

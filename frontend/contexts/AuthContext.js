@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   // AuthManager 상태 변화 핸들러
   const handleAuthStatusChange = useCallback((newStatus) => {
-    console.log('🔄 [AuthContext] 인증 상태 변경:', newStatus);
+    console.log('🔄 [AuthContext] 인증 상태 변경 수신:', newStatus);
     
     // AuthManager의 상태를 AuthContext에 동기화
     setAuthState(newStatus.status);
@@ -213,11 +213,15 @@ export const AuthProvider = ({ children }) => {
     
     const setupAuth = async () => {
       try {
+        console.log('🔧 [AuthContext] AuthManager 리스너 등록 시작');
         // 리스너 등록
         unsubscribe = authManager.addStatusListener(handleAuthStatusChange);
+        console.log('✅ [AuthContext] AuthManager 리스너 등록 완료');
         
+        console.log('🔧 [AuthContext] AuthManager 초기화 시작');
         // 초기화
         await initializeAuth();
+        console.log('✅ [AuthContext] AuthManager 초기화 완료');
         
       } catch (error) {
         console.error('❌ [AuthContext] 초기 설정 실패:', error);
