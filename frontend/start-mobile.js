@@ -60,7 +60,7 @@ function getStartOptions() {
   
   if (interfaces.length === 0) {
     console.log('⚠️  [Warning] 네트워크 인터페이스를 찾을 수 없습니다. localhost 모드로 시작합니다.');
-    return '--host localhost';
+    return '--host localhost --offline';
   }
   
   // WiFi 인터페이스 우선 선택
@@ -72,13 +72,13 @@ function getStartOptions() {
   
   if (wifiInterface) {
     console.log(`✅ [Auto] WiFi 인터페이스 감지: ${wifiInterface.address}`);
-    return '--host lan'; // LAN 모드가 더 안정적
+    return '--host lan --offline'; // 네트워크 문제 방지를 위해 오프라인 모드 추가
   }
   
   // 첫 번째 유효한 인터페이스 사용
   const firstInterface = interfaces[0];
   console.log(`✅ [Auto] 첫 번째 인터페이스 사용: ${firstInterface.address}`);
-  return '--host lan';
+  return '--host lan --offline';
 }
 
 // 메인 실행 함수
@@ -91,6 +91,12 @@ function main() {
     const startOptions = getStartOptions();
     
     console.log('🔧 [Config] Expo 서버 시작 옵션:', startOptions);
+    
+    // 오프라인 모드 안내
+    if (startOptions.includes('--offline')) {
+      console.log('🔧 [Info] 오프라인 모드로 시작합니다. 네트워크 의존성 검증을 건너뜁니다.');
+    }
+    
     console.log('📱 [Mobile] 모바일 앱에서 QR 코드를 스캔하거나 Expo Go 앱을 사용하세요.\n');
     
     // Expo 서버 시작
@@ -120,17 +126,20 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
   --host tunnel     터널 모드 (권장) - 어디서든 접근 가능
   --host lan        LAN 모드 - 같은 네트워크에서만 접근 가능
   --host localhost  로컬 모드 - 같은 컴퓨터에서만 접근 가능
+  --offline         오프라인 모드 - 네트워크 의존성 검증 건너뛰기
   --help, -h        이 도움말 표시
 
 예시:
-  node start-mobile.js                    # 자동 감지
+  node start-mobile.js                    # 자동 감지 (오프라인 모드 포함)
   node start-mobile.js --host tunnel     # 터널 모드
   node start-mobile.js --host lan        # LAN 모드
+  node start-mobile.js --offline         # 오프라인 모드
 
 💡 팁:
   - 장소를 옮겨다닐 때는 터널 모드(--host tunnel)를 사용하세요
   - 같은 네트워크에서만 사용할 때는 LAN 모드(--host lan)를 사용하세요
-  - 네트워크 문제가 있을 때는 로컬 모드(--host localhost)를 사용하세요
+  - 네트워크 문제가 있을 때는 오프라인 모드(--offline)를 사용하세요
+  - 기본적으로 오프라인 모드가 활성화되어 네트워크 문제를 방지합니다
 `);
   process.exit(0);
 }
