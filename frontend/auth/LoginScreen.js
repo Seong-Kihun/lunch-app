@@ -35,7 +35,8 @@ const LoginScreen = ({ navigation }) => {
     clearError, 
     handleLoginSuccess,
     setUser,
-    setAuthState
+    setAuthState,
+    AUTH_STATES
   } = useAuth();
   const { setAccessToken: setScheduleAccessToken } = useSchedule();
   
@@ -143,7 +144,7 @@ const LoginScreen = ({ navigation }) => {
       // AuthContext 상태 직접 업데이트 (리스너가 없는 경우 대비)
       console.log('🔧 [LoginScreen] AuthContext 상태 직접 업데이트');
       setUser(result.user);
-      setAuthState('authenticated');
+      setAuthState(AUTH_STATES.AUTHENTICATED);
       
       // 로그인 성공 처리
       handleLoginSuccess(result.user, result.accessToken, result.refreshToken);

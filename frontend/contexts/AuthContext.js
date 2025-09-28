@@ -208,8 +208,8 @@ export const AuthProvider = ({ children }) => {
     setIsLoading,
     
     // 직접 상태 업데이트 (디버깅용)
-    setUser,
-    setAuthState,
+    setUser: setUser,
+    setAuthState: setAuthState,
     
     // 상수
     AUTH_STATES
