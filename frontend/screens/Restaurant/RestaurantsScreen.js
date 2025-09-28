@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Context 및 유틸리티
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { COLORS } from '../../utils/colors';
 import { RENDER_SERVER_URL } from '../../config';
 

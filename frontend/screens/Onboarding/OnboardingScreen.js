@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RENDER_SERVER_URL } from '../../config';
 import { setOnboardingCompleted } from '../../utils/onboardingUtils';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // 디버깅을 위한 로그
 console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);

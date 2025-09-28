@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useUser } from '../../contexts/UserContext';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getUserNotificationSettings, updateUserNotificationSettings } from '../../services/userService';
 import { COLORS } from '../../theme/colors';
 

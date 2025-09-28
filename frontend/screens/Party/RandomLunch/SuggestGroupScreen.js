@@ -19,7 +19,7 @@ import { apiClient } from '../../../utils/apiClient';
 console.log('🔧 [SuggestGroupScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
 
 // 컨텍스트
-import { useAuth } from '../../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function SuggestGroupScreen({ navigation, route, currentColors, currentUser }) {
     const { user } = useAuth();

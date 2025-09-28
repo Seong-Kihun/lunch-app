@@ -17,7 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RENDER_SERVER_URL } from '../../../config';
 
 // 컨텍스트
-import { useAuth } from '../../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function SuggestedDatesScreen({ navigation, currentColors, currentUser }) {
     const { user } = useAuth();
