@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from 'react-native-vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useSchedule } from '../contexts/ScheduleContext';
+// import { useSchedule } from '../contexts/ScheduleContext'; // ScheduleProvider 범위 밖이므로 주석 처리
 import { useUnifiedNetwork } from '../contexts/UnifiedNetworkContext';
 import authManager from '../services/AuthManager';
 
@@ -46,7 +46,7 @@ const LoginScreen = ({ navigation }) => {
     setAuthState,
     AUTH_STATES
   } = authContext;
-  const { setAccessToken: setScheduleAccessToken } = useSchedule();
+  // const { setAccessToken: setScheduleAccessToken } = useSchedule(); // ScheduleProvider 범위 밖이므로 주석 처리
   
   // 네트워크 상태 관리
   const { 
@@ -144,10 +144,10 @@ const LoginScreen = ({ navigation }) => {
       
       console.log('✅ [LoginScreen] 로그인 성공:', result.user.nickname);
       
-      // ScheduleContext에 액세스 토큰 설정
-      if (setScheduleAccessToken) {
-        setScheduleAccessToken(result.accessToken);
-      }
+      // ScheduleContext에 액세스 토큰 설정 (ScheduleProvider 범위 밖이므로 주석 처리)
+      // if (setScheduleAccessToken) {
+      //   setScheduleAccessToken(result.accessToken);
+      // }
       
       // AuthContext 상태 직접 업데이트 (리스너가 없는 경우 대비)
       console.log('🔧 [LoginScreen] AuthContext 상태 직접 업데이트');
