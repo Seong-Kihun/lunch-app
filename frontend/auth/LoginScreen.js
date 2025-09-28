@@ -49,6 +49,19 @@ const LoginScreen = ({ navigation }) => {
     }
   }, [isInitialized, isConnected, networkError]);
 
+  // 네트워크 상태 표시 함수들
+  const getStatusIcon = () => {
+    if (isConnected) return '✅';
+    if (isInitialized && !isConnected) return '⚠️';
+    return '🔄';
+  };
+
+  const getStatusText = () => {
+    if (isConnected) return '연결됨';
+    if (isInitialized && !isConnected) return '연결 안됨';
+    return '연결 중...';
+  };
+
   // 이메일 prefix 핸들러
   const handleEmailPrefixChange = (value) => {
     setEmailPrefix(value);
