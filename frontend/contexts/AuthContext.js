@@ -136,6 +136,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // 강제 로그아웃 함수 (개발용)
+  const forceLogout = useCallback(async () => {
+    try {
+      console.log('🔄 [AuthContext] 강제 로그아웃 시도');
+      await authManager.logout();
+      setAuthState(AUTH_STATES.UNAUTHENTICATED);
+      setUser(null);
+      setIsAuthenticated(false);
+      setError(null);
+      console.log('✅ [AuthContext] 강제 로그아웃 완료');
+    } catch (error) {
+      console.error('❌ [AuthContext] 강제 로그아웃 실패:', error);
+    }
+  }, []);
+
   // 토큰 갱신 함수
   const refreshAccessToken = useCallback(async () => {
     try {
@@ -206,6 +221,7 @@ export const AuthProvider = ({ children }) => {
     // 액션
     login,
     logout,
+    forceLogout,
     refreshToken: refreshAccessToken,
     clearError,
     

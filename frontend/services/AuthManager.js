@@ -38,6 +38,8 @@ class AuthManager {
     this.accessToken = null;
     this.refreshToken = null;
     this.status = AUTH_STATUS.UNAUTHENTICATED;
+    this.isAuthenticated = false;
+    this.user = null;
     this.isInitialized = false;
     this.listeners = new Set();
     this.refreshTimer = null;
@@ -429,7 +431,7 @@ class AuthManager {
     return {
       status: this.status,
       user: this.currentUser,
-      isAuthenticated: this.status === AUTH_STATUS.AUTHENTICATED,
+      isAuthenticated: this.isAuthenticated,
       isInitialized: this.isInitialized,
       accessToken: this.accessToken
     };
