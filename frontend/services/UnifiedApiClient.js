@@ -190,7 +190,14 @@ class UnifiedApiClient {
         if (attempt < this.retryAttempts) {
           const delay = this.retryDelay * attempt; // 지수적 백오프
           console.log(`⏳ [UnifiedApiClient] ${delay}ms 후 재시도...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // 백엔드 데이터베이스 오류의 경우 재시도 간격을 늘림
+          const actualDelay = error.message.includes('데이터베이스') ? delay * 2 : delay;
+          if (actualDelay !== delay) {
+            console.log(`⏳ [UnifiedApiClient] 데이터베이스 오류로 인한 연장 대기: ${actualDelay}ms`);
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, actualDelay));
           continue;
         }
         
@@ -265,9 +272,14 @@ class UnifiedApiClient {
       let errorMessage = data?.message || data?.error || `HTTP ${response.status} 오류`;
       
       // 백엔드 데이터베이스 오류에 대한 특별 처리
-      if (response.status === 500 && errorMessage.includes('Table') && errorMessage.includes('already defined')) {
-        console.warn('⚠️ [UnifiedApiClient] 백엔드 데이터베이스 스키마 오류 감지, 재시도 권장');
-        errorMessage = '서버 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      if (response.status === 500) {
+        if (errorMessage.includes('Table') && errorMessage.includes('already defined')) {
+          console.warn('⚠️ [UnifiedApiClient] 백엔드 데이터베이스 스키마 오류 감지');
+          errorMessage = '서버 데이터베이스 스키마 문제가 발생했습니다. 관리자에게 문의해주세요.';
+        } else {
+          console.warn('⚠️ [UnifiedApiClient] 백엔드 서버 내부 오류 감지');
+          errorMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        }
       }
       
       const error = this.createDetailedError(new Error(errorMessage), response.url, 'GET');

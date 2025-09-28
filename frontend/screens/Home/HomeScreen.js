@@ -180,7 +180,13 @@ export default function HomeScreen({ navigation, route }) {
             }
         } catch (err) {
             console.error('🔍 [HomeScreen] 수동 일정 조회 실패:', err);
-            setError(err.message);
+            
+            // 백엔드 데이터베이스 오류에 대한 특별 처리
+            if (err.message.includes('데이터베이스') || err.message.includes('500')) {
+                setError('서버 데이터베이스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -364,9 +370,19 @@ export default function HomeScreen({ navigation, route }) {
     useEffect(() => {
         if (error) {
             console.error('❌ [홈탭] 일정 조회 오류:', error);
+            
+            // 백엔드 데이터베이스 오류에 대한 특별 처리
+            let alertTitle = '오류';
+            let alertMessage = '일정을 불러오는 중 오류가 발생했습니다.';
+            
+            if (error.includes('데이터베이스') || error.includes('500')) {
+                alertTitle = '서버 데이터베이스 오류';
+                alertMessage = '서버 데이터베이스에 일시적인 문제가 있습니다.\n\n잠시 후 다시 시도해주세요.\n문제가 지속되면 관리자에게 문의해주세요.';
+            }
+            
             Alert.alert(
-                '오류',
-                '일정을 불러오는 중 오류가 발생했습니다.',
+                alertTitle,
+                alertMessage,
                 [
                     { text: '취소', style: 'cancel' },
                     { text: '다시 시도', onPress: handleRefresh }
