@@ -141,8 +141,48 @@ class OfflineModeManager {
       }
     }
 
-    console.log(`📴 [OfflineModeManager] 기본 일정 생성: ${Object.keys(schedules).length}개`);
+    console.log(`📴 [OfflineModeManager] 기본 일정 생성: ${Object.keys(schedules).length}개 (사용자: ${userEmployeeId})`);
     return schedules;
+  }
+
+  /**
+   * 사용자 정보 가져오기 (전역 변수에서)
+   */
+  async getCurrentUser() {
+    // 1순위: 전역 변수에서 사용자 정보 확인
+    const globalUser = global.currentUser;
+    if (globalUser && globalUser.employee_id) {
+      console.log(`📴 [OfflineModeManager] 전역 사용자 정보 사용: ${globalUser.employee_id}`);
+      return globalUser;
+    }
+
+    // 2순위: 오프라인 저장된 사용자 정보 확인
+    try {
+      const savedUser = await this.loadOfflineData('current_user');
+      if (savedUser && savedUser.employee_id) {
+        console.log(`📴 [OfflineModeManager] 저장된 사용자 정보 사용: ${savedUser.employee_id}`);
+        return savedUser;
+      }
+    } catch (error) {
+      console.warn('⚠️ [OfflineModeManager] 저장된 사용자 정보 로드 실패:', error);
+    }
+
+    // 3순위: AuthManager에서 사용자 정보 가져오기 시도
+    try {
+      const authManager = require('./AuthManager').default;
+      const user = authManager.getCurrentUser();
+      if (user && user.employee_id) {
+        console.log(`📴 [OfflineModeManager] AuthManager에서 사용자 정보 사용: ${user.employee_id}`);
+        // 사용자 정보를 오프라인에 저장
+        await this.saveOfflineData('current_user', user);
+        return user;
+      }
+    } catch (error) {
+      console.warn('⚠️ [OfflineModeManager] AuthManager에서 사용자 정보 가져오기 실패:', error);
+    }
+
+    console.warn('⚠️ [OfflineModeManager] 사용자 정보를 찾을 수 없음, 기본값 사용');
+    return { employee_id: 'default_id', nickname: '오프라인 사용자' };
   }
 
   /**
@@ -185,12 +225,18 @@ class OfflineModeManager {
    */
   async getSchedulesOffline(userEmployeeId, startDate, endDate) {
     try {
+      // 사용자 정보 확인 및 업데이트
+      const currentUser = await this.getCurrentUser();
+      const actualEmployeeId = currentUser.employee_id || userEmployeeId;
+      
+      console.log(`📴 [OfflineModeManager] 오프라인 일정 조회 시작: ${actualEmployeeId}`);
+      
       // 먼저 저장된 오프라인 데이터 확인
       let schedules = await this.loadOfflineData('schedules');
       
-      if (!schedules) {
+      if (!schedules || Object.keys(schedules).length === 0) {
         // 기본 일정 생성
-        schedules = this.generateDefaultSchedules(userEmployeeId);
+        schedules = this.generateDefaultSchedules(actualEmployeeId);
         await this.saveOfflineData('schedules', schedules);
       }
 
@@ -202,11 +248,15 @@ class OfflineModeManager {
       Object.keys(schedules).forEach(dateString => {
         const scheduleDate = new Date(dateString);
         if (scheduleDate >= start && scheduleDate <= end) {
-          filteredSchedules[dateString] = schedules[dateString];
+          // employee_id 업데이트
+          filteredSchedules[dateString] = {
+            ...schedules[dateString],
+            employee_id: actualEmployeeId
+          };
         }
       });
 
-      console.log(`📴 [OfflineModeManager] 오프라인 일정 조회: ${Object.keys(filteredSchedules).length}개`);
+      console.log(`📴 [OfflineModeManager] 오프라인 일정 조회 완료: ${Object.keys(filteredSchedules).length}개 (사용자: ${actualEmployeeId})`);
       return filteredSchedules;
     } catch (error) {
       console.error('❌ [OfflineModeManager] 오프라인 일정 조회 실패:', error);

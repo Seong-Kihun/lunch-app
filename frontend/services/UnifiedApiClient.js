@@ -373,7 +373,26 @@ class UnifiedApiClient {
         
         // 특정 엔드포인트에 대한 오프라인 처리
         if (endpoint.includes('/dev/schedules')) {
-          const userEmployeeId = params.employee_id || global.currentUser?.employee_id;
+          // 사용자 정보 우선순위: params > global.currentUser > AuthManager
+          let userEmployeeId = params.employee_id;
+          
+          if (!userEmployeeId) {
+            if (global.currentUser?.employee_id) {
+              userEmployeeId = global.currentUser.employee_id;
+            } else {
+              // AuthManager에서 동적으로 가져오기
+              try {
+                const { default: authManager } = await import('./AuthManager');
+                const currentUser = authManager.getCurrentUser();
+                userEmployeeId = currentUser?.employee_id;
+              } catch (error) {
+                console.warn('⚠️ [UnifiedApiClient] AuthManager에서 사용자 정보 가져오기 실패:', error);
+              }
+            }
+          }
+          
+          console.log(`📴 [UnifiedApiClient] 오프라인 일정 조회 - 사용자: ${userEmployeeId}`);
+          
           if (userEmployeeId) {
             return await offlineModeManager.getSchedulesOffline(
               userEmployeeId, 
