@@ -10,17 +10,16 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { RENDER_SERVER_URL } from '../../config';
 import { setOnboardingCompleted } from '../../utils/onboardingUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnifiedNetwork } from '../../contexts/UnifiedNetworkContext';
 
 // 디버깅을 위한 로그
-console.log('🔧 [OnboardingScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
+console.log('🔧 [OnboardingScreen] serverURL:', serverURL);
 
 export default function OnboardingScreen() {
     const { user, updateUser } = useAuth();
-    const { serverURL } = useUnifiedNetwork();
+    const { serverURL, getServerURL, isConnected, isInitialized } = useUnifiedNetwork();
     const [currentStep, setCurrentStep] = useState(0);
     const [userPreferences, setUserPreferences] = useState({
         nickname: '',
@@ -190,7 +189,15 @@ export default function OnboardingScreen() {
             
             console.log('🔧 사용자 기본 정보 저장 시도:', { employee_id: user.employee_id, userData });
             
-            const userResponse = await fetch(`${RENDER_SERVER_URL}/users/${user.employee_id}`, {
+            // 동적 서버 URL 가져오기
+            const currentServerURL = getServerURL();
+            if (!currentServerURL) {
+                throw new Error('서버 URL을 가져올 수 없습니다.');
+            }
+            
+            console.log('🔧 [OnboardingScreen] 서버 URL 사용:', currentServerURL);
+            
+            const userResponse = await fetch(`${currentServerURL}/users/${user.employee_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userData)
@@ -210,7 +217,7 @@ export default function OnboardingScreen() {
                 frequentAreas: []
             };
             
-            const preferencesResponse = await fetch(`${RENDER_SERVER_URL}/users/${user.employee_id}/preferences`, {
+            const preferencesResponse = await fetch(`${currentServerURL}/users/${user.employee_id}/preferences`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(preferencesData)

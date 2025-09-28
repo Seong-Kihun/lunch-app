@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
-import { RENDER_SERVER_URL } from '../config';
+import { useUnifiedNetwork } from '../contexts/UnifiedNetworkContext';
 import { storeAccessToken, storeRefreshToken, storeUserData } from '../utils/secureStorage';
 
 const { width } = Dimensions.get('window');
@@ -30,6 +30,8 @@ const RegisterScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // 통합 네트워크 시스템 사용
+  const { getServerURL, isConnected, isInitialized } = useUnifiedNetwork();
   const currentColors = global.currentColors || COLORS.light;
 
   const handleInputChange = (field, value) => {
@@ -91,9 +93,25 @@ const RegisterScreen = ({ navigation }) => {
   const handleRegister = async () => {
     if (!validateForm()) return;
 
+    // 네트워크 상태 확인
+    if (!isConnected || !isInitialized) {
+      Alert.alert('네트워크 오류', '네트워크 연결을 확인해주세요.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await fetch(`${RENDER_SERVER_URL}/api/auth/register`, {
+      console.log('🔐 [RegisterScreen] 회원가입 시도 시작');
+      
+      // 동적 서버 URL 가져오기
+      const serverURL = getServerURL();
+      if (!serverURL) {
+        throw new Error('서버 URL을 가져올 수 없습니다.');
+      }
+      
+      console.log('🔧 [RegisterScreen] 서버 URL:', serverURL);
+      
+      const response = await fetch(`${serverURL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,6 +125,7 @@ const RegisterScreen = ({ navigation }) => {
       const result = await response.json();
 
       if (response.ok) {
+        console.log('✅ [RegisterScreen] 회원가입 성공');
         Alert.alert(
           '회원가입 완료',
           '회원가입이 성공적으로 완료되었습니다.\n로그인해주세요.',
@@ -118,11 +137,28 @@ const RegisterScreen = ({ navigation }) => {
           ]
         );
       } else {
+        console.error('❌ [RegisterScreen] 회원가입 실패:', result);
         Alert.alert('회원가입 실패', result.error || '회원가입 중 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.error('회원가입 오류:', error);
-      Alert.alert('오류', '네트워크 오류가 발생했습니다.');
+      console.error('❌ [RegisterScreen] 회원가입 오류:', error);
+      
+      // 더 구체적인 에러 메시지 제공
+      let errorMessage = '네트워크 오류가 발생했습니다.';
+      
+      if (error.message) {
+        if (error.message.includes('timeout') || error.message.includes('Network request timed out')) {
+          errorMessage = '서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
+        } else if (error.message.includes('Network request failed')) {
+          errorMessage = '네트워크 연결을 확인해주세요.';
+        } else if (error.message.includes('서버 URL')) {
+          errorMessage = '서버 연결 설정에 문제가 있습니다.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert('오류', errorMessage);
     } finally {
       setIsLoading(false);
     }
