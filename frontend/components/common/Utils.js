@@ -167,13 +167,29 @@ export const resetNetworkConfig = () => {
 // 현재 사용자 ID를 가져오는 함수
 export const getMyEmployeeId = () => {
     try {
-        // global.currentUser에서 employee_id 가져오기
+        // 1순위: global.currentUser에서 employee_id 가져오기
         if (global.currentUser && global.currentUser.employee_id) {
             return global.currentUser.employee_id;
         }
         
+        // 2순위: AuthManager에서 직접 가져오기 시도
+        try {
+            const { default: AuthManager } = require('../../services/AuthManager');
+            const authManager = AuthManager.getInstance();
+            const currentUser = authManager.getCurrentUser();
+            if (currentUser && currentUser.employee_id) {
+                console.log('🔍 [Utils] AuthManager에서 employee_id 가져옴:', currentUser.employee_id);
+                // global.currentUser도 업데이트
+                global.currentUser = currentUser;
+                global.myEmployeeId = currentUser.employee_id;
+                return currentUser.employee_id;
+            }
+        } catch (authError) {
+            console.warn('⚠️ [Utils] AuthManager에서 사용자 정보 가져오기 실패:', authError);
+        }
+        
         // fallback: 기본값
-        console.warn('🔍 [Utils] global.currentUser에서 employee_id를 찾을 수 없음, 기본값 사용');
+        console.warn('🔍 [Utils] 모든 소스에서 employee_id를 찾을 수 없음, 기본값 사용');
         return 'default_id';
     } catch (error) {
         console.error('🔍 [Utils] getMyEmployeeId 오류:', error);

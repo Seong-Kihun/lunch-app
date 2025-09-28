@@ -66,13 +66,33 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(newStatus.isAuthenticated);
     setError(null); // 상태 변경 시 에러 클리어
     
-    // 전역 변수 동기화
+    // 전역 변수 동기화 - AuthManager에서 이미 설정된 경우 보존
     if (newStatus.isAuthenticated && newStatus.user) {
-      global.currentUser = newStatus.user;
-      global.myEmployeeId = newStatus.user.employee_id;
-    } else {
+      // AuthManager에서 이미 설정된 global.currentUser가 있으면 보존
+      if (!global.currentUser || !global.currentUser.employee_id) {
+        global.currentUser = newStatus.user;
+        global.myEmployeeId = newStatus.user.employee_id;
+        console.log('🔄 [AuthContext] 전역 변수 설정 (AuthManager 없음):', {
+          employee_id: newStatus.user.employee_id,
+          nickname: newStatus.user.nickname
+        });
+      } else {
+        // 기존 global.currentUser 유지하되, 새로운 데이터로 업데이트
+        global.currentUser = {
+          ...global.currentUser,
+          ...newStatus.user
+        };
+        global.myEmployeeId = global.currentUser.employee_id;
+        console.log('🔄 [AuthContext] 전역 변수 업데이트 (AuthManager 있음):', {
+          employee_id: global.currentUser.employee_id,
+          nickname: global.currentUser.nickname
+        });
+      }
+    } else if (!newStatus.isAuthenticated) {
+      // 로그아웃 시에만 전역 변수 초기화
       global.currentUser = null;
       global.myEmployeeId = null;
+      console.log('🔄 [AuthContext] 전역 변수 초기화 (로그아웃)');
     }
     
     console.log('✅ [AuthContext] 상태 동기화 완료:', {
