@@ -135,10 +135,19 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const handleLoginSuccess = useCallback((userData, accessToken, refreshToken) => {
-    // AuthManager를 통해 처리되므로 여기서는 상태만 동기화
     console.log('✅ [AuthContext] 로그인 성공 처리:', userData.nickname);
+    
+    // 사용자 정보와 토큰 설정
+    setUser(userData);
+    setAccessToken(accessToken);
+    setRefreshToken(refreshToken);
+    
+    // 인증 상태를 AUTHENTICATED로 변경
+    setAuthState(AUTH_STATES.AUTHENTICATED);
     setError(null);
-  }, []);
+    
+    console.log('✅ [AuthContext] 인증 상태 변경됨:', AUTH_STATES.AUTHENTICATED);
+  }, [setUser, setAccessToken, setRefreshToken, setAuthState]);
 
   const handleRegistrationSuccess = useCallback((userData, accessToken, refreshToken) => {
     // AuthManager를 통해 처리되므로 여기서는 상태만 동기화
