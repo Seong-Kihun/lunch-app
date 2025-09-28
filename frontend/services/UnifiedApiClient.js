@@ -326,6 +326,11 @@ class UnifiedApiClient {
     } else if (originalError.message.includes('계정이 잠겨있습니다')) {
       error.type = 'ACCOUNT_LOCKED';
       error.userMessage = '계정이 잠겨있습니다. 보안을 위해 잠시 후 다시 시도해주세요.';
+      error.recommendations = [
+        '15-30분 후에 자동으로 해제됩니다.',
+        '정확한 비밀번호를 입력했는지 확인해주세요.',
+        '문제가 지속되면 관리자에게 문의해주세요.'
+      ];
     } else {
       error.type = 'UNKNOWN_ERROR';
       error.userMessage = '요청 처리 중 오류가 발생했습니다.';

@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 // import { useSchedule } from '../contexts/ScheduleContext'; // ScheduleProvider 범위 밖이므로 주석 처리
 import { useUnifiedNetwork } from '../contexts/UnifiedNetworkContext';
 import authManager from '../services/AuthManager';
+import accountUnlockHelper from '../utils/accountUnlockHelper';
 
 // AuthManager 인스턴스 확인
 console.log('🔧 [LoginScreen] AuthManager 인스턴스:', authManager);
@@ -213,11 +214,23 @@ const LoginScreen = ({ navigation }) => {
               alertMessage = '보안상의 이유로 계정이 일시적으로 잠겨있습니다.\n\n' +
                            '일반적으로 15-30분 후에 자동으로 해제됩니다.\n' +
                            '긴급한 경우 관리자에게 문의해주세요.';
+              
+              // 개발 환경에서 계정 잠금 해제 도구 제공
+              if (__DEV__) {
+                Alert.alert(alertTitle, alertMessage, [
+                  { text: '확인' },
+                  { 
+                    text: '개발자 도구', 
+                    onPress: () => accountUnlockHelper.showDeveloperTools(credentials.email)
+                  }
+                ]);
+              } else {
+                Alert.alert(alertTitle, alertMessage, [{ text: '확인' }]);
+              }
             } else {
               alertMessage += '\n\n문제가 지속되면 관리자에게 문의해주세요.';
+              Alert.alert(alertTitle, alertMessage, [{ text: '확인' }]);
             }
-            
-            Alert.alert(alertTitle, alertMessage, [{ text: '확인' }]);
           }, 100);
         }
         

@@ -393,6 +393,13 @@ def create_app(config_name=None):
         print(f"[ERROR] 인증 Blueprint 등록 실패: {e}")
 
     try:
+        from backend.auth.admin_routes import admin_bp
+        app.register_blueprint(admin_bp)
+        print("[SUCCESS] 관리자 인증 Blueprint 등록 성공")
+    except Exception as e:
+        print(f"[ERROR] 관리자 인증 Blueprint 등록 실패: {e}")
+
+    try:
         from backend.routes.schedules import schedules_bp
         app.register_blueprint(schedules_bp)
         print("[SUCCESS] 일정 관리 Blueprint 등록 성공")
