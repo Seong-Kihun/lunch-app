@@ -765,8 +765,8 @@ export default function App() {
     
     return (
         <QueryClientProvider client={queryClient}>
-        <UnifiedNetworkProvider>
         <AuthProvider>
+        <UnifiedNetworkProvider>
         <ThemeProvider>
             <UserProvider>
                 <PointsProvider>
@@ -782,8 +782,8 @@ export default function App() {
                 </PointsProvider>
             </UserProvider>
         </ThemeProvider>
-        </AuthProvider>
         </UnifiedNetworkProvider>
+        </AuthProvider>
         </QueryClientProvider>
     );
 }
