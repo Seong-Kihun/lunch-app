@@ -15,7 +15,7 @@ import { ScheduleProvider, useSchedule } from './contexts/ScheduleContext';
 import { NewScheduleProvider } from './contexts/NewScheduleContext';
 
 // 인증 관련
-import { AuthProvider, useAuth, AUTH_STATES } from './auth/AuthContext';
+import { AuthProvider, useAuth, AUTH_STATES } from './contexts/AuthContext';
 import LoginScreen from './auth/LoginScreen';
 import RegisterScreen from './auth/RegisterScreen';
 import InquiryScreen from './screens/InquiryScreen';
@@ -761,6 +761,8 @@ const queryClient = new QueryClient();
 
 // 메인 App 컴포넌트
 export default function App() {
+    console.log('🚀 [App] 메인 App 컴포넌트 렌더링됨');
+    
     return (
         <QueryClientProvider client={queryClient}>
         <UnifiedNetworkProvider>

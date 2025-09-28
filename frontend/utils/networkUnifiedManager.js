@@ -32,9 +32,9 @@ const UNIFIED_CONFIG = {
   
   // 네트워크 설정
   NETWORK: {
-    TIMEOUT: 5000,  // 5초로 단축
-    RETRY_ATTEMPTS: 2,  // 재시도 횟수 감소
-    RETRY_DELAY: 1000
+    TIMEOUT: 10000,  // 타임아웃 증가
+    RETRY_ATTEMPTS: 5,  // 재시도 횟수 증가
+    RETRY_DELAY: 2000  // 재시도 지연 증가
   },
   
   // 저장소 키
@@ -45,7 +45,7 @@ const UNIFIED_CONFIG = {
   },
   
   // 설정 버전
-  CONFIG_VERSION: '3.5.0'
+  CONFIG_VERSION: '3.6.0'
 };
 
 class UnifiedNetworkManager {
