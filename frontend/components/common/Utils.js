@@ -174,8 +174,7 @@ export const getMyEmployeeId = () => {
         
         // 2순위: AuthManager에서 직접 가져오기 시도
         try {
-            const { default: AuthManager } = require('../../services/AuthManager');
-            const authManager = AuthManager.getInstance();
+            const { default: authManager } = require('../../services/AuthManager');
             const currentUser = authManager.getCurrentUser();
             if (currentUser && currentUser.employee_id) {
                 console.log('🔍 [Utils] AuthManager에서 employee_id 가져옴:', currentUser.employee_id);
