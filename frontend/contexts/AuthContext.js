@@ -51,6 +51,10 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // 토큰 상태 관리
+  const [accessToken, setAccessToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
 
   // AuthManager 상태 변화 핸들러
   const handleAuthStatusChange = useCallback((newStatus) => {
@@ -195,10 +199,13 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     error,
     
+    // 토큰 상태
+    accessToken,
+    refreshToken,
+    
     // 액션
     login,
     logout,
-    refreshToken,
     clearError,
     
     // 기존 호환성
@@ -212,6 +219,8 @@ export const AuthProvider = ({ children }) => {
     // 직접 상태 업데이트 (디버깅용)
     setUser: setUser,
     setAuthState: setAuthState,
+    setAccessToken: setAccessToken,
+    setRefreshToken: setRefreshToken,
     
     // 상수
     AUTH_STATES
