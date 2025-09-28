@@ -581,16 +581,14 @@ function MainApp() {
         restoreBackupData
     } = useSchedule();
 
-    // 네트워크 상태 관리
+    // 네트워크 상태 관리 - 통합 시스템 사용
     const { 
         isConnected, 
         isInitialized, 
         serverURL, 
         error: networkError, 
-        reconnect,
-        getStatusText,
-        getStatusIcon 
-    } = useNetwork();
+        reconnect
+    } = useUnifiedNetwork();
 
     // 전역 변수 초기화 - currentColors 설정
     useEffect(() => {

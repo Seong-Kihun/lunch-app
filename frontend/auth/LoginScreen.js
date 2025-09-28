@@ -14,7 +14,7 @@ import {
 import { Ionicons } from 'react-native-vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchedule } from '../contexts/ScheduleContext';
-import { useNetwork } from '../contexts/NetworkContext';
+import { useUnifiedNetwork } from '../contexts/UnifiedNetworkContext';
 import authManager from '../services/AuthManager';
 import { RENDER_SERVER_URL } from '../config';
 
@@ -30,15 +30,13 @@ const LoginScreen = ({ navigation }) => {
   
   // 네트워크 상태 관리
   const { 
-    isConnected, 
-    isInitialized, 
+    isConnected,
+    isInitialized,
     serverURL, 
     getServerURL,
-    getStatusText,
-    getStatusIcon,
     reconnect,
     error: networkError 
-  } = useNetwork();
+  } = useUnifiedNetwork();
 
   // 네트워크 상태 변화 모니터링
   useEffect(() => {

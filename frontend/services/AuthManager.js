@@ -162,13 +162,9 @@ class AuthManager {
       this.status = AUTH_STATUS.AUTHENTICATING;
       this.notifyListeners();
 
-      // 네트워크 상태 확인
-      const { useNetwork } = await import('../contexts/NetworkContext');
-      // 네트워크 연결 확인은 호출하는 쪽에서 처리
-
-      // 서버 URL 가져오기
-      const { getServerURL } = await import('../utils/networkUtils');
-      const serverURL = await getServerURL();
+      // 서버 URL 가져오기 - 통합 시스템 사용
+      const { getServerURL } = await import('../utils/networkUnifiedManager');
+      const serverURL = getServerURL();
 
       // 로그인 API 호출
       const response = await fetch(`${serverURL}/api/auth/login`, {
