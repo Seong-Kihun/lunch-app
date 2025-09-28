@@ -594,7 +594,11 @@ function MainApp() {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                // 1. 개발 환경에서만 첫 실행 시에만 강제 로그아웃 (앱 재시작 시에만)
+                // 1. AuthContext 초기화 대기 (리스너 등록 완료까지)
+                console.log('⏳ [MainApp] AuthContext 초기화 대기 중...');
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // 2. 개발 환경에서만 첫 실행 시에만 강제 로그아웃 (앱 재시작 시에만)
                 if (__DEV__ && !global.appInitialized) {
                     console.log('🔄 [MainApp] 개발 환경 - 앱 첫 실행 시 인증 정보 초기화');
                     await forceLogout();

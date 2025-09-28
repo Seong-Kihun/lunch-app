@@ -229,10 +229,12 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    setupAuth();
+    // 약간의 지연 후 초기화 (다른 컴포넌트들이 준비될 시간 확보)
+    const timeoutId = setTimeout(setupAuth, 100);
 
     // 정리
     return () => {
+      clearTimeout(timeoutId);
       if (unsubscribe) {
         unsubscribe();
       }

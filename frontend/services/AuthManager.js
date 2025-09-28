@@ -207,6 +207,13 @@ class AuthManager {
       this.user = data.user;
 
       console.log('✅ [AuthManager] 로그인 성공:', data.user.nickname);
+      
+      // 리스너가 없는 경우 경고
+      if (this.listeners.size === 0) {
+        console.warn('⚠️ [AuthManager] 로그인 성공했지만 리스너가 등록되지 않음!');
+        console.warn('⚠️ [AuthManager] AuthContext가 제대로 초기화되지 않았을 수 있습니다.');
+      }
+      
       this.notifyListeners();
       
       return {
