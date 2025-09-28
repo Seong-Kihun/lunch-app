@@ -20,9 +20,9 @@ const UNIFIED_CONFIG = {
   // 서버 URL 우선순위
   SERVER_URLS: {
     development: [
-      'https://lunch-app-backend-ra12.onrender.com',  // 프로덕션 서버 우선
-      'http://localhost:5000',
-      'http://127.0.0.1:5000'
+      'http://localhost:5000',  // 로컬 서버 우선
+      'http://127.0.0.1:5000',
+      'https://lunch-app-backend-ra12.onrender.com'  // 프로덕션 서버 폴백
     ],
     production: [
       'https://lunch-app-backend-ra12.onrender.com'
@@ -44,7 +44,7 @@ const UNIFIED_CONFIG = {
   },
   
   // 설정 버전
-  CONFIG_VERSION: '3.0.0'
+  CONFIG_VERSION: '3.1.0'
 };
 
 class UnifiedNetworkManager {
