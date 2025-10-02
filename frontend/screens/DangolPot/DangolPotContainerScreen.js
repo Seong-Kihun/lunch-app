@@ -7,7 +7,9 @@ import {
     FlatList,
     SafeAreaView,
     ScrollView,
-    Dimensions
+    Dimensions,
+    ActivityIndicator,
+    Switch
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -23,6 +25,10 @@ export default function DangolPotContainerScreen({ navigation, route }) {
     const [myPots, setMyPots] = useState([]);
     const [allPots, setAllPots] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // 필터링 상태 관리 (일반파티탭과 동일)
+    const [myPotsFilter, setMyPotsFilter] = useState(false); // 내 단골파티: 활성 파티만
+    const [allPotsFilter, setAllPotsFilter] = useState(false); // 전체 단골파티: 참여 가능한 파티만
     
     // currentColors와 currentUser를 global에서 가져오기
     const currentColors = global.currentColors || COLORS.light;
@@ -187,92 +193,130 @@ export default function DangolPotContainerScreen({ navigation, route }) {
         </TouchableOpacity>
     );
 
+    // 단골파티가 활성 상태인지 확인
+    const isPotActive = (pot) => {
+        // 단골파티는 일반적으로 활성 상태로 간주
+        return true;
+    };
+
+    // 단골파티가 참여 가능한지 확인
+    const isPotJoinable = (pot) => {
+        return pot.member_count < (pot.max_members || 10); // 최대 인원 제한
+    };
+
+    // 내 단골파티와 전체 단골파티 데이터 분리 및 필터링
+    const filteredMyPots = myPots.filter(pot => {
+        if (!myPotsFilter) return true;
+        return isPotActive(pot);
+    });
+    
+    const filteredAllPots = allPots.filter(pot => {
+        if (!allPotsFilter) return true;
+        return isPotJoinable(pot);
+    });
+
     if (isLoading) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
+            <SafeAreaView style={styles.safeArea}>
                 <View style={styles.loadingContainer}>
-                    <Text style={[styles.loadingText, { color: currentColors.text }]}>로딩 중...</Text>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingText}>단골파티 정보를 불러오는 중...</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
-            <ScrollView style={styles.scrollView}>
-                {/* 헤더 섹션 */}
-                <View style={styles.header}>
-                    <Text style={[styles.headerTitle, { color: currentColors.text }]}>
-                        🏠 단골파티
-                    </Text>
-                    <Text style={[styles.headerSubtitle, { color: currentColors.textSecondary }]}>
-                        정기적인 모임을 만들어보세요!
-                    </Text>
-                </View>
-
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: currentColors.background }]}>
+            <ScrollView 
+                style={[styles.container, { backgroundColor: currentColors.background }]}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* 내 단골파티 섹션 */}
-                {myPots.length > 0 ? (
-                    <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: currentColors.text }]}>내 단골파티</Text>
-                        <FlatList
-                            data={myPots}
-                            renderItem={renderMyPotItem}
-                            keyExtractor={(item) => item.id.toString()}
-                            horizontal={true}
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.myPotsContainer}
-                        />
-                    </View>
-                ) : (
-                    <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: currentColors.text }]}>내 단골파티</Text>
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="home-outline" size={64} color={currentColors.textSecondary} />
-                            <Text style={[styles.emptyTitle, { color: currentColors.text }]}>
-                                아직 참여한 단골파티가 없습니다
-                            </Text>
-                            <Text style={[styles.emptySubtitle, { color: currentColors.textSecondary }]}>
-                                첫 번째 단골파티를 만들어보세요!
-                            </Text>
-                            <TouchableOpacity 
-                                style={[styles.emptyButton, { backgroundColor: currentColors.primary }]}
-                                onPress={() => navigation.navigate('CreateDangolPot')}
-                            >
-                                <Text style={[styles.emptyButtonText, { color: '#FFFFFF' }]}>
-                                    단골파티 만들기
-                                </Text>
-                            </TouchableOpacity>
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={styles.sectionTitleContainer}>
+                            <Ionicons name="home-outline" size={24} color={currentColors.primary} />
+                            <Text style={[styles.sectionTitle, { color: currentColors.text }]}>내 단골파티</Text>
+                        </View>
+                        <View style={styles.filterToggleRow}>
+                            <Switch
+                                value={myPotsFilter}
+                                onValueChange={setMyPotsFilter}
+                                trackColor={{ 
+                                    false: currentColors.lightGray, 
+                                    true: currentColors.primary 
+                                }}
+                                thumbColor={'#FFFFFF'}
+                            />
                         </View>
                     </View>
-                )}
-
+                    
+                    {filteredMyPots.length > 0 ? (
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.horizontalScrollContainer}
+                            style={styles.horizontalScrollView}
+                        >
+                            {filteredMyPots.map((pot) => (
+                                <View key={pot.id.toString()} style={styles.horizontalCardContainer}>
+                                    {renderPotItem({ item: pot })}
+                                </View>
+                            ))}
+                        </ScrollView>
+                    ) : (
+                        <View style={[styles.emptyState, { backgroundColor: currentColors.surface }]}>
+                            <Ionicons name="home-outline" size={48} color={currentColors.textSecondary} />
+                            <Text style={[styles.emptyText, { color: currentColors.textSecondary }]}>
+                                아직 생성한 단골파티가 없습니다
+                            </Text>
+                            <Text style={[styles.emptySubtext, { color: currentColors.textSecondary }]}>
+                                새로운 단골파티를 만들어보세요!
+                            </Text>
+                        </View>
+                    )}
+                </View>
+                
                 {/* 전체 단골파티 섹션 */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: currentColors.text }]}>전체 단골파티</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('DangolPotList')}>
-                            <Text style={[styles.viewAllText, { color: currentColors.primary }]}>전체보기</Text>
-                        </TouchableOpacity>
+                        <View style={styles.sectionTitleContainer}>
+                            <Ionicons name="globe-outline" size={24} color={currentColors.primary} />
+                            <Text style={[styles.sectionTitle, { color: currentColors.text }]}>전체 단골파티</Text>
+                        </View>
+                        <View style={styles.filterToggleRow}>
+                            <Switch
+                                value={allPotsFilter}
+                                onValueChange={setAllPotsFilter}
+                                trackColor={{ 
+                                    false: currentColors.lightGray, 
+                                    true: currentColors.primary 
+                                }}
+                                thumbColor={'#FFFFFF'}
+                            />
+                        </View>
                     </View>
                     
-                    <FlatList
-                        data={allPots.slice(0, 5)}
-                        renderItem={renderPotItem}
-                        keyExtractor={(item) => item.id.toString()}
-                        scrollEnabled={false}
-                        contentContainerStyle={styles.allPotsContainer}
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="home-outline" size={64} color={currentColors.textSecondary} />
-                                <Text style={[styles.emptyTitle, { color: currentColors.text }]}>
-                                    단골파티가 없습니다
-                                </Text>
-                                <Text style={[styles.emptySubtitle, { color: currentColors.textSecondary }]}>
-                                    새로운 단골파티를 만들어보세요!
-                                </Text>
-                            </View>
-                        }
-                    />
+                    {filteredAllPots.length > 0 ? (
+                        <View style={styles.potListContainer}>
+                            {filteredAllPots.map((pot) => (
+                                <View key={pot.id.toString()}>
+                                    {renderPotItem({ item: pot })}
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <View style={[styles.emptyState, { backgroundColor: currentColors.surface }]}>
+                            <Ionicons name="home-outline" size={48} color={currentColors.textSecondary} />
+                            <Text style={[styles.emptyText, { color: currentColors.textSecondary }]}>
+                                참여 가능한 단골파티가 없습니다
+                            </Text>
+                            <Text style={[styles.emptySubtext, { color: currentColors.textSecondary }]}>
+                                잠시 후 다시 확인해주세요
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -280,45 +324,27 @@ export default function DangolPotContainerScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
+    safeArea: {
         flex: 1,
     },
-    scrollView: {
+    container: {
         flex: 1,
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingTop: 16,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingVertical: 50,
     },
     loadingText: {
+        marginTop: 16,
         fontSize: 16,
         fontWeight: '500',
     },
-    // 홈탭과 통일된 헤더 스타일
-    header: {
-        marginBottom: 24,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        marginBottom: 8,
-    },
-    headerSubtitle: {
-        fontSize: 16,
-        lineHeight: 22,
-    },
     section: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        marginBottom: 16,
+        marginBottom: 32,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -326,241 +352,167 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
     },
-    viewAllText: {
-        fontSize: 14,
-        fontWeight: '600',
+    sectionTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    // 일반파티와 통일된 카드 스타일
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginLeft: 8,
+        letterSpacing: 0.5,
+    },
+    filterToggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    potListContainer: {
+        gap: 12,
+    },
+    horizontalScrollView: {
+        marginHorizontal: -16, // 부모 컨테이너의 패딩을 상쇄
+    },
+    horizontalScrollContainer: {
+        paddingHorizontal: 16, // 좌우 패딩 복원
+        gap: 12,
+    },
+    horizontalCardContainer: {
+        width: SCREEN_WIDTH * 0.8, // 화면 너비의 80%
+        maxWidth: 320, // 최대 너비 제한
+    },
+    // 단골파티 카드 스타일 (일반파티와 동일한 구조)
     potCard: {
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        elevation: 2,
-        shadowOffset: { width: 0, height: 2 },
+        borderRadius: 20,
+        padding: 20,
+        elevation: 3,
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
         borderWidth: 1,
     },
     potCardHeader: {
-        marginBottom: 12,
-    },
-    potTitleContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+        marginBottom: 16,
+    },
+    potTitleContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     potTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 18,
+        fontWeight: '700',
         flex: 1,
-        marginRight: 8,
     },
     potDateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     potDate: {
-        fontSize: 12,
+        fontSize: 14,
         marginLeft: 4,
+        fontWeight: '500',
     },
     potInfoContainer: {
-        marginBottom: 8,
+        marginBottom: 12,
     },
     categoryInfo: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     categoryName: {
-        fontSize: 14,
-        marginLeft: 6,
+        fontSize: 16,
+        marginLeft: 8,
+        fontWeight: '500',
         flex: 1,
     },
     descriptionAndMemberInfo: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     descriptionInfo: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-        marginRight: 12,
     },
     memberInfo: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
+        justifyContent: 'flex-end',
     },
     memberCount: {
-        fontSize: 12,
+        fontSize: 13,
         marginLeft: 4,
+        fontWeight: '500',
     },
     potCardActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        alignItems: 'center',
-        paddingTop: 12,
+        paddingTop: 16,
         borderTopWidth: 1,
     },
     hostBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
     },
     hostText: {
         color: '#FFFFFF',
-        fontSize: 12,
         fontWeight: '600',
-        marginLeft: 4,
+        fontSize: 14,
+        marginLeft: 6,
     },
     joinButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
     },
     joinButtonText: {
         color: '#FFFFFF',
-        fontSize: 12,
         fontWeight: '600',
-        marginLeft: 4,
+        fontSize: 14,
+        marginLeft: 6,
     },
     leaveButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
     },
     leaveButtonText: {
         color: '#FFFFFF',
-        fontSize: 12,
         fontWeight: '600',
-        marginLeft: 4,
-    },
-    potCategoryBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    potCategoryText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    potDescription: {
         fontSize: 14,
-        lineHeight: 20,
-        marginBottom: 8,
-    },
-    potTags: {
-        fontSize: 14,
-        fontStyle: 'italic',
-        marginBottom: 16,
-    },
-    potInfo: {
-        gap: 8,
-    },
-    potInfoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    potInfoText: {
-        fontSize: 14,
-        marginLeft: 8,
-        fontWeight: '500',
-    },
-    // 내 단골파티 카드 (가로 스크롤용)
-    myPotCard: {
-        borderRadius: 20,
-        padding: 16,
-        marginHorizontal: 6,
-        width: SCREEN_WIDTH * 0.5,
-        height: 160,
-        borderWidth: 1,
-        justifyContent: 'flex-start',
-        elevation: 3,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    myPotHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    myPotIcon: {
-        marginRight: 6,
-    },
-    myPotTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        flex: 1,
-    },
-    myPotCategoryBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
-        marginBottom: 8,
-    },
-    myPotCategoryText: {
-        fontSize: 10,
-        fontWeight: '600',
-    },
-    myPotDescription: {
-        fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 8,
-    },
-    myPotInfo: {
-        gap: 4,
-    },
-    myPotInfoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    myPotInfoText: {
-        fontSize: 12,
         marginLeft: 6,
-        fontWeight: '500',
     },
-    myPotsContainer: {
-        paddingHorizontal: 16,
-        paddingBottom: 16,
-    },
-    allPotsContainer: {
-        gap: 16,
-    },
-    // 빈 상태 스타일
-    emptyContainer: {
+    // 빈 상태 스타일 (일반파티탭과 동일)
+    emptyState: {
         alignItems: 'center',
         paddingVertical: 40,
         paddingHorizontal: 20,
+        borderRadius: 16,
+        marginTop: 8,
     },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 20,
-    },
-    emptyButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 25,
-    },
-    emptyButtonText: {
+    emptyText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '500',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    emptySubtext: {
+        fontSize: 14,
+        marginTop: 8,
+        textAlign: 'center',
+        opacity: 0.7,
     },
 });
