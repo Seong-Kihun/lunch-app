@@ -172,6 +172,50 @@ class UnifiedApiClient {
         // 응답 로깅
         console.log(`📡 [UnifiedApiClient] 응답 상태: ${response.status}`);
         
+        // 401 오류 시 토큰 갱신 시도
+        if (response.status === 401) {
+          console.log('🔐 [UnifiedApiClient] 401 오류 감지 - 토큰 갱신 시도');
+          
+          try {
+            const { default: authManager } = await import('./AuthManager');
+            const refreshSuccess = await this.attemptTokenRefresh(authManager);
+            
+            if (refreshSuccess) {
+              console.log('✅ [UnifiedApiClient] 토큰 갱신 성공 - 요청 재시도');
+              // 갱신된 토큰으로 요청 재시도
+              const newHeaders = {
+                ...(await this.getDefaultHeaders()),
+                ...headers
+              };
+              const newRequestOptions = {
+                ...requestOptions,
+                headers: newHeaders
+              };
+              
+              const retryResponse = await this.fetchWithTimeout(url, newRequestOptions);
+              console.log(`📡 [UnifiedApiClient] 재시도 응답 상태: ${retryResponse.status}`);
+              
+              if (retryResponse.ok) {
+                const data = await this.processResponse(retryResponse);
+                console.log('✅ [UnifiedApiClient] 토큰 갱신 후 요청 성공');
+                return data;
+              }
+            }
+          } catch (refreshError) {
+            console.error('❌ [UnifiedApiClient] 토큰 갱신 실패:', refreshError);
+          }
+          
+          // 토큰 갱신 실패 시 로그아웃 처리
+          console.log('🔐 [UnifiedApiClient] 토큰 갱신 실패 - 로그아웃 처리');
+          try {
+            const { default: authManager } = await import('./AuthManager');
+            await authManager.logout();
+          } catch (logoutError) {
+            console.warn('⚠️ [UnifiedApiClient] 로그아웃 처리 실패:', logoutError);
+          }
+          throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+        }
+        
         // 응답 처리
         const data = await this.processResponse(response);
         
@@ -204,6 +248,37 @@ class UnifiedApiClient {
         // 모든 재시도 실패 시 에러 던지기
         throw this.createDetailedError(error, endpoint, method);
       }
+    }
+  }
+
+  /**
+   * 토큰 갱신 시도
+   */
+  async attemptTokenRefresh(authManager) {
+    try {
+      console.log('🔄 [UnifiedApiClient] 토큰 갱신 시도 시작');
+      
+      // 리프레시 토큰이 있는지 확인
+      const refreshToken = authManager.getRefreshToken();
+      if (!refreshToken) {
+        console.warn('⚠️ [UnifiedApiClient] 리프레시 토큰이 없음');
+        return false;
+      }
+      
+      // AuthManager의 안전한 토큰 갱신 메서드 호출
+      const success = await authManager.tryRefreshToken();
+      
+      if (success) {
+        console.log('✅ [UnifiedApiClient] 토큰 갱신 성공');
+        return true;
+      } else {
+        console.warn('⚠️ [UnifiedApiClient] 토큰 갱신 실패');
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('❌ [UnifiedApiClient] 토큰 갱신 중 예외 발생:', error);
+      return false;
     }
   }
 
@@ -284,18 +359,6 @@ class UnifiedApiClient {
       
       const error = this.createDetailedError(new Error(errorMessage), response.url, 'GET');
       throw error;
-    }
-    
-    // 인증 오류 처리 (동적 import로 순환 참조 방지)
-    if (response.status === 401) {
-      console.log('🔐 [UnifiedApiClient] 인증 오류 - 로그아웃 처리');
-      try {
-        const { default: authManager } = await import('./AuthManager');
-        await authManager.logout();
-      } catch (error) {
-        console.warn('⚠️ [UnifiedApiClient] 로그아웃 처리 실패:', error);
-      }
-      throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
     }
     
     return data;

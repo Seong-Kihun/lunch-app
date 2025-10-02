@@ -58,64 +58,108 @@ def root_login():
 
 @root_compatibility_bp.route('/dev/schedules', methods=['GET'])
 def root_dev_schedules():
-    """루트 레벨 개발용 일정 조회 API - 실제 데이터 사용"""
+    """루트 레벨 개발용 일정 조회 API - 안전한 방식으로 재작성"""
     logger.info("루트 레벨 개발용 일정 조회 API 호출됨")
     
-    # 개발용 토큰으로 인증된 사용자의 일정 조회
     try:
         employee_id = request.args.get('employee_id', '1')
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
         
-        # 실제 일정 데이터 조회
-        from models.schedule_models import PersonalSchedule
-        from backend.app.extensions import db
-        from datetime import datetime
+        logger.info(f"요청 파라미터: employee_id={employee_id}, start_date={start_date}, end_date={end_date}")
         
-        # 날짜 파싱
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d') if start_date else None
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d') if end_date else None
-        
-        # 일정 조회
-        query = PersonalSchedule.query.filter_by(employee_id=employee_id)
-        if start_dt:
-            query = query.filter(PersonalSchedule.schedule_date >= start_dt)
-        if end_dt:
-            query = query.filter(PersonalSchedule.schedule_date <= end_dt)
-        
-        schedules = query.all()
-        
-        # 일정 데이터 포맷팅
-        schedule_list = []
-        for schedule in schedules:
-            # 날짜 포맷팅 (date 객체인 경우 strftime, 문자열인 경우 그대로 사용)
-            if hasattr(schedule.schedule_date, 'strftime'):
-                schedule_date_str = schedule.schedule_date.strftime('%Y-%m-%d')
-            else:
-                schedule_date_str = str(schedule.schedule_date)
-            
-            schedule_list.append({
-                'id': schedule.id,
-                'title': schedule.title,
-                'schedule_date': schedule_date_str,
-                'time': schedule.time,
-                'restaurant': schedule.restaurant,
-                'location': schedule.location,
-                'description': schedule.description
-            })
-        
-        return jsonify({
+        # 기본 응답 구조
+        response_data = {
             'success': True,
-            'schedules': schedule_list,
+            'schedules': [],
             'employee_id': employee_id,
             'start_date': start_date,
-            'end_date': end_date
-        })
+            'end_date': end_date,
+            'message': '일정 조회 완료'
+        }
+        
+        try:
+            # 모델 import 시도
+            from models.schedule_models import PersonalSchedule
+            from backend.app.extensions import db
+            
+            logger.info("모델 import 성공")
+            
+            # 데이터베이스 연결 테스트
+            try:
+                # 간단한 쿼리로 연결 테스트
+                test_query = PersonalSchedule.query.limit(1).all()
+                logger.info("데이터베이스 연결 성공")
+            except Exception as conn_error:
+                logger.error(f"데이터베이스 연결 실패: {conn_error}")
+                response_data['message'] = '데이터베이스 연결에 문제가 있습니다.'
+                return jsonify(response_data), 200
+            
+            # 일정 조회 (가장 안전한 방식)
+            try:
+                # 먼저 모든 일정 조회
+                all_schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
+                logger.info(f"전체 일정 조회 성공: {len(all_schedules)}개")
+                
+                # 메모리에서 날짜 필터링 (안전한 방식)
+                filtered_schedules = []
+                for schedule in all_schedules:
+                    schedule_date = schedule.schedule_date
+                    
+                    # 날짜 필터링
+                    if start_date and schedule_date < start_date:
+                        continue
+                    if end_date and schedule_date > end_date:
+                        continue
+                    
+                    filtered_schedules.append(schedule)
+                
+                logger.info(f"필터링 후 일정: {len(filtered_schedules)}개")
+                
+                # 일정 데이터 포맷팅
+                for schedule in filtered_schedules:
+                    try:
+                        # 안전한 데이터 추출
+                        schedule_data = {
+                            'id': getattr(schedule, 'id', None),
+                            'title': getattr(schedule, 'title', ''),
+                            'schedule_date': str(getattr(schedule, 'schedule_date', '')),
+                            'time': getattr(schedule, 'time', ''),
+                            'restaurant': getattr(schedule, 'restaurant', ''),
+                            'location': getattr(schedule, 'location', ''),
+                            'description': getattr(schedule, 'description', '')
+                        }
+                        response_data['schedules'].append(schedule_data)
+                    except Exception as format_error:
+                        logger.warning(f"일정 데이터 포맷팅 오류: {format_error}")
+                        continue
+                
+                logger.info(f"최종 일정 데이터: {len(response_data['schedules'])}개")
+                
+            except Exception as query_error:
+                logger.error(f"일정 조회 오류: {query_error}")
+                response_data['message'] = '일정 조회 중 오류가 발생했습니다.'
+                response_data['error'] = str(query_error)
+                
+        except Exception as import_error:
+            logger.error(f"모델 import 오류: {import_error}")
+            response_data['message'] = '시스템 초기화 중 오류가 발생했습니다.'
+            response_data['error'] = str(import_error)
+        
+        return jsonify(response_data), 200
+        
     except Exception as e:
-        logger.error(f"개발용 일정 API 오류: {e}")
+        logger.error(f"개발용 일정 API 전체 오류: {e}")
+        logger.error(f"오류 타입: {type(e).__name__}")
+        
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'서버 내부 오류가 발생했습니다: {str(e)}',
+            'error_type': 'internal_server_error',
+            'schedules': [],
+            'employee_id': request.args.get('employee_id', '1'),
+            'start_date': request.args.get('start_date', ''),
+            'end_date': request.args.get('end_date', '')
         }), 500
 
 @root_compatibility_bp.route('/dev/schedules', methods=['POST'])

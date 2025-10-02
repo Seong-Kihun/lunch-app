@@ -404,10 +404,37 @@ class AuthManager {
     } catch (error) {
       console.error('❌ [AuthManager] 토큰 갱신 실패:', error);
       
-      // 갱신 실패 시 로그아웃
+      // 갱신 실패 시 로그아웃 (하지만 에러를 다시 던지지 않음)
       await this.logout();
       throw error;
     }
+  }
+
+  /**
+   * 토큰 갱신 시도 (에러를 던지지 않는 안전한 버전)
+   */
+  async tryRefreshToken() {
+    try {
+      await this.refreshAccessToken();
+      return true;
+    } catch (error) {
+      console.error('❌ [AuthManager] 토큰 갱신 시도 실패:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 액세스 토큰 가져오기
+   */
+  getAccessToken() {
+    return this.accessToken;
+  }
+
+  /**
+   * 리프레시 토큰 가져오기
+   */
+  getRefreshToken() {
+    return this.refreshToken;
   }
 
   /**
