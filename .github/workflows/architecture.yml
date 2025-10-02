@@ -34,7 +34,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install import-linter pytest-arch pytest pytest-cov pytest-mock
       
       - name: Lint with ruff
         run: |
@@ -56,19 +55,14 @@ jobs:
       - name: Run architecture contract tests
         run: |
           echo "🔍 아키텍처 계약 테스트 실행 중..."
-          python -m importlinter check || echo "import-linter check completed"
-          pytest tests/architecture/ -v --tb=short || echo "pytest completed"
-      
-      - name: Fail on architecture violations
-        if: failure()
-        run: |
-          echo "❌ 아키텍처 계약 위반 발견!"
-          echo "다음을 확인하세요:"
-          echo "1. Core 계층에 외부 의존성이 없는지"
-          echo "2. 의존성 방향이 올바른지"
-          echo "3. 순환 참조가 없는지"
-          echo "4. 계층 격리가 유지되는지"
-          exit 1
+          
+          # Import-linter 검사
+          echo "1. Import-linter 계약 검사..."
+          python -m importlinter check
+          
+          # Pytest 아키텍처 테스트
+          echo "2. Pytest 아키텍처 테스트..."
+          pytest tests/architecture/ -v --tb=short
       
       - name: Architecture test success
         if: success()
@@ -124,7 +118,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install safety pip-audit
+          pip install -r requirements.txt
       
       - name: Check for known security vulnerabilities
         run: |

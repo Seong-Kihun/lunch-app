@@ -5,8 +5,8 @@ import-linter를 사용하여 아키텍처 계약 위반을 자동으로 검사�
 """
 
 import pytest
-import importlinter
-from importlinter import check_contracts
+import subprocess
+import sys
 
 
 class TestArchitectureContracts:
@@ -14,23 +14,27 @@ class TestArchitectureContracts:
     
     def test_architecture_contracts(self):
         """아키텍처 계약 위반 검사"""
-        result = check_contracts()
-        
-        # 모든 계약이 유지되었는지 확인
-        assert result.kept_contracts == result.all_contracts, (
-            f"아키텍처 계약 위반 발견: "
-            f"{len(result.broken_contracts)}개 계약 위반, "
-            f"{len(result.kept_contracts)}개 계약 유지"
+        # importlinter CLI를 사용하여 계약 검사
+        result = subprocess.run(
+            [sys.executable, "-m", "importlinter", "check"],
+            capture_output=True,
+            text=True
         )
         
-        # 위반된 계약이 있다면 상세 정보 출력
-        if result.broken_contracts:
-            for contract in result.broken_contracts:
-                print(f"❌ 계약 위반: {contract.name}")
-                for violation in contract.violations:
-                    print(f"   - {violation}")
+        # 출력 내용 확인
+        if result.stdout:
+            print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
         
-        print(f"✅ 모든 아키텍처 계약 통과: {len(result.kept_contracts)}개 계약")
+        # 반환 코드 확인 (0이면 성공, 1이면 계약 위반)
+        assert result.returncode == 0, (
+            f"아키텍처 계약 위반 발견!\n"
+            f"출력:\n{result.stdout}\n"
+            f"오류:\n{result.stderr}"
+        )
+        
+        print(f"✅ 모든 아키텍처 계약 통과")
     
     def test_core_layer_purity(self):
         """Core 계층 순수성 검사"""

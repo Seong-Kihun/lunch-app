@@ -63,7 +63,16 @@ setuptools>=70.0.0
 gunicorn==21.2.0
 eventlet>=0.33.3,<1.0.0
 
-# 개발 도구 (선택사항)
+# 개발 및 테스트 도구
 black==23.12.1
 isort==5.13.2
 flake8==7.0.0
+ruff>=0.1.0
+mypy>=1.7.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+pytest-arch>=0.1.0
+safety>=2.3.0
+pip-audit>=2.6.0
+toml>=0.10.2
