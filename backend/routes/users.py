@@ -10,14 +10,7 @@ from backend.auth.middleware import check_authentication
 # Blueprint 생성
 users_bp = Blueprint('users', __name__)
 
-# 인증 미들웨어 적용 (공개 엔드포인트 제외)
-@users_bp.before_request
-def _users_guard():
-    # 공개 엔드포인트는 인증 제외
-    if request.endpoint in ['users.public_info']:
-        return None
-    # 프로덕션 환경에서는 모든 API에 인증 적용
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 def get_seoul_today():
     """한국 시간의 오늘 날짜를 datetime.date 타입으로 반환"""

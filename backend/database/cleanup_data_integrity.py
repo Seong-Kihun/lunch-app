@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from backend.app.extensions import db
-from backend.app.app import app
+# 레거시 import 제거 - CLI에서 create_app() 사용
 from backend.auth.models import User, Friendship
 from backend.models.app_models import Party, PartyMember, Restaurant, Review
 

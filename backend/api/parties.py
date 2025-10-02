@@ -86,7 +86,7 @@ def create_party():
         
         # 데이터베이스에서 파티 생성
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime, date, time
         
         # 날짜와 시간 변환
@@ -183,7 +183,7 @@ def get_all_parties():
         
         # 데이터베이스에서 파티 조회 (최적화된 쿼리)
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         
         print(f"🔍 [get_all_parties] is_from_match: {is_from_match}")
         
@@ -273,7 +273,7 @@ def get_party(party_id):
         
         # 데이터베이스에서 파티 조회
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -407,7 +407,7 @@ def join_party(party_id):
         
         # 데이터베이스에서 파티 조회
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -459,7 +459,7 @@ def leave_party(party_id):
         
         # 데이터베이스에서 파티 조회
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         
         party = Party.query.get(party_id)
         if not party:
@@ -508,7 +508,7 @@ def get_my_parties():
         
         # 데이터베이스에서 내 파티 조회
         from models.app_models import Party, PartyMember
-        from extensions import db
+        from backend.app.extensions import db
         
         # 내가 참여한 파티들 (호스트이거나 멤버인 경우)
         my_parties = Party.query.filter(

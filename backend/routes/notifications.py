@@ -14,10 +14,7 @@ import json
 # Blueprint 생성
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/notifications')
 
-# 인증 미들웨어 적용
-@notifications_bp.before_request
-def _notifications_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @notifications_bp.route('/send', methods=['POST'])
 def send_notification():

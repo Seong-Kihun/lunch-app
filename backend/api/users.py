@@ -129,7 +129,7 @@ def get_user_activity_stats():
         from models.app_models import Party, PartyMember
         from models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
         from models.schedule_models import PersonalSchedule
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime, timedelta
         from sqlalchemy import func, and_
         
@@ -260,7 +260,7 @@ def get_user_dashboard():
         from models.app_models import Party, PartyMember
         from models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
         from models.schedule_models import PersonalSchedule
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime, timedelta
         from sqlalchemy import func, and_
         
@@ -390,7 +390,7 @@ def get_user_appointments():
         
         from models.app_models import Party, PartyMember
         from models.schedule_models import PersonalSchedule
-        from extensions import db
+        from backend.app.extensions import db
         from datetime import datetime
         
         appointments = []

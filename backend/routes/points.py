@@ -8,10 +8,7 @@ from auth.middleware import check_authentication
 # 포인트 Blueprint 생성
 points_bp = Blueprint('points', __name__, url_prefix='/points')
 
-# 인증 미들웨어 적용
-@points_bp.before_request
-def _points_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @points_bp.route('/')
 def points_home():

@@ -248,13 +248,7 @@ def create_app(config_name=None):
     except ImportError as e:
         print(f"[WARNING] 포인트 시스템 설정 실패: {e}")
 
-    # 포인트 API 등록
-    try:
-        from backend.routes.points import points_bp
-        app.register_blueprint(points_bp)
-        print("[SUCCESS] 포인트 API가 성공적으로 등록되었습니다.")
-    except Exception as e:
-        print(f"[ERROR] 포인트 API 등록 실패: {e}")
+    # 포인트 API는 UnifiedBlueprintManager에서 등록됨
 
     # 스케줄러 설정
     try:
@@ -315,9 +309,9 @@ def create_app(config_name=None):
     try:
         from backend.routes.health import health_bp
         app.register_blueprint(health_bp)
-            print("[SUCCESS] 헬스체크 Blueprint 등록 성공 (폴백)")
-        except Exception as fallback_e:
-            print(f"[ERROR] 폴백 Blueprint 등록 실패: {fallback_e}")
+        print("[SUCCESS] 헬스체크 Blueprint 등록 성공 (폴백)")
+    except Exception as fallback_e:
+        print(f"[ERROR] 폴백 Blueprint 등록 실패: {fallback_e}")
 
     return app
 

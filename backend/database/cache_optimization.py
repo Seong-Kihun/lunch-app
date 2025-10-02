@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from backend.app.cache_manager import cache_manager
 from backend.app.extensions import db
-from backend.app.app import app
+# 레거시 import 제거 - CLI에서 create_app() 사용
 
 class CacheOptimizer:
     def __init__(self):

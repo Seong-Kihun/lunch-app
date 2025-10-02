@@ -19,7 +19,7 @@ def get_schedule_models():
     return PersonalSchedule, ScheduleException
 
 def get_db():
-    from extensions import db
+    from backend.app.extensions import db
     return db
 
 logger = logging.getLogger(__name__)

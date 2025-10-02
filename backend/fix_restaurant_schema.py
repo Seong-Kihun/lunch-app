@@ -12,7 +12,7 @@ from sqlalchemy import text, inspect
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from backend.app.app import app
+# 레거시 import 제거 - CLI에서 create_app() 사용
 from backend.app.extensions import db
 
 def fix_restaurant_schema():

@@ -2,7 +2,7 @@
 새로운 식당 데이터베이스 초기화 스크립트
 """
 
-from backend.app.app import app
+# 레거시 import 제거 - CLI에서 create_app() 사용
 from backend.app.extensions import db
 from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
 

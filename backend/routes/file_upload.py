@@ -15,10 +15,7 @@ import os
 # Blueprint 생성
 file_upload_bp = Blueprint('file_upload', __name__, url_prefix='/files')
 
-# 인증 미들웨어 적용
-@file_upload_bp.before_request
-def _file_upload_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @file_upload_bp.route('/upload', methods=['POST'])
 def upload_file():

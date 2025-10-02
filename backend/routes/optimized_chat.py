@@ -16,10 +16,7 @@ import time
 # Blueprint 생성
 optimized_chat_bp = Blueprint('optimized_chat', __name__, url_prefix='/optimized/chat')
 
-# 인증 미들웨어 적용
-@optimized_chat_bp.before_request
-def _optimized_chat_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @optimized_chat_bp.route('/messages/<chat_type>/<int:chat_id>', methods=['GET'])
 @monitor_performance('get_messages_optimized')

@@ -19,20 +19,7 @@ def get_seoul_today():
 # Blueprint 생성
 restaurants_bp = Blueprint('restaurants', __name__)
 
-# 인증 미들웨어 적용 (공개 엔드포인트 제외)
-@restaurants_bp.before_request
-def _restaurants_guard():
-    # 공개 엔드포인트는 인증 제외 (읽기 전용)
-    public_endpoints = [
-        'restaurants.get_restaurants', 
-        'restaurants.get_restaurant',
-        'restaurants.get_categories',
-        'restaurants.get_nearby_restaurants'
-    ]
-    if request.endpoint in public_endpoints:
-        return None
-    # 쓰기 작업은 인증 필요
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 def geocode_address(address):
     """주소를 좌표로 변환하는 함수 (가상 구현)"""
