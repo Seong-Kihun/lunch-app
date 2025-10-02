@@ -29,7 +29,7 @@ def get_all_dangolpots():
         
         # 데이터베이스에서 단골파티 조회
         from models.schemas import DangolPot
-        from app import db
+        from backend.app.extensions import db
         
         pots = DangolPot.query.all()
         
@@ -79,7 +79,7 @@ def create_dangolpot():
         
         # 데이터베이스에 새 단골파티 생성
         from models.schemas import DangolPot
-        from app import db
+        from backend.app.extensions import db
         
         pot = DangolPot(
             name=data['name'],

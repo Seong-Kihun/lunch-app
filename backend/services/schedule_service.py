@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
-from app import db
+from backend.app.extensions import db
 import logging
 
 logger = logging.getLogger(__name__)

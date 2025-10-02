@@ -12,7 +12,7 @@ from auth.middleware import check_authentication
 logger = logging.getLogger(__name__)
 
 # Blueprint 생성
-proposals_bp = Blueprint('proposals', __name__, url_prefix='/api/proposals')
+proposals_bp = Blueprint('proposals', __name__, url_prefix='/proposals')
 
 # 인증 미들웨어 적용
 @proposals_bp.before_request

@@ -215,13 +215,8 @@ def create_app(config_name=None):
     except ImportError as e:
         print(f"[WARNING] 실시간 통신 시스템 설정 실패: {e}")
 
-    # API Blueprint 등록
-    try:
-        from backend.routes.api import api_bp
-        app.register_blueprint(api_bp)
-        print("[SUCCESS] API Blueprint가 성공적으로 등록되었습니다.")
-    except Exception as e:
-        print(f"[ERROR] API Blueprint 등록 실패: {e}")
+    # API Blueprint 등록은 UnifiedBlueprintManager에서 처리됩니다.
+    # 중복 등록 방지를 위해 직접 등록 제거됨
 
     # 인증 시스템 초기화
     try:
@@ -301,6 +296,10 @@ def create_app(config_name=None):
         # 모든 Blueprint 등록
         blueprint_manager.register_all_blueprints(app)
         
+        # API 정보 Blueprint 등록
+        api_info_bp = blueprint_manager.create_api_info_blueprint()
+        app.register_blueprint(api_info_bp)
+        
         # 모니터링 API 등록
         from backend.monitoring.monitoring_api import monitoring_bp
         app.register_blueprint(monitoring_bp)
@@ -310,11 +309,11 @@ def create_app(config_name=None):
     except Exception as e:
         print(f"[ERROR] 통합 Blueprint 등록 시스템 실패: {e}")
         print("[FALLBACK] 개별 Blueprint 등록으로 폴백합니다.")
-        
+
         # 폴백: 핵심 Blueprint만 등록
-        try:
-            from backend.routes.health import health_bp
-            app.register_blueprint(health_bp)
+    try:
+        from backend.routes.health import health_bp
+        app.register_blueprint(health_bp)
             print("[SUCCESS] 헬스체크 Blueprint 등록 성공 (폴백)")
         except Exception as fallback_e:
             print(f"[ERROR] 폴백 Blueprint 등록 실패: {fallback_e}")

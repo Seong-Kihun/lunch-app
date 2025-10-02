@@ -11,7 +11,7 @@ from backend.app.extensions import db
 from backend.auth.email_service import EmailService
 
 # 문의사항 블루프린트 생성
-inquiries_bp = Blueprint('inquiries', __name__, url_prefix='/api/inquiries')
+inquiries_bp = Blueprint('inquiries', __name__, url_prefix='/inquiries')
 
 @inquiries_bp.route('/', methods=['POST'])
 def create_inquiry():

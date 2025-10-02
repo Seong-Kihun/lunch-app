@@ -19,8 +19,8 @@ load_environment_variables()
 # 앱 팩토리에서 앱 생성
 from backend.app.app_factory import create_app
 
-# Flask 앱 생성
-app = create_app()
+# Flask 앱 생성 (레거시 호환성 - 내부 사용만)
+_app = create_app()
 
 # 레거시 호환성을 위한 경고
 warnings.warn(
@@ -30,11 +30,14 @@ warnings.warn(
     stacklevel=2
 )
 
+# app 전역 변수는 제거됨 - 순환 참조 방지
+# 대신 _app을 사용하여 내부적으로만 참조
+
 # 데이터베이스 초기화 (레거시 호환성)
-with app.app_context():
+with _app.app_context():
     try:
         from backend.database.database_init import init_database
-        init_database(app)
+        init_database(_app)
         print("[SUCCESS] 레거시 데이터베이스 초기화 완료")
     except Exception as e:
         print(f"[WARNING] 레거시 데이터베이스 초기화 실패: {e}")
@@ -43,7 +46,7 @@ with app.app_context():
 socketio = None
 try:
     from flask_socketio import SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    socketio = SocketIO(_app, cors_allowed_origins="*")
     print("[SUCCESS] Socket.IO 초기화 완료 (레거시)")
 except Exception as e:
     print(f"[WARNING] Socket.IO 초기화 실패 (레거시): {e}")
