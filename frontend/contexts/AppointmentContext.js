@@ -235,17 +235,13 @@ export const AppointmentProvider = ({ children }) => {
             
             if (appointmentData.type === '개인 일정') {
                 // 개인 일정은 그룹 파티와 동일한 API 사용 (임시)
-                response = await appService.get(`/parties, {
-                    method: `)'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        creator_id: currentUser.employee_id,
-                        party_date: appointmentData.date,
-                        title: appointmentData.title,
-                        restaurant_name: '',
-                        meeting_location: appointmentData.location || '1층 로비',
-                        meeting_time: appointmentData.time || '11:30'
-                    })
+                response = await appService.post('/parties', {
+                    creator_id: currentUser.employee_id,
+                    party_date: appointmentData.date,
+                    title: appointmentData.title,
+                    restaurant_name: '',
+                    meeting_location: appointmentData.location || '1층 로비',
+                    meeting_time: appointmentData.time || '11:30'
                 });
                 
                 if (response.ok) {
@@ -263,17 +259,13 @@ export const AppointmentProvider = ({ children }) => {
                 }
             } else if (appointmentData.type === '그룹 파티') {
                 // 그룹 파티 API 사용 (기존 시스템과 동일)
-                response = await appService.get(`/parties, {
-                    method: `)'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        creator_id: currentUser.employee_id,
-                        party_date: appointmentData.date,
-                        title: appointmentData.title,
-                        restaurant_name: appointmentData.restaurant || '',
-                        meeting_location: appointmentData.location || '1층 로비',
-                        meeting_time: appointmentData.time || '11:30'
-                    })
+                response = await appService.post('/parties', {
+                    creator_id: currentUser.employee_id,
+                    party_date: appointmentData.date,
+                    title: appointmentData.title,
+                    restaurant_name: appointmentData.restaurant || '',
+                    meeting_location: appointmentData.location || '1층 로비',
+                    meeting_time: appointmentData.time || '11:30'
                 });
                 
                 if (response.ok) {
