@@ -354,8 +354,8 @@ def root_dev_create_schedule():
         }), 500
 
 @root_compatibility_bp.route('/dev/random-lunch/<int:employee_id>', methods=['GET'])
-def root_dev_random_lunch(employee_id):
-    """루트 레벨 개발용 랜덤런치 API - 실제 데이터 사용"""
+def root_dev_random_lunch_int(employee_id):
+    """루트 레벨 개발용 랜덤런치 API - 정수형 employee_id"""
     logger.info(f"루트 레벨 개발용 랜덤런치 API 호출됨: {employee_id}")
     
     # 실제 식당 데이터에서 랜덤 선택
@@ -1139,7 +1139,7 @@ def root_proposals_mine():
             'error': f'제안 조회 실패: {str(e)}'
         }), 500
 
-@root_compatibility_bp.route('/parties', methods=['GET'])
+@root_compatibility_bp.route('/legacy-parties', methods=['GET'])
 def root_parties():
     """파티 조회 API - 근본적 해결책"""
     logger.info("파티 조회 API 호출됨")
@@ -1279,7 +1279,7 @@ def root_api_parties():
             'error': f'API 파티 조회 실패: {str(e)}'
         }), 500
 
-@root_compatibility_bp.route('/api/parties/my_parties', methods=['GET'])
+@root_compatibility_bp.route('/legacy-parties/my_parties', methods=['GET'])
 def root_api_my_parties():
     """내 파티 목록 조회 API - 근본적 해결책"""
     logger.info("내 파티 목록 조회 API 호출됨")

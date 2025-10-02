@@ -16,42 +16,49 @@ class QueryOptimizer:
     
     @staticmethod
     def add_indexes():
-        """필요한 인덱스 추가"""
-        indexes = [
-            # 사용자 관련 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
-            "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)",
-            
-            # 파티 관련 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_party_creator_id ON party(creator_id)",
-            "CREATE INDEX IF NOT EXISTS idx_party_created_at ON party(created_at)",
-            "CREATE INDEX IF NOT EXISTS idx_party_status ON party(status)",
-            
-            # 일정 관련 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id)",
-            "CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date)",
-            "CREATE INDEX IF NOT EXISTS idx_personal_schedules_user_id ON personal_schedules(user_id)",
-            
-            # 친구 관계 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id)",
-            "CREATE INDEX IF NOT EXISTS idx_friendships_receiver ON friendships(receiver_id)",
-            "CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)",
-            
-            # 채팅 관련 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_chat_messages_room_id ON chat_messages(room_id)",
-            "CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)",
-        ]
+        """필요한 인덱스 추가 - 애플리케이션 컨텍스트 내에서만 실행"""
+        from flask import current_app
         
+        # 애플리케이션 컨텍스트가 없으면 건너뜀
         try:
-            for index_sql in indexes:
-                db.session.execute(text(index_sql))
-            db.session.commit()
-            print("[SUCCESS] 데이터베이스 인덱스 추가 완료")
-            return True
-            
+            with current_app.app_context():
+                indexes = [
+                    # 사용자 관련 인덱스
+                    "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+                    "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)",
+                    
+                    # 파티 관련 인덱스
+                    "CREATE INDEX IF NOT EXISTS idx_party_creator_id ON party(creator_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_party_created_at ON party(created_at)",
+                    "CREATE INDEX IF NOT EXISTS idx_party_status ON party(status)",
+                    
+                    # 일정 관련 인덱스
+                    "CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date)",
+                    "CREATE INDEX IF NOT EXISTS idx_personal_schedules_user_id ON personal_schedules(user_id)",
+                    
+                    # 친구 관계 인덱스
+                    "CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_friendships_receiver ON friendships(receiver_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)",
+                    
+                    # 채팅 관련 인덱스
+                    "CREATE INDEX IF NOT EXISTS idx_chat_messages_room_id ON chat_messages(room_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)",
+                ]
+                
+                for index_sql in indexes:
+                    db.session.execute(text(index_sql))
+                db.session.commit()
+                print("[SUCCESS] 데이터베이스 인덱스 추가 완료")
+                return True
+                
         except Exception as e:
             print(f"[ERROR] 인덱스 추가 실패: {e}")
-            db.session.rollback()
+            try:
+                db.session.rollback()
+            except:
+                pass
             return False
     
     @staticmethod

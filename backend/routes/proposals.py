@@ -3,10 +3,9 @@
 """
 
 from flask import Blueprint
-from auth.middleware import check_authentication
 
 # 제안 관리 Blueprint 생성
-proposals_bp = Blueprint('proposals', __name__, url_prefix='/proposals')
+proposals_bp = Blueprint('proposals', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 

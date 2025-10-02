@@ -230,3 +230,19 @@ def get_cached_recommendations(date: str) -> Optional[Any]:
     """추천 데이터 캐시 조회"""
     key = f"recommendations:{date}"
     return cache_manager.get_cache(key)
+
+def setup_cache_manager(app):
+    """Flask 앱에 캐시 관리자 설정"""
+    try:
+        # 전역 캐시 관리자 초기화
+        global cache_manager
+        cache_manager = CacheManager()
+        
+        # Flask 앱에 캐시 관리자 등록
+        app.cache_manager = cache_manager
+        
+        logger.info("[SUCCESS] 캐시 관리자가 성공적으로 설정되었습니다.")
+        return True
+    except Exception as e:
+        logger.error(f"[ERROR] 캐시 관리자 설정 실패: {e}")
+        return False

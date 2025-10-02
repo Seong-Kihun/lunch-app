@@ -7,12 +7,12 @@ from flask import Blueprint, request, jsonify
 from backend.app.extensions import db
 from backend.models.app_models import ChatNotification, NotificationSettings
 from backend.utils.notification_manager import notification_manager
-from backend.auth.middleware import check_authentication
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 from datetime import datetime, timedelta
 import json
 
 # Blueprint 생성
-notifications_bp = Blueprint('notifications', __name__, url_prefix='/notifications')
+notifications_bp = Blueprint('notifications', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 

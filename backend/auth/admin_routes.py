@@ -8,7 +8,7 @@ from .models import User, db
 from datetime import datetime, timedelta
 import re
 
-admin_bp = Blueprint('admin_auth', __name__, url_prefix='/admin')
+admin_bp = Blueprint('admin_auth', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 @admin_bp.route('/unlock-account/<email>', methods=['POST'])
 def unlock_account(email):

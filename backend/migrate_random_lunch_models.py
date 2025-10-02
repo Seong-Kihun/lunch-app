@@ -21,7 +21,7 @@ def migrate_random_lunch_models():
         print("랜덤런치 모델 마이그레이션 시작...")
         
         # Flask 앱 초기화
-        from backend.app import create_app
+        from backend.app.app_factory import create_app
         app = create_app()
         
         with app.app_context():

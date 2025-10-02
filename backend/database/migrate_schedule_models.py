@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from backend.app.app_factory import create_app
 from backend.app.extensions import db
 app = create_app()
-from models.schedule_models import PersonalSchedule, ScheduleException
+from backend.models.schedule_models import PersonalSchedule, ScheduleException
 
 def migrate_schedule_models():
     """기존 일정 데이터를 새로운 모델 구조로 마이그레이션"""

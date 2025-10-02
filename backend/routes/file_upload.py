@@ -8,12 +8,12 @@ from werkzeug.utils import secure_filename
 from backend.app.extensions import db
 from backend.models.app_models import MessageAttachment, ChatMessage
 from backend.utils.file_manager import file_manager
-from backend.auth.middleware import check_authentication
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 from datetime import datetime
 import os
 
 # Blueprint 생성
-file_upload_bp = Blueprint('file_upload', __name__, url_prefix='/files')
+file_upload_bp = Blueprint('file_upload', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 

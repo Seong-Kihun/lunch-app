@@ -14,7 +14,7 @@ dangolpots_bp = Blueprint('dangolpots', __name__)
 from flask import current_app
 from sqlalchemy.orm import joinedload
 
-@dangolpots_bp.route('/dangolpots', methods=['GET'])
+@dangolpots_bp.route('/', methods=['GET'])
 def get_all_dangolpots():
     """모든 단골파티 목록 조회"""
     try:
@@ -28,7 +28,7 @@ def get_all_dangolpots():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 단골파티 조회
-        from models.schemas import DangolPot
+        from backend.models.app_models import DangolPot
         from backend.app.extensions import db
         
         pots = DangolPot.query.all()
@@ -54,7 +54,7 @@ def get_all_dangolpots():
         print(f"Error in get_all_dangolpots: {e}")
         return jsonify({'error': '단골파티 목록 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@dangolpots_bp.route('/dangolpots', methods=['POST'])
+@dangolpots_bp.route('/', methods=['POST'])
 def create_dangolpot():
     """새 단골파티 생성"""
     try:
@@ -78,7 +78,7 @@ def create_dangolpot():
                 return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
         
         # 데이터베이스에 새 단골파티 생성
-        from models.schemas import DangolPot
+        from backend.models.app_models import DangolPot
         from backend.app.extensions import db
         
         pot = DangolPot(
@@ -93,7 +93,7 @@ def create_dangolpot():
         db.session.commit()
         
         # 호스트를 멤버로 추가
-        from models.schemas import DangolPotMember
+        from backend.models.app_models import DangolPotMember
         member = DangolPotMember(
             dangolpot_id=pot.id,
             employee_id=employee_id
@@ -111,7 +111,7 @@ def create_dangolpot():
         print(f"Error in create_dangolpot: {e}")
         return jsonify({'error': '단골파티 생성 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@dangolpots_bp.route('/dangolpots/<int:pot_id>', methods=['GET'])
+@dangolpots_bp.route('/<int:pot_id>', methods=['GET'])
 def get_dangolpot(pot_id):
     """특정 단골파티 상세 정보 조회"""
     try:
@@ -158,7 +158,7 @@ def get_dangolpot(pot_id):
         print(f"Error in get_dangolpot: {e}")
         return jsonify({'error': '단골파티 정보 조회 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@dangolpots_bp.route('/dangolpots/<int:pot_id>', methods=['PUT'])
+@dangolpots_bp.route('/<int:pot_id>', methods=['PUT'])
 def update_dangolpot(pot_id):
     """단골파티 정보 수정"""
     try:
@@ -207,7 +207,7 @@ def update_dangolpot(pot_id):
         print(f"Error in update_dangolpot: {e}")
         return jsonify({'error': '단골파티 정보 수정 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@dangolpots_bp.route('/dangolpots/<int:pot_id>/join', methods=['POST'])
+@dangolpots_bp.route('/<int:pot_id>/join', methods=['POST'])
 def join_dangolpot(pot_id):
     """단골파티 참여"""
     try:
@@ -259,7 +259,7 @@ def join_dangolpot(pot_id):
         print(f"Error in join_dangolpot: {e}")
         return jsonify({'error': '단골파티 참여 중 오류가 발생했습니다.', 'details': str(e)}), 500
 
-@dangolpots_bp.route('/dangolpots/<int:pot_id>', methods=['DELETE'])
+@dangolpots_bp.route('/<int:pot_id>', methods=['DELETE'])
 def delete_dangolpot(pot_id):
     """단골파티 삭제"""
     try:

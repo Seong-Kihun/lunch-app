@@ -10,7 +10,7 @@ import os
 from .production_monitor import monitor, get_monitoring_dashboard
 
 # 모니터링 Blueprint 생성
-monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/monitoring')
+monitoring_bp = Blueprint('monitoring', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 @monitoring_bp.route('/dashboard', methods=['GET'])
 def get_dashboard():

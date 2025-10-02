@@ -1,31 +1,7 @@
 """
-API Blueprint 패키지
-Flask Blueprint를 사용하여 API를 모듈화합니다.
+API Blueprint 패키지 (레거시)
+UnifiedBlueprintManager가 모든 Blueprint 등록을 관리하므로 이 파일은 더 이상 사용되지 않습니다.
 """
 
-from flask import Blueprint
-
-# API Blueprint 생성
-api_bp = Blueprint('api', __name__, url_prefix='/api')
-
-# 하위 Blueprint들을 import하고 등록
-from . import parties, dangolpots, schedules, users, compatibility
-from auth.routes import auth_bp
-
-def init_app(app):
-    """Flask 앱에 API Blueprint를 등록 (수동 호출만 가능)"""
-    # 하위 Blueprint들을 api_bp에 등록
-    api_bp.register_blueprint(auth_bp, url_prefix='')
-    api_bp.register_blueprint(parties.parties_bp, url_prefix='')
-    api_bp.register_blueprint(dangolpots.dangolpots_bp, url_prefix='')
-    api_bp.register_blueprint(schedules.schedules_bp, url_prefix='/schedules')
-    api_bp.register_blueprint(schedules.personal_schedules_bp, url_prefix='/personal_schedules')
-    api_bp.register_blueprint(users.api_users_bp, url_prefix='')
-    api_bp.register_blueprint(compatibility.compatibility_bp, url_prefix='')
-    
-    # 메인 API Blueprint를 앱에 등록
-    app.register_blueprint(api_bp)
-    
-    return api_bp
-
-# 자동 등록 제거 - UnifiedBlueprintManager에서만 호출
+# 이 파일은 레거시 호환성을 위해 유지되지만 실제로는 사용되지 않습니다.
+# 모든 Blueprint 등록은 backend/api/unified_blueprint.py의 UnifiedBlueprintManager에서 처리됩니다.

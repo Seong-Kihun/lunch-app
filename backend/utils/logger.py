@@ -306,12 +306,12 @@ def set_log_level(level: str):
 def enable_debug_logging():
     """디버그 로깅 활성화"""
     set_log_level('DEBUG')
-    logger.info("🐛 Debug logging enabled")
+    logger.info("[DEBUG] Debug logging enabled")
 
 def disable_debug_logging():
     """디버그 로깅 비활성화"""
     set_log_level('INFO')
-    logger.info("ℹ️ Debug logging disabled")
+    logger.info("[INFO] Debug logging disabled")
 
 # 환경변수에서 로그 레벨 읽기
 if os.getenv('LOG_LEVEL'):

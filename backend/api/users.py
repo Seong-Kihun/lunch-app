@@ -6,10 +6,8 @@
 from flask import Blueprint, request, jsonify
 from utils.error_monitor import record_error
 from utils.logger import logger, log_api_call
-from auth.middleware import check_authentication
-
 # 사용자 Blueprint 생성
-api_users_bp = Blueprint('api_users', __name__, url_prefix='/users')
+api_users_bp = Blueprint('api_users', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
@@ -28,7 +26,7 @@ def get_user_profile():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 사용자 프로필 조회
-        from auth.models import User
+        from backend.auth.models import User
         from backend.app.extensions import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
@@ -74,7 +72,7 @@ def update_user_profile():
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
         
         # 데이터베이스에서 사용자 조회
-        from auth.models import User
+        from backend.auth.models import User
         from backend.app.extensions import db
         
         user = User.query.filter_by(employee_id=employee_id).first()
@@ -123,9 +121,9 @@ def get_user_activity_stats():
         period = request.args.get('period', 'month')
         
         # 데이터베이스에서 통계 데이터 조회
-        from models.app_models import Party, PartyMember
-        from models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
-        from models.schedule_models import PersonalSchedule
+        from backend.models.app_models import Party, PartyMember
+        from backend.models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
+        from backend.models.schedule_models import PersonalSchedule
         from backend.app.extensions import db
         from datetime import datetime, timedelta
         from sqlalchemy import func, and_
@@ -254,9 +252,9 @@ def get_user_dashboard():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 대시보드 데이터 조회
-        from models.app_models import Party, PartyMember
-        from models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
-        from models.schedule_models import PersonalSchedule
+        from backend.models.app_models import Party, PartyMember
+        from backend.models.restaurant_models import RestaurantVisitV2, RestaurantReviewV2
+        from backend.models.schedule_models import PersonalSchedule
         from backend.app.extensions import db
         from datetime import datetime, timedelta
         from sqlalchemy import func, and_
@@ -336,7 +334,7 @@ def get_user_dashboard():
                 break
         
         # 7. 랭킹 (전체 사용자 중 포인트 기준)
-        from auth.models import User
+        from backend.auth.models import User
         user = User.query.filter_by(employee_id=employee_id).first()
         user_points = user.total_points if user else 0
         
@@ -385,8 +383,8 @@ def get_user_appointments():
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 20))
         
-        from models.app_models import Party, PartyMember
-        from models.schedule_models import PersonalSchedule
+        from backend.models.app_models import Party, PartyMember
+        from backend.models.schedule_models import PersonalSchedule
         from backend.app.extensions import db
         from datetime import datetime
         
@@ -499,7 +497,7 @@ def get_user_points():
         if not employee_id:
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
-        from auth.models import User
+        from backend.auth.models import User
         
         user = User.query.filter_by(employee_id=employee_id).first()
         if not user:

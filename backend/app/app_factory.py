@@ -41,7 +41,7 @@ def create_app(config_name=None):
     # 기본 설정
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-flask-secret-key-change-in-production")
+    app.config["SECRET_KEY"] = AuthConfig.SECRET_KEY
     
     # PostgreSQL 연결 풀 설정 (프로덕션 최적화)
     if os.getenv("DATABASE_URL", "").startswith("postgresql://"):
@@ -230,7 +230,7 @@ def create_app(config_name=None):
 
     # 스키마 수정은 Alembic 마이그레이션을 통해서만 수행합니다.
     # 부팅 시 DDL 실행은 제거되었습니다.
-    print("🔧 스키마 수정은 Alembic 마이그레이션을 통해서만 수행됩니다.")
+    print("[INFO] 스키마 수정은 Alembic 마이그레이션을 통해서만 수행됩니다.")
 
     # 데이터베이스 초기화
     try:
@@ -281,41 +281,44 @@ def create_app(config_name=None):
     except Exception as e:
         print(f"[WARNING] 성능 최적화 시스템 초기화 실패: {e}")
 
-    # 통합 Blueprint 등록 시스템 사용
+    # 통합 Blueprint 등록 시스템 사용 (단일 등록 지점)
     try:
         from backend.api.unified_blueprint import UnifiedBlueprintManager
         
         # UnifiedBlueprintManager 초기화
         blueprint_manager = UnifiedBlueprintManager(app)
         
-        # 모든 Blueprint 등록
-        blueprint_manager.register_all_blueprints(app)
+        # 모든 Blueprint 등록 (유일한 등록 지점)
+        registration_results = blueprint_manager.register_all_blueprints(app)
         
         # API 정보 Blueprint 등록
         api_info_bp = blueprint_manager.create_api_info_blueprint()
         app.register_blueprint(api_info_bp)
         
-        # 모니터링 API 등록
-        from backend.monitoring.monitoring_api import monitoring_bp
-        app.register_blueprint(monitoring_bp)
+        # 모니터링 API는 UnifiedBlueprintManager에서 관리됨
         
-        print("[SUCCESS] 통합 Blueprint 등록 시스템으로 모든 Blueprint 등록 완료")
+        # 등록 결과 검증
+        failed_blueprints = [name for name, success in registration_results.items() if not success]
+        if failed_blueprints:
+            print(f"[WARNING] 일부 Blueprint 등록 실패: {failed_blueprints}")
+        else:
+            print("[SUCCESS] 모든 Blueprint가 성공적으로 등록되었습니다.")
         
     except Exception as e:
-        print(f"[ERROR] 통합 Blueprint 등록 시스템 실패: {e}")
-        print("[FALLBACK] 개별 Blueprint 등록으로 폴백합니다.")
-
-        # 폴백: 핵심 Blueprint만 등록
-        # health_bp는 UnifiedBlueprintManager에 포함됨
-        print("[FALLBACK] 통합 Blueprint 등록 시스템을 사용합니다.")
+        print(f"[CRITICAL] Blueprint 등록 시스템 실패: {e}")
+        print("[ERROR] 애플리케이션을 시작할 수 없습니다.")
+        raise
 
     return app
 
 
-# 기존 app.py와의 호환성을 위한 전역 앱 인스턴스
-app = create_app()
+# 전역 앱 인스턴스는 제거됨 - 순환 참조 방지
+# 필요시 create_app()을 직접 호출하여 사용하세요
 
 if __name__ == "__main__":
+    # 개발 환경에서 직접 실행할 때만 사용
+    app = create_app()
+    
     # Socket.IO 설정 확인
     try:
         from backend.app.realtime_system import socketio

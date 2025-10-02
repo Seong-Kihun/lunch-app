@@ -9,12 +9,12 @@ from backend.models.app_models import ChatMessage, MessageStatus, MessageReactio
 from backend.utils.cache_manager import chat_cache_manager
 from backend.utils.query_optimizer import query_optimizer
 from backend.utils.performance_monitor import performance_monitor, monitor_performance
-from backend.auth.middleware import check_authentication
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 from datetime import datetime, timedelta
 import time
 
 # Blueprint 생성
-optimized_chat_bp = Blueprint('optimized_chat', __name__, url_prefix='/optimized/chat')
+optimized_chat_bp = Blueprint('optimized_chat', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 

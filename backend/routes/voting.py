@@ -4,8 +4,6 @@ from backend.app.extensions import db
 from backend.models.app_models import VotingSession, VotingOption, Vote, ChatRoom, ChatParticipant
 from datetime import datetime, timedelta
 import random
-from backend.auth.middleware import check_authentication
-
 # Blueprint 생성
 voting_bp = Blueprint('voting', __name__)
 

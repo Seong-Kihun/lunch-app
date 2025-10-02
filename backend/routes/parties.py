@@ -4,8 +4,6 @@ from backend.app.extensions import db
 from backend.models.app_models import Party, PartyMember, Restaurant
 from datetime import datetime, timedelta
 import random
-from backend.auth.middleware import check_authentication
-
 # Blueprint 생성
 parties_bp = Blueprint('parties', __name__)
 
@@ -16,7 +14,7 @@ def get_seoul_today():
     korean_time = datetime.now() + timedelta(hours=9)
     return korean_time.date()
 
-@parties_bp.route("/parties", methods=["GET"])
+@parties_bp.route("/", methods=["GET"])
 def get_parties():
     """모든 파티 목록을 반환"""
     page = request.args.get("page", 1, type=int)
@@ -95,7 +93,7 @@ def get_parties():
         }
     })
 
-@parties_bp.route("/parties", methods=["POST"])
+@parties_bp.route("/", methods=["POST"])
 def create_party():
     """새로운 파티를 생성"""
     data = request.get_json()
@@ -158,7 +156,7 @@ def create_party():
         print(f"파티 생성 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
-@parties_bp.route("/parties/<int:party_id>", methods=["GET"])
+@parties_bp.route("/<int:party_id>", methods=["GET"])
 def get_party_detail(party_id):
     """특정 파티의 상세 정보를 반환"""
     party = Party.query.get_or_404(party_id)
@@ -391,7 +389,7 @@ def get_my_regular_parties(employee_id):
         "total_parties": len(all_parties)
     })
 
-@parties_bp.route("/parties/<int:party_id>", methods=["DELETE"])
+@parties_bp.route("/<int:party_id>", methods=["DELETE"])
 def delete_party(party_id):
     """파티 삭제"""
     party = Party.query.get_or_404(party_id)

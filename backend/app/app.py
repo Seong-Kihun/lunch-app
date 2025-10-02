@@ -1,63 +1,20 @@
 #!/usr/bin/env python3
 """
-레거시 호환성을 위한 앱 엔트리포인트
-새로운 구조에서는 wsgi.py를 사용하세요.
+DEPRECATED: 이 파일은 더 이상 사용되지 않습니다.
+새로운 구조에서는 backend.app.wsgi를 사용하세요.
 """
 
-import os
-import sys
 import warnings
 
-# 프로젝트 루트를 Python 경로에 추가
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, project_root)
-
-# 환경변수 로드
-from backend.config.env_loader import load_environment_variables
-load_environment_variables()
-
-# 앱 팩토리에서 앱 생성
-from backend.app.app_factory import create_app
-
-# Flask 앱 생성 (레거시 호환성 - 내부 사용만)
-_app = create_app()
-
-# 레거시 호환성을 위한 경고
+# 강력한 경고 메시지
 warnings.warn(
-    "backend/app/app.py는 레거시 호환성을 위해 유지됩니다. "
-    "새로운 구조에서는 backend/app/wsgi.py를 사용하세요.",
+    "backend.app.app는 완전히 제거되었습니다. "
+    "반드시 backend.app.wsgi를 사용하세요.",
     DeprecationWarning,
     stacklevel=2
 )
 
-# app 전역 변수는 제거됨 - 순환 참조 방지
-# 대신 _app을 사용하여 내부적으로만 참조
-
-# 데이터베이스 초기화 (레거시 호환성)
-with _app.app_context():
-    try:
-        from backend.database.database_init import init_database
-        init_database(_app)
-        print("[SUCCESS] 레거시 데이터베이스 초기화 완료")
-    except Exception as e:
-        print(f"[WARNING] 레거시 데이터베이스 초기화 실패: {e}")
-
-# Socket.IO 설정 (레거시 호환성)
-socketio = None
-try:
-    from flask_socketio import SocketIO
-    socketio = SocketIO(_app, cors_allowed_origins="*")
-    print("[SUCCESS] Socket.IO 초기화 완료 (레거시)")
-except Exception as e:
-    print(f"[WARNING] Socket.IO 초기화 실패 (레거시): {e}")
-
-if __name__ == '__main__':
-    # PostgreSQL 스키마 수정은 app_factory.py에서 자동으로 처리됩니다.
-    port = int(os.environ.get('PORT', 5000))
-    
-    if socketio:
-        # Socket.IO와 함께 실행 (레거시)
-        socketio.run(app, host="0.0.0.0", port=port, debug=os.getenv('DEBUG', 'false').lower() == 'true')
-    else:
-        # 일반 Flask로 실행 (레거시)
-        app.run(debug=os.getenv('DEBUG', 'false').lower() == 'true', host="0.0.0.0", port=port)
+raise ImportError(
+    "backend.app.app는 더 이상 사용할 수 없습니다. "
+    "backend.app.wsgi를 사용하세요."
+)

@@ -13,7 +13,7 @@ from backend.utils.performance_optimizer import measure_performance, optimize_da
 from backend.utils.safe_jsonify import safe_jsonify
 
 # 파티 Blueprint 생성
-parties_bp = Blueprint('parties', __name__, url_prefix='/parties')
+parties_bp = Blueprint('parties', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
@@ -40,7 +40,7 @@ def create_party():
         print(f"✅ [create_party] 필수 필드 검증 통과")
         
         # 데이터베이스에서 파티 생성
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         from datetime import datetime, date, time
         
@@ -137,7 +137,7 @@ def get_all_parties():
         is_from_match = request.args.get('is_from_match')
         
         # 데이터베이스에서 파티 조회 (최적화된 쿼리)
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         
         print(f"🔍 [get_all_parties] is_from_match: {is_from_match}")
@@ -227,7 +227,7 @@ def get_party(party_id):
         #     return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 파티 조회
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         
         party = Party.query.get(party_id)
@@ -362,7 +362,7 @@ def join_party(party_id):
         # employee_id = request.current_user.get('employee_id')
         
         # 데이터베이스에서 파티 조회
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         
         party = Party.query.get(party_id)
@@ -414,7 +414,7 @@ def leave_party(party_id):
         # employee_id = request.current_user.get('employee_id')
         
         # 데이터베이스에서 파티 조회
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         
         party = Party.query.get(party_id)
@@ -463,7 +463,7 @@ def get_my_parties():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 내 파티 조회
-        from models.app_models import Party, PartyMember
+        from backend.models.app_models import Party, PartyMember
         from backend.app.extensions import db
         
         # 내가 참여한 파티들 (호스트이거나 멤버인 경우)

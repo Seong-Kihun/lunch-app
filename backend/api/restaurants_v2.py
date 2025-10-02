@@ -9,14 +9,13 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from backend.app.extensions import db
 from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
-from backend.auth.middleware import check_authentication
 import logging
 import math
 
 logger = logging.getLogger(__name__)
 
 # Blueprint 생성
-restaurants_v2_bp = Blueprint('restaurants_v2', __name__, url_prefix='/v2/restaurants')
+restaurants_v2_bp = Blueprint('restaurants_v2', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 

@@ -7,12 +7,10 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from typing import Dict, Any
 import logging
-from auth.middleware import check_authentication
-
 logger = logging.getLogger(__name__)
 
 # Blueprint 생성
-proposals_bp = Blueprint('proposals', __name__, url_prefix='/proposals')
+proposals_bp = Blueprint('proposals', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
@@ -23,7 +21,8 @@ def get_my_proposals():
     """
     try:
         from flask import current_app as app
-        from models.app_models import db, LunchProposal, ProposalAcceptance
+        from backend.models.app_models import LunchProposal, ProposalAcceptance
+        from backend.app.extensions import db
         
         employee_id = request.args.get('employee_id')
         
@@ -89,7 +88,8 @@ def create_proposal():
     """
     try:
         from flask import current_app as app
-        from models.app_models import db, LunchProposal
+        from backend.models.app_models import LunchProposal
+        from backend.app.extensions import db
         from datetime import datetime, timedelta
         
         data = request.get_json()
@@ -154,7 +154,8 @@ def cancel_proposal(proposal_id):
     """
     try:
         from flask import current_app as app
-        from models.app_models import db, LunchProposal
+        from backend.models.app_models import LunchProposal
+        from backend.app.extensions import db
         
         data = request.get_json()
         if not data:
@@ -203,7 +204,8 @@ def accept_proposal(proposal_id):
     """
     try:
         from flask import current_app as app
-        from models.app_models import db, LunchProposal, ProposalAcceptance
+        from backend.models.app_models import LunchProposal, ProposalAcceptance
+        from backend.app.extensions import db
         
         data = request.get_json()
         if not data:
@@ -285,7 +287,8 @@ def reject_proposal(proposal_id):
     """
     try:
         from flask import current_app as app
-        from models.app_models import db, LunchProposal
+        from backend.models.app_models import LunchProposal
+        from backend.app.extensions import db
         
         data = request.get_json()
         if not data:

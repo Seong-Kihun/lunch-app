@@ -5,6 +5,9 @@ from .env_loader import get_env_var
 class AuthConfig:
     """인증 시스템 설정"""
     
+    # Flask 시크릿 키 - 보안 강화
+    SECRET_KEY = get_env_var('SECRET_KEY', 'dev-flask-secret-key-change-in-production')
+    
     # JWT 토큰 설정 - 보안 강화
     JWT_SECRET_KEY = get_env_var('JWT_SECRET_KEY', 'dev-jwt-secret-key-change-in-production')
     
@@ -37,12 +40,32 @@ class AuthConfig:
                     "반드시 강력한 환경변수를 설정하세요."
                 )
             
+            # JWT_SECRET_KEY 검증
+            if (cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production' or
+                cls.JWT_SECRET_KEY == 'your-jwt-secret-key-here' or
+                len(cls.JWT_SECRET_KEY) < 32):
+                raise ValueError(
+                    "🚨 프로덕션 보안 위험: JWT_SECRET_KEY가 기본값이거나 너무 짧습니다! "
+                    "반드시 강력한 환경변수를 설정하세요."
+                )
+            
+            # 데이터베이스 URL 검증
+            if cls.DB_CONNECTION_STRING == 'sqlite:///site.db':
+                raise ValueError(
+                    "🚨 프로덕션 보안 위험: 프로덕션에서는 SQLite를 사용할 수 없습니다! "
+                    "DATABASE_URL을 PostgreSQL로 설정하세요."
+                )
+            
             # 이메일 설정 검증
             if not cls.MAIL_USERNAME or cls.MAIL_USERNAME == 'your-gmail-username-here':
                 print("[WARNING] 이메일 기능이 비활성화됩니다. MAIL_USERNAME을 설정하세요.")
             
             if not cls.MAIL_PASSWORD or cls.MAIL_PASSWORD == 'your-gmail-app-password-here':
                 print("[WARNING] 이메일 기능이 비활성화됩니다. MAIL_PASSWORD를 설정하세요.")
+            
+            print("[SUCCESS] 프로덕션 보안 검증 완료")
+        else:
+            print("[INFO] 개발 환경에서 실행 중입니다.")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # 1일
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     

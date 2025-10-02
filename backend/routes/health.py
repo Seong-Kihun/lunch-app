@@ -8,7 +8,7 @@ import os
 import sys
 from datetime import datetime
 
-health_bp = Blueprint('health', __name__, url_prefix='')
+health_bp = Blueprint('health', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 @health_bp.route('/health', methods=['GET'])
 def health_check():

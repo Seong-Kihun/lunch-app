@@ -15,12 +15,22 @@ services:
       - key: DATABASE_URL
         value: ${POSTGRES_URL}
       - key: SECRET_KEY
-        value: your-secret-key-here
+        fromService:
+          type: secret
+          name: lunch-app-secret-key
       - key: JWT_SECRET_KEY
-        value: your-jwt-secret-key-here
+        fromService:
+          type: secret
+          name: lunch-app-jwt-secret-key
       - key: MAIL_USERNAME
-        value: your-gmail-username-here
+        fromService:
+          type: secret
+          name: lunch-app-mail-username
       - key: MAIL_PASSWORD
-        value: your-gmail-app-password-here
+        fromService:
+          type: secret
+          name: lunch-app-mail-password
       - key: INQUIRY_EMAIL
-        value: your-inquiry-email-here
+        fromService:
+          type: secret
+          name: lunch-app-inquiry-email

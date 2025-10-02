@@ -12,7 +12,7 @@ import psutil
 from datetime import datetime, timezone
 
 # 모니터링 Blueprint 생성
-monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/monitoring')
+monitoring_bp = Blueprint('monitoring', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 @monitoring_bp.route('/health', methods=['GET'])
 def health_check():

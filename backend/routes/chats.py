@@ -12,8 +12,6 @@ import random
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from backend.auth.middleware import check_authentication
-
 # Blueprint 생성
 chats_bp = Blueprint('chats', __name__)
 
@@ -281,7 +279,7 @@ def update_chat_room_title():
         print(f"채팅방 제목 수정 오류: {e}")
         return jsonify({"error": str(e)}), 500
 
-@chats_bp.route("/chat/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
+@chats_bp.route("/room/members/<chat_type>/<int:chat_id>", methods=["GET"])
 def get_chat_room_members(chat_type, chat_id):
     """채팅방 멤버 목록 조회"""
     try:
@@ -541,7 +539,7 @@ def suggest_chat_dates(room_id):
 
 # === 고급 채팅 기능 API들 ===
 
-@chats_bp.route("/chat/messages/<int:message_id>/read", methods=["POST"])
+@chats_bp.route("/messages/<int:message_id>/read", methods=["POST"])
 def mark_message_read(message_id):
     """메시지를 읽음으로 표시"""
     try:
@@ -582,7 +580,7 @@ def mark_message_read(message_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@chats_bp.route("/chat/messages/<int:message_id>/reaction", methods=["POST"])
+@chats_bp.route("/messages/<int:message_id>/reaction", methods=["POST"])
 def add_message_reaction(message_id):
     """메시지에 반응(이모지) 추가"""
     try:

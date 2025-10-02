@@ -25,9 +25,9 @@ class CacheManager:
             self.redis_client = redis.from_url(self.redis_url, decode_responses=True)
             # 연결 테스트
             self.redis_client.ping()
-            print("✅ Redis 연결 성공")
+            print("[SUCCESS] Redis 연결 성공")
         except Exception as e:
-            print(f"❌ Redis 연결 실패: {e}")
+            print(f"[ERROR] Redis 연결 실패: {e}")
             self.redis_client = None
     
     def _get_key(self, key: str, namespace: str = 'default') -> str:

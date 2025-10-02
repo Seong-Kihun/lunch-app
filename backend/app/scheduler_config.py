@@ -5,7 +5,7 @@
 def setup_scheduler(app):
     """Celery Beat 스케줄러 설정"""
     try:
-        from celery_config import create_celery, setup_periodic_tasks
+        from backend.app.celery_config import create_celery, setup_periodic_tasks
         
         # Celery 앱 생성
         celery_app = create_celery(app)

@@ -4,7 +4,7 @@ import re
 from backend.config.auth_config import AuthConfig
 
 # 인증 블루프린트 생성
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
 
 
 @auth_bp.route('/test-login/<employee_id>', methods=['GET'])
@@ -76,7 +76,7 @@ def login_with_password():
         if not user.check_password(password):
             # 실패한 로그인 시도 기록
             user.increment_failed_attempts()
-            from .models import db
+            from backend.app.extensions import db
             db.session.commit()
             
             return jsonify({'error': '비밀번호가 올바르지 않습니다.'}), 401
