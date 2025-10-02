@@ -8,9 +8,11 @@ from datetime import datetime
 
 from backend.core.entities import Party, User, PartyMember
 from backend.core.value_objects import RestaurantInfo, PartyTime, PartyId, UserId, PartyMemberId
-from backend.infrastructure.infrastructure_models import (
-    PartyModel, UserModel, PartyMemberModel, RestaurantModel, ReviewModel
+from backend.models.app_models import (
+    Party as PartyModel, PartyMember as PartyMemberModel, 
+    Restaurant as RestaurantModel, Review as ReviewModel
 )
+from backend.auth.models import User as UserModel
 
 
 class PartyMapper:

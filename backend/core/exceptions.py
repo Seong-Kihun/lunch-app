@@ -22,3 +22,18 @@ class UserDomainError(ValueError):
 class DomainValidationError(ValueError):
     """도메인 계층에서 발생하는 검증 오류"""
     pass
+
+
+class RestaurantDomainError(ValueError):
+    """레스토랑 도메인 오류"""
+    pass
+
+
+class BusinessRuleViolationError(ValueError):
+    """비즈니스 규칙 위반 오류"""
+    pass
+
+
+class DomainIntegrityError(ValueError):
+    """도메인 무결성 오류"""
+    pass
