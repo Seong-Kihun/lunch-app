@@ -862,7 +862,7 @@ def root_dev_random_lunch(employee_id):
                 'message': '사용자를 찾을 수 없습니다.'
             })
         
-        # 오늘 날짜 기준으로 랜덤 그룹 생성 (개발용)
+        # 실제 데이터베이스에서 랜덤런치 그룹 조회 (프로덕션 환경)
         from datetime import datetime, timezone, timedelta
         
         # 한국 시간대 (UTC+9)
@@ -870,38 +870,147 @@ def root_dev_random_lunch(employee_id):
         now_korean = datetime.now(korean_tz)
         today = now_korean.strftime('%Y-%m-%d')
         
-        # 개발용 랜덤 그룹 데이터 생성
-        random_groups = [
-            {
-                'id': f'group_{employee_id}_1',
-                'date': today,
-                'time': '12:00',
-                'restaurant': '맛있는 식당',
-                'address': '서울시 강남구',
-                'members': [
-                    {'employee_id': employee_id, 'nickname': user.nickname, 'email': user.email},
-                    {'employee_id': 'KOICA001', 'nickname': '김철수', 'email': 'kim@koica.go.kr'},
-                    {'employee_id': 'KOICA002', 'nickname': '이영희', 'email': 'lee@koica.go.kr'}
-                ],
-                'max_members': 4,
-                'current_members': 3,
-                'status': 'active'
-            },
-            {
-                'id': f'group_{employee_id}_2',
-                'date': today,
-                'time': '12:30',
-                'restaurant': '좋은 식당',
-                'address': '서울시 서초구',
-                'members': [
-                    {'employee_id': employee_id, 'nickname': user.nickname, 'email': user.email},
-                    {'employee_id': 'KOICA003', 'nickname': '박민수', 'email': 'park@koica.go.kr'}
-                ],
-                'max_members': 3,
-                'current_members': 2,
-                'status': 'active'
-            }
-        ]
+        # 실제 랜덤런치 그룹 조회 (데이터베이스에서)
+        random_groups = []
+        
+        try:
+            # 1. 오늘 날짜의 기존 랜덤런치 그룹 조회
+            from backend.models.app_models import RandomLunchGroup, RandomLunchMember
+            
+            if hasattr(RandomLunchGroup, 'query'):
+                # 모델 클래스인 경우
+                existing_groups = RandomLunchGroup.query.filter_by(date=today).all()
+            else:
+                # 테이블 객체인 경우
+                existing_groups = db.session.query(RandomLunchGroup).filter(
+                    RandomLunchGroup.c.date == today
+                ).all()
+            
+            logger.info(f"기존 랜덤런치 그룹 조회: {len(existing_groups)}개")
+            
+            # 2. 기존 그룹이 있으면 반환
+            for group in existing_groups:
+                # 그룹 멤버 조회
+                if hasattr(RandomLunchMember, 'query'):
+                    members = RandomLunchMember.query.filter_by(group_id=group.id).all()
+                else:
+                    members = db.session.query(RandomLunchMember).filter(
+                        RandomLunchMember.c.group_id == group.id
+                    ).all()
+                
+                # 멤버 정보 구성
+                member_list = []
+                for member in members:
+                    if hasattr(User, 'query'):
+                        member_user = User.query.filter_by(employee_id=member.employee_id).first()
+                    else:
+                        member_user = db.session.query(User).filter(
+                            User.c.employee_id == member.employee_id
+                        ).first()
+                    
+                    if member_user:
+                        member_list.append({
+                            'employee_id': member_user.employee_id,
+                            'nickname': member_user.nickname,
+                            'email': member_user.email
+                        })
+                
+                random_groups.append({
+                    'id': group.id,
+                    'date': group.date,
+                    'time': group.time,
+                    'restaurant': group.restaurant_name,
+                    'address': group.restaurant_address,
+                    'members': member_list,
+                    'max_members': group.max_members,
+                    'current_members': len(member_list),
+                    'status': group.status
+                })
+            
+            # 3. 기존 그룹이 없으면 새로 생성 (실제 로직)
+            if not random_groups:
+                logger.info("기존 랜덤런치 그룹이 없음 - 새 그룹 생성 로직 실행")
+                
+                # 실제 사용자들 중에서 랜덤하게 선택하여 그룹 생성
+                if hasattr(User, 'query'):
+                    all_users = User.query.filter(User.employee_id != employee_id).limit(10).all()
+                else:
+                    all_users = db.session.query(User).filter(
+                        User.c.employee_id != employee_id
+                    ).limit(10).all()
+                
+                if len(all_users) >= 2:  # 최소 2명 이상의 다른 사용자가 있어야 함
+                    # 랜덤하게 2-3명 선택
+                    import random
+                    selected_users = random.sample(all_users, min(3, len(all_users)))
+                    
+                    # 새 랜덤런치 그룹 생성
+                    new_group = RandomLunchGroup(
+                        date=today,
+                        time='12:00',
+                        restaurant_name='랜덤런치 식당',
+                        restaurant_address='서울시 강남구',
+                        max_members=4,
+                        status='active',
+                        created_by=employee_id
+                    )
+                    
+                    db.session.add(new_group)
+                    db.session.flush()  # ID 생성
+                    
+                    # 호스트 추가
+                    host_member = RandomLunchMember(
+                        group_id=new_group.id,
+                        employee_id=employee_id,
+                        role='host'
+                    )
+                    db.session.add(host_member)
+                    
+                    # 선택된 사용자들 추가
+                    for selected_user in selected_users:
+                        member = RandomLunchMember(
+                            group_id=new_group.id,
+                            employee_id=selected_user.employee_id,
+                            role='member'
+                        )
+                        db.session.add(member)
+                    
+                    db.session.commit()
+                    
+                    # 생성된 그룹 정보 반환
+                    member_list = [{
+                        'employee_id': employee_id,
+                        'nickname': user.nickname,
+                        'email': user.email
+                    }]
+                    
+                    for selected_user in selected_users:
+                        member_list.append({
+                            'employee_id': selected_user.employee_id,
+                            'nickname': selected_user.nickname,
+                            'email': selected_user.email
+                        })
+                    
+                    random_groups.append({
+                        'id': new_group.id,
+                        'date': new_group.date,
+                        'time': new_group.time,
+                        'restaurant': new_group.restaurant_name,
+                        'address': new_group.restaurant_address,
+                        'members': member_list,
+                        'max_members': new_group.max_members,
+                        'current_members': len(member_list),
+                        'status': new_group.status
+                    })
+                    
+                    logger.info(f"새 랜덤런치 그룹 생성 완료: {new_group.id}")
+                else:
+                    logger.warning("랜덤런치 그룹 생성에 필요한 사용자가 부족함")
+            
+        except Exception as db_error:
+            logger.error(f"랜덤런치 그룹 조회/생성 오류: {db_error}")
+            # 데이터베이스 오류 시 빈 배열 반환
+            random_groups = []
         
         return jsonify({
             'success': True,

@@ -749,3 +749,53 @@ class RestaurantReviews(db.Model):
         self.user_id = user_id
         self.rating = rating
         self.comment = comment
+
+class RandomLunchGroup(db.Model):
+    """랜덤런치 그룹 모델 - 프로덕션 환경용"""
+    __tablename__ = 'random_lunch_group'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD 형식
+    time = db.Column(db.String(10), nullable=False)  # HH:MM 형식
+    restaurant_name = db.Column(db.String(100), nullable=False)
+    restaurant_address = db.Column(db.String(200), nullable=True)
+    max_members = db.Column(db.Integer, nullable=False, default=4)
+    status = db.Column(db.String(20), default='active')  # 'active', 'completed', 'cancelled'
+    created_by = db.Column(db.String(50), nullable=False)  # 그룹 생성자
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_random_lunch_date', 'date'),
+        db.Index('idx_random_lunch_status', 'status'),
+        db.Index('idx_random_lunch_created_by', 'created_by'),
+    )
+    
+    def __init__(self, date, time, restaurant_name, restaurant_address=None, max_members=4, status='active', created_by=None):
+        self.date = date
+        self.time = time
+        self.restaurant_name = restaurant_name
+        self.restaurant_address = restaurant_address
+        self.max_members = max_members
+        self.status = status
+        self.created_by = created_by
+
+class RandomLunchMember(db.Model):
+    """랜덤런치 그룹 멤버 모델 - 프로덕션 환경용"""
+    __tablename__ = 'random_lunch_member'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('random_lunch_group.id'), nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(20), default='member')  # 'host', 'member'
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_random_lunch_member_group', 'group_id'),
+        db.Index('idx_random_lunch_member_employee', 'employee_id'),
+        db.UniqueConstraint('group_id', 'employee_id', name='uq_random_lunch_member_group_employee'),
+    )
+    
+    def __init__(self, group_id, employee_id, role='member'):
+        self.group_id = group_id
+        self.employee_id = employee_id
+        self.role = role
