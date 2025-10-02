@@ -21,6 +21,11 @@ class EmailService:
     def _send_email(self, msg: MIMEMultipart) -> bool:
         """이메일 발송 실행"""
         try:
+            # 이메일 설정이 없으면 발송하지 않음
+            if not self.username or not self.password:
+                print("⚠️ 이메일 설정이 없어 발송을 건너뜁니다.")
+                return False
+                
             # Gmail SMTP 서버 연결
             server = smtplib.SMTP(self.smtp_server, self.smtp_port)
             server.starttls()  # TLS 암호화 활성화
@@ -154,6 +159,11 @@ class EmailService:
     def test_connection(self) -> bool:
         """SMTP 연결 테스트"""
         try:
+            # 이메일 설정이 없으면 테스트 건너뜀
+            if not self.username or not self.password:
+                print("⚠️ 이메일 설정이 없어 연결 테스트를 건너뜁니다.")
+                return False
+                
             if self.use_tls:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()

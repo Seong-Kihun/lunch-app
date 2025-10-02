@@ -24,8 +24,8 @@ class AuthConfig:
     MAIL_SERVER = 'smtp.gmail.com'  # Gmail 서버
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = get_env_var('MAIL_USERNAME', required=True)  # 환경변수에서 로드
-    MAIL_PASSWORD = get_env_var('MAIL_PASSWORD', required=True)  # 환경변수에서 로드
+    MAIL_USERNAME = get_env_var('MAIL_USERNAME', '')  # 환경변수에서 로드
+    MAIL_PASSWORD = get_env_var('MAIL_PASSWORD', '')  # 환경변수에서 로드
     
     # 문의사항 수신 이메일 주소
     INQUIRY_EMAIL = get_env_var('INQUIRY_EMAIL', 'kihun.seong.official@gmail.com')
