@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { RENDER_SERVER_URL } from '../../config';
 import { COLORS } from '../../utils/colors';
+import unifiedApiClient from '../../services/UnifiedApiClient';
 
 // 컨텍스트
 import { useMission } from '../../contexts/MissionContext';
@@ -38,16 +38,27 @@ export default function DangolPotContainerScreen({ navigation, route }) {
     // MissionContext 사용
     const { handleActionCompletion } = useMission();
 
-    useFocusEffect(useCallback(() => {
+    useFocusEffect(useCallback(async () => {
         setIsLoading(true);
-        Promise.all([
-            fetch(`${RENDER_SERVER_URL}/dev/my_dangolpots/${currentUser?.employee_id || '1'}`).then(res => res.json()),
-            fetch(`${RENDER_SERVER_URL}/dangolpots`).then(res => res.json())
-        ]).then(([myPotsData, allPotsData]) => {
-            if(Array.isArray(myPotsData)) setMyPots(myPotsData);
-            if(Array.isArray(allPotsData)) setAllPots(allPotsData);
-        }).catch(console.error).finally(() => setIsLoading(false));
-    }, []));
+        try {
+            // 통합 API 클라이언트 사용 (근본적 해결책)
+            const [myPotsResponse, allPotsResponse] = await Promise.all([
+                unifiedApiClient.get(`/dev/my_dangolpots/${currentUser?.employee_id || '1'}`),
+                unifiedApiClient.get('/dangolpots')
+            ]);
+            
+            if (myPotsResponse.success && Array.isArray(myPotsResponse.dangolpots)) {
+                setMyPots(myPotsResponse.dangolpots);
+            }
+            if (allPotsResponse.success && Array.isArray(allPotsResponse.dangolpots)) {
+                setAllPots(allPotsResponse.dangolpots);
+            }
+        } catch (error) {
+            console.error('❌ [DangolPotContainerScreen] API 호출 실패:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentUser?.employee_id]));
 
     const renderPotItem = ({ item }) => {
         const currentUserId = global.currentUser?.employee_id || '1';
