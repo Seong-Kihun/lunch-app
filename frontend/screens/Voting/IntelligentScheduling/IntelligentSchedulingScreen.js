@@ -39,7 +39,7 @@ export default function IntelligentSchedulingScreen({ navigation, currentColors,
     const fetchIntelligentSuggestions = async () => {
         try {
             setLoading(true);
-            const response = await appService./voting/intelligent-suggestions?employee_id=${currentUser?.employee_id || '1'});
+            const response = await appService.get(`/voting/intelligent-suggestions?employee_id=${currentUser?.employee_id || `)'1'});
             const data = await response.json();
             if (response.ok && Array.isArray(data)) {
                 setSuggestions(data);
@@ -61,8 +61,8 @@ export default function IntelligentSchedulingScreen({ navigation, currentColors,
 
         try {
             setVoting(true);
-            const response = await appService./voting/vote, {
-                method: 'POST',
+            const response = await appService.get(`/voting/vote, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     suggestion_id: suggestionId,

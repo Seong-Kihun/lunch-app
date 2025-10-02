@@ -52,7 +52,7 @@ import appService from '../services/AppService'const SearchUsersScreen = ({ navi
         setIsLoading(true);
         try {
             // 가상 유저 검색 API 사용
-            const response = await appService./dev/users);
+            const response = await appService.get(`/dev/users);
             if (response.ok) {
                 const allUsers = await response.json();
                 // 검색어로 필터링
@@ -65,10 +65,10 @@ import appService from '../services/AppService'const SearchUsersScreen = ({ navi
                     filtered.map(async (user) => {
                         try {
                             // 실제 유저 프로필 API에서 상세 정보 가져오기
-                            const response = await appService./users/${user.employee_id});
+                            const response = await appService.get(`/users/${user.employee_id}`);
                             if (response.ok) {
                                 const profileData = await response.json();
-                                console.log(`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
+                                console.log(`)`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
                                 // 기존 기본 정보와 프로필 정보 병합
                                 return {
                                     ...user,
@@ -112,7 +112,7 @@ import appService from '../services/AppService'const SearchUsersScreen = ({ navi
         setIsLoading(true);
         try {
             // 가상 유저 검색 API 사용
-            const response = await appService./dev/users);
+            const response = await appService.get(`/dev/users);
             if (response.ok) {
                 const allUsers = await response.json();
                 // 검색어로 필터링
@@ -125,10 +125,10 @@ import appService from '../services/AppService'const SearchUsersScreen = ({ navi
                     filtered.map(async (user) => {
                         try {
                             // 실제 유저 프로필 API에서 상세 정보 가져오기
-                            const profileResponse = await appService./users/${user.employee_id});
+                            const profileResponse = await appService.get(`/users/${user.employee_id}`);
                             if (profileResponse.ok) {
                                 const profileData = await profileResponse.json();
-                                console.log(`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
+                                console.log(`)`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
                                 // 기존 기본 정보와 프로필 정보 병합
                                 return {
                                     ...user,
@@ -166,8 +166,8 @@ import appService from '../services/AppService'const SearchUsersScreen = ({ navi
                 friend_id: userId
             });
             
-            const response = await appService./friends/add, {
-                method: 'POST',
+            const response = await appService.get(`/friends/add, {
+                method: `)'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${global.myToken || 'dev-token'}`

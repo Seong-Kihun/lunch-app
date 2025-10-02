@@ -77,8 +77,8 @@ const InquiryScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      const response = await appService./api/inquiries, {
-        method: 'POST',
+      const response = await appService.get(`/api/inquiries, {
+        method: `)'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),

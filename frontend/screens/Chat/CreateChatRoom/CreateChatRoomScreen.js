@@ -43,9 +43,9 @@ const CreateChatRoomScreen = ({ navigation }) => {
             
             // 개발 환경에서는 인증 없이 진행
             // 친구 목록 또는 동료 목록을 가져오는 API 호출
-            const response = await appService./dev/friends/${currentUserId}, {
+            const response = await appService.get(`/dev/friends/${currentUserId}, {
                 headers: {
-                    'Content-Type': 'application/json'
+                    `)'Content-Type': 'application/json'
                 }
             });
             if (response.ok) {
@@ -92,8 +92,8 @@ const CreateChatRoomScreen = ({ navigation }) => {
             
             const memberIds = selectedMembers.map(member => member.employee_id);
             
-            const response = await appService./dev/chat/create, {
-                method: 'POST',
+            const response = await appService.get(`/dev/chat/create, {
+                method: `)'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },

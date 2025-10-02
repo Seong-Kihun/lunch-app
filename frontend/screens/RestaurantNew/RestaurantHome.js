@@ -112,10 +112,10 @@ const RestaurantHome = ({ navigation }) => {
       
       params.append('limit', '1000'); // 모든 식당을 가져오기 위해 큰 값 설정
 
-      const response = await appService./dev/api/v2/restaurants?${params});
+      const response = await appService.get(`/dev/api/v2/restaurants?${params});
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`)`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -147,7 +147,7 @@ const RestaurantHome = ({ navigation }) => {
   // 카테고리 목록 로드
   const loadCategories = async () => {
     try {
-      const response = await appService./api/v2/restaurants/categories);
+      const response = await appService.get(`/api/v2/restaurants/categories);
       
       if (response.ok) {
         const data = await response.json();
@@ -156,7 +156,7 @@ const RestaurantHome = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('카테고리 로드 실패:', error);
+      console.error(`)'카테고리 로드 실패:', error);
     }
   };
 

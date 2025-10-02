@@ -29,8 +29,8 @@ export default function EditDangolPotScreen({ route, navigation, currentColors, 
         }
 
         try {
-            const response = await appService./dangolpots/${potData.id}, {
-                method: 'PUT',
+            const response = await appService.get(`/dangolpots/${potData.id}, {
+                method: `)'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: name.trim(),

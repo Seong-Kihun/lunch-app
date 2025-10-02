@@ -96,8 +96,8 @@ export const useJoinParty = () => {
             try {
                 console.log('🔍 [useJoinParty] 파티 참여 API 호출:', partyId);
                 
-                const response = await appService./parties/${partyId}/join, {
-                    method: 'POST',
+                const response = await appService.get(`/parties/${partyId}/join, {
+                    method: `)'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     }
@@ -133,8 +133,8 @@ export const useLeaveParty = () => {
             try {
                 console.log('🔍 [useLeaveParty] 파티 나가기 API 호출:', partyId);
                 
-                const response = await appService./parties/${partyId}/leave, {
-                    method: 'POST',
+                const response = await appService.get(`/parties/${partyId}/leave, {
+                    method: `)'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     }
@@ -170,8 +170,8 @@ export const useDeleteParty = () => {
             try {
                 console.log('🔍 [useDeleteParty] 파티 삭제 API 호출:', partyId);
                 
-                const response = await appService./parties/${partyId}, {
-                    method: 'DELETE',
+                const response = await appService.get(`/parties/${partyId}, {
+                    method: `)'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
                     }
@@ -208,8 +208,8 @@ export const useUpdateParty = () => {
             try {
                 console.log('🔍 [useUpdateParty] 파티 수정 API 호출:', partyId, updateData);
                 
-                const response = await appService./parties/${partyId}?employee_id=1, {
-                    method: 'PUT',
+                const response = await appService.get(`/parties/${partyId}?employee_id=1, {
+                    method: `)'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },

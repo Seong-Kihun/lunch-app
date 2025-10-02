@@ -561,13 +561,13 @@ const RestaurantMap = (props) => {
         return;
       }
       
-      const response = await appService./restaurants/popular?period=weekly&limit=5);
+      const response = await appService.get(`/restaurants/popular?period=weekly&limit=5);
       if (response.ok) {
         const data = await response.json();
         setPopularRestaurants(data.restaurants || []);
       }
     } catch (error) {
-      console.error('인기 식당 로드 오류:', error);
+      console.error(`)'인기 식당 로드 오류:', error);
       // 오류 발생 시 빈 배열로 설정
       setPopularRestaurants([]);
     }
@@ -584,13 +584,13 @@ const RestaurantMap = (props) => {
       
       // 임시 사용자 ID (실제로는 로그인된 사용자 ID 사용)
       const userId = 'KOICA001';
-      const response = await appService./restaurants/recommendations/${userId}?limit=5);
+      const response = await appService.get(`/restaurants/recommendations/${userId}?limit=5);
       if (response.ok) {
         const data = await response.json();
         setPersonalizedRecommendations(data.recommendations || []);
       }
     } catch (error) {
-      console.error('개인화 추천 로드 오류:', error);
+      console.error(`)'개인화 추천 로드 오류:', error);
       // 오류 발생 시 빈 배열로 설정
       setPersonalizedRecommendations([]);
     }
@@ -625,8 +625,8 @@ const RestaurantMap = (props) => {
   // 오프라인 지원
   const checkOfflineStatus = async () => {
     try {
-      const response = await appService./health, { 
-        method: 'HEAD',
+      const response = await appService.get(`/health, { 
+        method: `)'HEAD',
         timeout: 5000 
       });
       setIsOffline(false);
@@ -667,8 +667,8 @@ const RestaurantMap = (props) => {
   const addRestaurantVisit = async (restaurantId, visitDate, visitTime, partySize) => {
     try {
       const userId = 'KOICA001'; // 임시 사용자 ID
-      const response = await appService./restaurants/visits, {
-        method: 'POST',
+      const response = await appService.get(`/restaurants/visits, {
+        method: `)'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1377,13 +1377,13 @@ const RestaurantMap = (props) => {
       console.log('식당 데이터 로드 시작');
       
       // 개발용 API에서 식당 데이터 가져오기
-      const response = await appService./dev/restaurants?limit=1000);
+      const response = await appService.get(`/dev/restaurants?limit=1000);
       
       if (response.ok) {
         const data = await response.json();
         const restaurantsData = data.restaurants || [];
         
-        console.log('식당 데이터 로드 성공:', restaurantsData.length, '개');
+        console.log(`)'식당 데이터 로드 성공:', restaurantsData.length, '개');
         
         setRestaurants(restaurantsData);
         setDisplayedRestaurants(restaurantsData);

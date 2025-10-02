@@ -169,9 +169,9 @@ export default function ChatRoomScreen({ route, navigation }) {
         try {
             // 개발 환경에서는 인증 없이 진행
             // 채팅방 정보 로드 - 개발용 API 사용
-            const response = await appService./dev/chat/room/members/${chatType}/${chatId}, {
+            const response = await appService.get(`/dev/chat/room/members/${chatType}/${chatId}, {
                 headers: {
-                    'Content-Type': 'application/json'
+                    `)'Content-Type': 'application/json'
                 }
             });
             if (response.ok) {
@@ -191,9 +191,9 @@ export default function ChatRoomScreen({ route, navigation }) {
         try {
             // 개발 환경에서는 인증 없이 진행
             // 메시지 로드 - 개발용 API 사용
-            const response = await appService./dev/chat/messages/${chatType}/${chatId}, {
+            const response = await appService.get(`/dev/chat/messages/${chatType}/${chatId}, {
                 headers: {
-                    'Content-Type': 'application/json'
+                    `)'Content-Type': 'application/json'
                 }
             });
             if (response.ok) {
@@ -236,8 +236,8 @@ export default function ChatRoomScreen({ route, navigation }) {
 
             console.log('📤 메시지 전송:', messageData);
 
-            const response = await appService./dev/chat/messages, {
-                method: 'POST',
+            const response = await appService.get(`/dev/chat/messages, {
+                method: `)'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },

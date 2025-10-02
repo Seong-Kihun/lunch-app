@@ -106,7 +106,7 @@ const RankingScreen = ({ navigation }) => {
                 }
             } else {
                 // 주간/월간/올타임 랭킹 API 호출
-                const response = await appService./api/rankings/${activeTab});
+                const response = await appService.get(`/api/rankings/${activeTab});
                 if (response.ok) {
                     const result = await response.json();
                     data = result.rankings || [];
@@ -115,7 +115,7 @@ const RankingScreen = ({ navigation }) => {
             
             // API 데이터가 없으면 빈 배열로 설정
             if (data.length === 0) {
-                console.log('API 데이터가 없어서 빈 랭킹 표시');
+                console.log(`)'API 데이터가 없어서 빈 랭킹 표시');
                 data = [];
             }
 

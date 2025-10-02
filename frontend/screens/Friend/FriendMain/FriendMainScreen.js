@@ -103,10 +103,10 @@ const FriendMainScreen = ({ navigation, route }) => {
             if (global.myEmployeeId) {
                 console.log('🔍 [친구] 프로필 조회 시작:', global.myEmployeeId);
                 
-                const profileResponse = await appService./users/${global.myEmployeeId});
+                const profileResponse = await appService.get(`/users/${global.myEmployeeId});
                 if (profileResponse.ok) {
                     const profileData = await profileResponse.json();
-                    console.log('🔍 [친구] 프로필 조회 성공:', profileData);
+                    console.log(`)'🔍 [친구] 프로필 조회 성공:', profileData);
                     setProfile(profileData);
                 } else {
                     console.error('🔍 [친구] 프로필 API 응답 오류:', profileResponse.status);
@@ -258,8 +258,8 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await appService./friends/add, {
-                method: 'POST',
+            const response = await appService.get(`/friends/add, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: global.myEmployeeId || '1',
@@ -303,8 +303,8 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await appService./friends/remove, {
-                method: 'POST',
+            const response = await appService.get(`/friends/remove, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: global.myEmployeeId || '1',

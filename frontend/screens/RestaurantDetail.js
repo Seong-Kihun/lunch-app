@@ -46,7 +46,7 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
   const loadUserActions = async () => {
     try {
       // 오찬 추천 상태 불러오기
-      const recommendResponse = await appService./dev/api/v2/restaurants/${restaurant.id}/recommend/status?user_id=KOICA001);
+      const recommendResponse = await appService.get(`/dev/api/v2/restaurants/${restaurant.id}/recommend/status?user_id=KOICA001);
       if (recommendResponse.ok) {
         const recommendResult = await recommendResponse.json();
         if (recommendResult.success) {
@@ -56,7 +56,7 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
       }
       
       // 저장 상태 불러오기
-      const savedResponse = await appService./dev/api/v2/restaurants/${restaurant.id}/save/status?user_id=KOICA001);
+      const savedResponse = await appService.get(`/dev/api/v2/restaurants/${restaurant.id}/save/status?user_id=KOICA001`);
       if (savedResponse.ok) {
         const savedResult = await savedResponse.json();
         if (savedResult.success) {
@@ -64,7 +64,7 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
         }
       }
     } catch (error) {
-      console.error('사용자 액션 로드 오류:', error);
+      console.error(`)'사용자 액션 로드 오류:', error);
     }
   };
 
@@ -415,8 +415,8 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
   // 오찬 추천 기능 (백엔드 API 사용)
   const handleLunchRecommend = async () => {
     try {
-      const response = await appService./api/v2/restaurants/${restaurant.id}/recommend, {
-        method: 'POST',
+      const response = await appService.get(`/api/v2/restaurants/${restaurant.id}/recommend, {
+        method: `)'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -608,7 +608,7 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
   // 리뷰 가져오기 (백엔드 API 사용)
   const fetchReviews = async () => {
     try {
-      const response = await appService./api/v2/restaurants/${restaurant.id}/reviews);
+      const response = await appService.get(`/api/v2/restaurants/${restaurant.id}/reviews);
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
@@ -616,7 +616,7 @@ import appService from '../services/AppService'const RestaurantDetail = ({ route
           setReviews(apiReviews);
           
           // 내 리뷰들 찾기 (여러 개일 수 있음)
-          const myReviews = apiReviews.filter(review => review.user_id === 'KOICA001');
+          const myReviews = apiReviews.filter(review => review.user_id === `)'KOICA001');
           setMyReview(myReviews.length > 0 ? myReviews[0] : null); // 첫 번째 리뷰를 대표로 표시
           
           // 초기 정렬 설정 (최신순)

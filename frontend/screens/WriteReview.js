@@ -223,8 +223,8 @@ const WriteReview = ({ route, navigation }) => {
         visit_date: visitDate.toISOString().split('T')[0] // YYYY-MM-DD 형식
       };
 
-      const response = await appService./api/v2/restaurants/${restaurant.id}/reviews, {
-        method: 'POST',
+      const response = await appService.get(`/api/v2/restaurants/${restaurant.id}/reviews, {
+        method: `)'POST',
         headers: {
           'Content-Type': 'application/json',
         },

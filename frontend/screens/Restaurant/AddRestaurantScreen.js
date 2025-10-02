@@ -28,8 +28,8 @@ export default function AddRestaurantScreen({ navigation, currentColors }) {
         }
 
         try {
-            const response = await appService./restaurants, {
-                method: 'POST',
+            const response = await appService.get(`/restaurants, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: name.trim(),

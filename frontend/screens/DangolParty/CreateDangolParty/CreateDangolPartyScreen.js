@@ -123,8 +123,8 @@ export default function CreateDangolPartyScreen({ navigation, route }) {
 
         setIsLoading(true);
         try {
-            const response = await appService./dangolpots, {
-                method: 'POST',
+            const response = await appService.get(`/dangolpots, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: title.trim(),

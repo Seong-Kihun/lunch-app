@@ -1,8 +1,8 @@
 import appService from '../services/AppService'// 포인트 획득 함수
 export const earnPoints = async (activityType, points, description = null) => {
     try {
-        const response = await appService./api/points/earn, {
-            method: 'POST',
+        const response = await appService.get(`/api/points/earn, {
+            method: `)'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 user_id: 'default_user', // TODO: Context에서 사용자 ID를 가져와야 함
@@ -29,8 +29,8 @@ export const earnPoints = async (activityType, points, description = null) => {
 // 카테고리별 포인트 획득 함수
 export const earnCategoryPoints = async (category, activityType, points) => {
     try {
-        const response = await appService./api/activities/category, {
-            method: 'POST',
+        const response = await appService.get(`/api/activities/category, {
+            method: `)'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 user_id: 'default_user', // TODO: Context에서 사용자 ID를 가져와야 함
@@ -56,12 +56,12 @@ export const earnCategoryPoints = async (category, activityType, points) => {
 // 포인트 히스토리 조회 함수
 export const getPointsHistory = async (userId) => {
     try {
-        const response = await appService./api/points/history/${userId});
+        const response = await appService.get(`/api/points/history/${userId});
         
         if (response.ok) {
             return await response.json();
         } else {
-            console.error('포인트 히스토리 조회 실패:', response.status);
+            console.error(`)'포인트 히스토리 조회 실패:', response.status);
             return null;
         }
     } catch (error) {
@@ -73,12 +73,12 @@ export const getPointsHistory = async (userId) => {
 // 내 포인트 순위 조회 함수
 export const getMyPointsRanking = async (userId) => {
     try {
-        const response = await appService./api/points/my-ranking/${userId});
+        const response = await appService.get(`/api/points/my-ranking/${userId});
         
         if (response.ok) {
             return await response.json();
         } else {
-            console.error('포인트 순위 조회 실패:', response.status);
+            console.error(`)'포인트 순위 조회 실패:', response.status);
             return null;
         }
     } catch (error) {
@@ -90,12 +90,12 @@ export const getMyPointsRanking = async (userId) => {
 // 이색 랭킹 조회 함수
 export const getSpecialRanking = async (category) => {
     try {
-        const response = await appService./api/rankings/special/${category});
+        const response = await appService.get(`/api/rankings/special/${category});
         
         if (response.ok) {
             return await response.json();
         } else {
-            console.error('이색 랭킹 조회 실패:', response.status);
+            console.error(`)'이색 랭킹 조회 실패:', response.status);
             return null;
         }
     } catch (error) {
@@ -107,12 +107,12 @@ export const getSpecialRanking = async (category) => {
 // 배지 목록 조회 함수
 export const getBadges = async () => {
     try {
-        const response = await appService./api/badges);
+        const response = await appService.get(`/api/badges);
         
         if (response.ok) {
             return await response.json();
         } else {
-            console.error('배지 목록 조회 실패:', response.status);
+            console.error(`)'배지 목록 조회 실패:', response.status);
             return null;
         }
     } catch (error) {
@@ -124,12 +124,12 @@ export const getBadges = async () => {
 // 내 배지 목록 조회 함수
 export const getMyBadges = async (userId) => {
     try {
-        const response = await appService./api/badges/my-badges/${userId});
+        const response = await appService.get(`/api/badges/my-badges/${userId});
         
         if (response.ok) {
             return await response.json();
         } else {
-            console.error('내 배지 조회 실패:', response.status);
+            console.error(`)'내 배지 조회 실패:', response.status);
             return null;
         }
     } catch (error) {
@@ -141,8 +141,8 @@ export const getMyBadges = async (userId) => {
 // 배지 획득 조건 확인 함수
 export const checkBadgeEarned = async (badgeType) => {
     try {
-        const response = await appService./api/badges/check, {
-            method: 'POST',
+        const response = await appService.get(`/api/badges/check, {
+            method: `)'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 user_id: 'default_user', // TODO: Context에서 사용자 ID를 가져와야 함

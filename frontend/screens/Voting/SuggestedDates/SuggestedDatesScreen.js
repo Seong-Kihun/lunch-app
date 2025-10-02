@@ -39,7 +39,7 @@ export default function SuggestedDatesScreen({ navigation, currentColors, curren
     const fetchSuggestedDates = async () => {
         try {
             setLoading(true);
-            const response = await appService./voting/suggested-dates?employee_id=${currentUser?.employee_id || '1'});
+            const response = await appService.get(`/voting/suggested-dates?employee_id=${currentUser?.employee_id || `)'1'});
             const data = await response.json();
             if (response.ok && Array.isArray(data)) {
                 setSuggestedDates(data);
@@ -61,8 +61,8 @@ export default function SuggestedDatesScreen({ navigation, currentColors, curren
 
         try {
             setVoting(true);
-            const response = await appService./voting/vote-date, {
-                method: 'POST',
+            const response = await appService.get(`/voting/vote-date, {
+                method: `)'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     date_id: dateId,

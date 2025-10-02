@@ -182,7 +182,7 @@ const RestaurantRequestModal = ({ visible, onClose, onSubmit, currentUser, prefi
       // 네트워크 상태 확인은 실제 요청 시도 시 오류로 처리
 
       // 서버 URL 사용
-      const response = await appService./restaurants?query=${encodeURIComponent(query)}&per_page=100);
+      const response = await appService.get(`/restaurants?query=${encodeURIComponent(query)}&per_page=100`);
       
       if (response.ok) {
         const data = await response.json();
