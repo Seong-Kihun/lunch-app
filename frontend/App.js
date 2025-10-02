@@ -86,8 +86,7 @@ import PhotoGallery from './screens/PhotoGallery';
 // 테마 Import
 import { COLORS } from './theme/colors';
 
-// 설정 Import
-import { RENDER_SERVER_URL } from './config';
+// 설정 Import (RENDER_SERVER_URL 제거됨 - unifiedApiClient 사용)
 
 // 온보딩 유틸리티 Import
 import { checkOnboardingStatus, setOnboardingCompleted } from './utils/onboardingUtils';
@@ -97,8 +96,7 @@ import { initializeNetwork, getServerURL } from './config/networkConfig';
 import NetworkStatus from './components/NetworkStatus';
 // 오프라인 모드 제거 - 프로덕션 환경 최적화
 
-// API_BASE_URL과 API 호출 함수 정의
-const API_BASE_URL = RENDER_SERVER_URL;
+// API 호출은 unifiedApiClient를 사용합니다
 
 
 

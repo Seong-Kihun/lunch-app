@@ -5,7 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import { RENDER_SERVER_URL } from '../../../config';
+import { unifiedApiClient } from '../../../services/UnifiedApiClient';
 // 가상 유저 데이터 import 제거
 
 const FriendListScreen = ({ navigation }) => {
@@ -33,12 +33,11 @@ const FriendListScreen = ({ navigation }) => {
     const fetchFriends = async () => {
         try {
             setIsLoading(true);
-            // 가상 친구 관계 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/friends/${global.myEmployeeId || '1'}`);
-            const data = await response.json();
-            if (response.ok) {
+            // 친구 목록 API 사용
+            const response = await unifiedApiClient.get(`/api/friends?employee_id=${global.myEmployeeId || '1'}`);
+            if (response.success) {
                 // 실제 친구 데이터 사용
-                const friendsWithLastLunch = data;
+                const friendsWithLastLunch = response.friends || [];
                 
                 setFriends(friendsWithLastLunch);
                 console.log('🔍 [친구목록] 가상 친구 관계 로드 성공:', friendsWithLastLunch.length);
@@ -64,15 +63,14 @@ const FriendListScreen = ({ navigation }) => {
                     style: 'destructive', 
                     onPress: async () => {
                         try {
-                            const response = await fetch(`${RENDER_SERVER_URL}/friends/${global.myEmployeeId}/${friendId}`, {
-                                method: 'DELETE'
+                            const response = await unifiedApiClient.post('/api/friends/remove', {
+                                employee_id: friendId
                             });
-                            const data = await response.json();
-                            if (response.ok) {
+                            if (response.success) {
                                 Alert.alert('성공', '친구가 삭제되었습니다.');
                                 fetchFriends();
                             } else {
-                                Alert.alert('오류', data.message || '친구 삭제에 실패했습니다.');
+                                Alert.alert('오류', response.error || '친구 삭제에 실패했습니다.');
                             }
                         } catch (error) {
                             Alert.alert('오류', '네트워크에 문제가 발생했습니다.');

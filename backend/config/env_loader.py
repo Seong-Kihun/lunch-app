@@ -107,9 +107,9 @@ def load_environment_variables():
         if not os.getenv(var_name):
             if default_value is not None:
                 os.environ[var_name] = default_value
-                print(f"⚠️ {var_name} 환경변수가 설정되지 않아 기본값을 사용합니다.")
+                print(f"[WARNING] {var_name} 환경변수가 설정되지 않아 기본값을 사용합니다.")
             else:
-                print(f"ℹ️ {var_name} 환경변수가 설정되지 않았습니다. (해당 기능은 비활성화됩니다)")
+                print(f"[INFO] {var_name} 환경변수가 설정되지 않았습니다. (해당 기능은 비활성화됩니다)")
 
     # 개발 환경 확인
     if is_development:
