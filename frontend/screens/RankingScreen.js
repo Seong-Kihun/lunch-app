@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSpecialRanking, getMyPointsRanking } from '../utils/pointsManager';
-import appService from '../services/AppService'// 가상 유저 데이터 import 제거
+import appService from '../services/AppService'// 가상 유저 데이터;
+import제거
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 

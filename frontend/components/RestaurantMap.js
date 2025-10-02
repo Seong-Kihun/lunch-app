@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import appService from '../services/AppService'import {
+import appService from '../services/AppService';
+import{
   View,
   Text,
   StyleSheet,

@@ -12,7 +12,8 @@ import {
     Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import appService from '../services/AppService'import { getAccessToken } from '../../../utils/secureStorage';
+import appService from '../services/AppService';
+import{ getAccessToken } from '../../../utils/secureStorage';
 import COLORS from '../../../components/common/Colors';
 import basicStyles from '../../../components/common/BasicStyles';
 

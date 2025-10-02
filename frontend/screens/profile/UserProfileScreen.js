@@ -6,11 +6,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../utils/commonStyles';
-import appService from '../services/AppService'import { createFormStyles } from '../../components/common/FormStyles';
+import appService from '../services/AppService';
+import{ createFormStyles } from '../../components/common/FormStyles';
 // 가상 유저 데이터 import 제거
 
-// 새로운 컴포넌트들 import
-import UserProfileHeader from '../../components/profile/UserProfileHeader';
+// 새로운 컴포넌트들;
+import
+importUserProfileHeader from '../../components/profile/UserProfileHeader';
 import UserActivitySection from '../../components/profile/UserActivitySection';
 import UserInfoSection from '../../components/profile/UserInfoSection';
 import UserActionButtons from '../../components/profile/UserActionButtons';

@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
-import appService from '../services/AppService'import { useAuth } from '../contexts/AuthContext';
+import appService from '../services/AppService';
+import{ useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 

@@ -22,7 +22,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 // 공통 요소들 import
 import { COLORS } from '../../../utils/colors';
-import appService from '../services/AppService'import FormComponents, {
+import appService from '../services/AppService';
+importFormComponents, {
     FormSection,
     FormInput,
     FormSelect,

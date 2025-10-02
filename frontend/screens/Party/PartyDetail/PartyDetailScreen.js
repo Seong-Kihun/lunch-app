@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Saf
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import appService from '../services/AppService'import { COLORS } from '../../../utils/colors';
+import appService from '../services/AppService';
+import{ COLORS } from '../../../utils/colors';
 import { useMission } from '../../../contexts/MissionContext';
 
 // 안전한 내비게이션 함수

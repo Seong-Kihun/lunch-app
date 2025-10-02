@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import appService from '../services/AppService'import { useMission } from '../contexts/MissionContext';
+import appService from '../services/AppService';
+import { useMission } from '../contexts/MissionContext';
 import { useSchedule } from '../contexts/ScheduleContext';
 
 const RestaurantRequestModal = ({ visible, onClose, onSubmit, currentUser, prefilledRestaurant, hideAddOption = false }) => {

@@ -6,8 +6,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import appService from '../services/AppService'// 가상 유저 데이터 import 제거
-import { apiClient } from '../../../utils/apiClient';
+import appService from '../services/AppService'// 가상 유저 데이터;
+import 제거
+import{ apiClient } from '../../../utils/apiClient';
 
 const FriendMainScreen = ({ navigation, route }) => {
     const [friends, setFriends] = useState([]);

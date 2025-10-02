@@ -23,7 +23,8 @@ import SearchBar from '../../components/RestaurantNew/SearchBar';
 import FilterChips from '../../components/RestaurantNew/FilterChips';
 
 // 유틸리티
-import appService from '../services/AppService'import { COLORS } from '../../utils/colors';
+import appService from '../services/AppService';
+import{ COLORS } from '../../utils/colors';
 
 const { width } = Dimensions.get('window');
 
