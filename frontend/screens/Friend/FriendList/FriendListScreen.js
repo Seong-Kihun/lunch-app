@@ -5,7 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import appService from '../services/AppService'// 가상 유저 데이터 import 제거
+import appService from '../services/AppService'; // 가상 유저 데이터 import 제거
 
 const FriendListScreen = ({ navigation }) => {
     const [friends, setFriends] = useState([]);
@@ -62,7 +62,7 @@ const FriendListScreen = ({ navigation }) => {
                     style: 'destructive', 
                     onPress: async () => {
                         try {
-                            const response = await appService.'/api/friends/remove', {
+                            const response = await appService.post('/api/friends/remove', {
                                 employee_id: friendId
                             });
                             if (response.success) {
