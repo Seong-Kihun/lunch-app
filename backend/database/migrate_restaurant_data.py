@@ -192,6 +192,7 @@ def main():
 
 if __name__ == "__main__":
     # Flask 앱 컨텍스트에서 실행
-    from app import app
+    from backend.app.app_factory import create_app
+    app = create_app()
     with app.app_context():
         main()

@@ -302,7 +302,8 @@ class ChallengeSystem:
     def check_challenge_progress(user_id: str, challenge: Challenge) -> Tuple[int, bool]:
         """챌린지 진행률 확인"""
         try:
-            from app import UserActivity, db
+            from backend.models.app_models import UserActivity
+            from backend.app.extensions import db
             
             # 챌린지 기간 내 활동 확인
             activities = UserActivity.query.filter(

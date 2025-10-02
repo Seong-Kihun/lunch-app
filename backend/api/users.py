@@ -11,10 +11,7 @@ from auth.middleware import check_authentication
 # 사용자 Blueprint 생성
 api_users_bp = Blueprint('api_users', __name__, url_prefix='/users')
 
-# 인증 미들웨어 적용
-@api_users_bp.before_request
-def _users_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @api_users_bp.route('/profile', methods=['GET'])
 @log_api_call

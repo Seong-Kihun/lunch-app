@@ -14,35 +14,7 @@ logger = logging.getLogger(__name__)
 # Blueprint 생성
 proposals_bp = Blueprint('proposals', __name__, url_prefix='/proposals')
 
-# 인증 미들웨어 적용
-@proposals_bp.before_request
-def _proposals_guard():
-    from flask import request, jsonify
-    import os
-    
-    # 개발 환경에서는 개발용 토큰으로 인증 우회
-    if os.getenv('FLASK_ENV') == 'development':
-        auth_header = request.headers.get('Authorization')
-        if auth_header and 'dev-token-12345' in auth_header:
-            # 개발용 사용자 설정
-            from auth.models import User
-            user = User.query.filter_by(employee_id='1').first()
-            if not user:
-                user = User(
-                    employee_id='1',
-                    email='dev@example.com',
-                    nickname='개발자',
-                    is_active=True
-                )
-                from auth.models import db
-                db.session.add(user)
-                db.session.commit()
-            
-            request.current_user = user
-            return None
-    
-    # 일반 인증 확인
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @proposals_bp.route('/mine', methods=['GET'])
 def get_my_proposals():
@@ -50,7 +22,7 @@ def get_my_proposals():
     내가 보낸 제안과 받은 제안을 조회하는 API
     """
     try:
-        from app import app
+        from flask import current_app as app
         from models.app_models import db, LunchProposal, ProposalAcceptance
         
         employee_id = request.args.get('employee_id')
@@ -116,7 +88,7 @@ def create_proposal():
     새로운 제안을 생성하는 API
     """
     try:
-        from app import app
+        from flask import current_app as app
         from models.app_models import db, LunchProposal
         from datetime import datetime, timedelta
         
@@ -181,7 +153,7 @@ def cancel_proposal(proposal_id):
     제안을 취소하는 API
     """
     try:
-        from app import app
+        from flask import current_app as app
         from models.app_models import db, LunchProposal
         
         data = request.get_json()
@@ -230,7 +202,7 @@ def accept_proposal(proposal_id):
     제안을 수락하는 API
     """
     try:
-        from app import app
+        from flask import current_app as app
         from models.app_models import db, LunchProposal, ProposalAcceptance
         
         data = request.get_json()
@@ -312,7 +284,7 @@ def reject_proposal(proposal_id):
     제안을 거절하는 API
     """
     try:
-        from app import app
+        from flask import current_app as app
         from models.app_models import db, LunchProposal
         
         data = request.get_json()

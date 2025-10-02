@@ -49,7 +49,7 @@ class FriendInviteSystem:
             expires_at = datetime.utcnow() + timedelta(days=7)
             
             # 초대 정보 저장
-            from app import FriendInvite
+            from backend.models.app_models import FriendInvite
             
             invite = FriendInvite(
                 invite_id=hashlib.md5(f"{inviter_id}_{datetime.utcnow()}".encode()).hexdigest(),

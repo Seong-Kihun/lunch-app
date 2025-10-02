@@ -113,7 +113,8 @@ class BadgeSystem:
     def check_badge_earned(user_id: str, badge: Badge) -> Tuple[bool, int]:
         """배지 획득 여부 및 진행률 확인"""
         try:
-            from app import UserActivity, db
+            from backend.models.app_models import UserActivity
+            from backend.app.extensions import db
             
             # 사용자 활동 기록 조회
             activities = UserActivity.query.filter_by(user_id=user_id).all()
@@ -180,7 +181,8 @@ class BadgeSystem:
     def get_user_badges(user_id: str) -> List[Dict]:
         """사용자의 배지 정보 반환"""
         try:
-            from app import UserBadge, db
+            from backend.models.app_models import UserBadge
+            from backend.app.extensions import db
             
             # 사용자가 획득한 배지 조회
             user_badges = UserBadge.query.filter_by(user_id=user_id).all()
@@ -221,7 +223,8 @@ class BadgeSystem:
     def award_badge(user_id: str, badge_id: str) -> bool:
         """배지 지급"""
         try:
-            from app import UserBadge, db
+            from backend.models.app_models import UserBadge
+            from backend.app.extensions import db
             
             # 이미 획득한 배지인지 확인
             existing_badge = UserBadge.query.filter_by(

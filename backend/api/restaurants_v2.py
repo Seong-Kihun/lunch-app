@@ -18,35 +18,7 @@ logger = logging.getLogger(__name__)
 # Blueprint 생성
 restaurants_v2_bp = Blueprint('restaurants_v2', __name__, url_prefix='/api/v2/restaurants')
 
-# 인증 미들웨어 적용
-@restaurants_v2_bp.before_request
-def _restaurants_v2_guard():
-    from flask import request, jsonify
-    import os
-    
-    # 개발 환경에서는 개발용 토큰으로 인증 우회
-    if os.getenv('FLASK_ENV') == 'development':
-        auth_header = request.headers.get('Authorization')
-        if auth_header and 'dev-token-12345' in auth_header:
-            # 개발용 사용자 설정
-            from auth.models import User
-            user = User.query.filter_by(employee_id='1').first()
-            if not user:
-                user = User(
-                    employee_id='1',
-                    email='dev@example.com',
-                    nickname='개발자',
-                    is_active=True
-                )
-                from auth.models import db
-                db.session.add(user)
-                db.session.commit()
-            
-            request.current_user = user
-            return None
-    
-    # 일반 인증 확인
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @restaurants_v2_bp.route('/', methods=['GET'])
 def get_restaurants():

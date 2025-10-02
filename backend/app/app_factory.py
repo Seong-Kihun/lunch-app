@@ -306,12 +306,8 @@ def create_app(config_name=None):
         print("[FALLBACK] 개별 Blueprint 등록으로 폴백합니다.")
 
         # 폴백: 핵심 Blueprint만 등록
-    try:
-        from backend.routes.health import health_bp
-        app.register_blueprint(health_bp)
-        print("[SUCCESS] 헬스체크 Blueprint 등록 성공 (폴백)")
-    except Exception as fallback_e:
-        print(f"[ERROR] 폴백 Blueprint 등록 실패: {fallback_e}")
+        # health_bp는 UnifiedBlueprintManager에 포함됨
+        print("[FALLBACK] 통합 Blueprint 등록 시스템을 사용합니다.")
 
     return app
 

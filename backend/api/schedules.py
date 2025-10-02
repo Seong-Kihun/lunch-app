@@ -27,10 +27,7 @@ logger = logging.getLogger(__name__)
 # Blueprint 생성
 schedules_bp = Blueprint('schedules', __name__)
 
-# 인증 미들웨어 적용
-@schedules_bp.before_request
-def _schedules_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @schedules_bp.route('/', methods=['GET'])
 def get_schedules():

@@ -102,7 +102,7 @@ def setup_periodic_tasks(celery_app):
 def generate_daily_recommendations_task():
     """매일 자정에 일일 추천 생성 (APScheduler 대체)"""
     try:
-        from app import generate_daily_recommendations
+        from backend.services.recommendation_service import generate_daily_recommendations
         generate_daily_recommendations()
         print("✅ 일일 추천 생성 완료")
     except Exception as e:
@@ -111,7 +111,7 @@ def generate_daily_recommendations_task():
 def generate_recommendation_cache_task():
     """추천 그룹 캐시 생성을 백그라운드에서 처리"""
     try:
-        from app import generate_recommendation_cache
+        from backend.services.recommendation_service import generate_recommendation_cache
         result = generate_recommendation_cache()
         return f"추천 캐시 생성 완료: {result}"
     except Exception as e:
@@ -120,7 +120,7 @@ def generate_recommendation_cache_task():
 def cleanup_expired_data_task():
     """만료된 데이터 정리"""
     try:
-        from app import cleanup_expired_data
+        from backend.services.maintenance_service import cleanup_expired_data
         result = cleanup_expired_data()
         return f"데이터 정리 완료: {result}"
     except Exception as e:
@@ -129,7 +129,7 @@ def cleanup_expired_data_task():
 def prepare_lunch_recommendations_task():
     """점심 추천 알림 준비"""
     try:
-        from app import prepare_lunch_recommendations
+        from backend.services.recommendation_service import prepare_lunch_recommendations
         result = prepare_lunch_recommendations()
         return f"점심 추천 준비 완료: {result}"
     except Exception as e:
@@ -138,7 +138,7 @@ def prepare_lunch_recommendations_task():
 def update_realtime_stats_task():
     """실시간 통계 업데이트"""
     try:
-        from app import update_realtime_stats
+        from backend.services.analytics_service import update_realtime_stats
         result = update_realtime_stats()
         return f"통계 업데이트 완료: {result}"
     except Exception as e:
@@ -147,7 +147,7 @@ def update_realtime_stats_task():
 def daily_points_settlement_task():
     """일일 포인트 정산"""
     try:
-        from app import daily_points_settlement
+        from backend.services.points_service import daily_points_settlement
         result = daily_points_settlement()
         return f"포인트 정산 완료: {result}"
     except Exception as e:

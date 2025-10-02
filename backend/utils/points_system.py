@@ -81,7 +81,9 @@ class PointsSystem:
     def earn_points(user_id: str, activity_type: str, points: int, description: str = None) -> bool:
         """포인트 획득 처리"""
         try:
-            from app import User, UserActivity, db
+            from backend.auth.models import User
+            from backend.models.app_models import UserActivity
+            from backend.app.extensions import db
             
             # 사용자 포인트 업데이트
             user = User.query.filter_by(employee_id=user_id).first()
@@ -105,7 +107,8 @@ class PointsSystem:
     def check_consecutive_activity(user_id: str, activity_type: str) -> Tuple[int, int]:
         """연속 활동 확인 및 포인트 계산"""
         try:
-            from app import UserActivity, db
+            from backend.models.app_models import UserActivity
+            from backend.app.extensions import db
             
             # 최근 30일간의 활동 기록 조회
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)

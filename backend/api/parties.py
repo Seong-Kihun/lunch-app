@@ -15,52 +15,7 @@ from backend.utils.safe_jsonify import safe_jsonify
 # 파티 Blueprint 생성
 parties_bp = Blueprint('parties', __name__, url_prefix='/parties')
 
-# 인증 미들웨어 적용
-@parties_bp.before_request
-def _parties_guard():
-    from auth.middleware import dev_auth_required
-    from flask import request, jsonify
-    import os
-    
-    # 개발 환경에서는 개발용 토큰으로 인증 우회
-    if os.getenv('FLASK_ENV') == 'development':
-        auth_header = request.headers.get('Authorization')
-        if auth_header and 'dev-token-12345' in auth_header:
-            # 개발용 사용자 설정
-            from auth.models import User
-            user = User.query.filter_by(employee_id='1').first()
-            if not user:
-                user = User(
-                    employee_id='1',
-                    email='dev@example.com',
-                    nickname='개발자',
-                    is_active=True
-                )
-                from auth.models import db
-                db.session.add(user)
-                db.session.commit()
-            
-            request.current_user = user
-            return None
-    
-    # 일반 인증 확인
-    from auth.utils import AuthUtils
-    
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return jsonify({'error': '인증이 필요합니다.'}), 401
-    
-    try:
-        token = auth_header.split(' ')[1] if auth_header.startswith('Bearer ') else auth_header
-        payload = AuthUtils.verify_jwt_token(token)
-        if not payload:
-            return jsonify({'error': '유효하지 않은 토큰입니다.'}), 401
-        
-        # 사용자 정보를 request에 저장
-        request.current_user = payload
-        return None
-    except Exception as e:
-        return jsonify({'error': '인증 처리 중 오류가 발생했습니다.', 'details': str(e)}), 401
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 # 모델 import
 from flask import current_app
@@ -347,7 +302,8 @@ def update_party(party_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 파티 조회
-        from app import Party, db
+        from backend.models.app_models import Party
+        from backend.app.extensions import db
         
         party = Party.query.get(party_id)
         if not party:

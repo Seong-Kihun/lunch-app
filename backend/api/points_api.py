@@ -53,7 +53,7 @@ def earn_points():
 def get_points_status(user_id):
     """사용자 포인트 상태 조회 API"""
     try:
-        from app import User
+        from backend.auth.models import User
         
         user = User.query.filter_by(employee_id=user_id).first()
         if not user:

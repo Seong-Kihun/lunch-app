@@ -52,6 +52,7 @@ class UnifiedBlueprintManager:
                 ('backend.api.inquiries', 'inquiries_bp', '/api', True),
                 ('backend.api.compatibility', 'compatibility_bp', '/api', True),
                 ('backend.api.clear_data', 'clear_data_bp', '/api', True),
+                ('backend.routes.health', 'health_bp', '/api', True),
             ],
             
             # 개발용 API (개발 환경에서만)

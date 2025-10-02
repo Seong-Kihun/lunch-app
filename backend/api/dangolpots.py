@@ -125,7 +125,8 @@ def get_dangolpot(pot_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 단골파티 조회
-        from app import DangolPot, DangolPotMember, db
+        from backend.models.app_models import DangolPot, DangolPotMember
+        from backend.app.extensions import db
         
         pot = DangolPot.query.get(pot_id)
         if not pot:
@@ -171,7 +172,8 @@ def update_dangolpot(pot_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 단골파티 조회
-        from app import DangolPot, db
+        from backend.models.app_models import DangolPot
+        from backend.app.extensions import db
         
         pot = DangolPot.query.get(pot_id)
         if not pot:
@@ -219,7 +221,8 @@ def join_dangolpot(pot_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 단골파티 조회
-        from app import DangolPot, DangolPotMember, db
+        from backend.models.app_models import DangolPot, DangolPotMember
+        from backend.app.extensions import db
         
         pot = DangolPot.query.get(pot_id)
         if not pot:
@@ -270,7 +273,8 @@ def delete_dangolpot(pot_id):
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 데이터베이스에서 단골파티 조회
-        from app import DangolPot, DangolPotMember, db
+        from backend.models.app_models import DangolPot, DangolPotMember
+        from backend.app.extensions import db
         
         pot = DangolPot.query.get(pot_id)
         if not pot:
@@ -312,7 +316,8 @@ def get_my_dangolpots():
             return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
         
         # 정규화된 DangolPotMember 테이블을 사용하여 조회
-        from app import DangolPot, DangolPotMember, db
+        from backend.models.app_models import DangolPot, DangolPotMember
+        from backend.app.extensions import db
         
         my_pots = DangolPot.query.join(DangolPotMember).filter(
             DangolPotMember.employee_id == employee_id
