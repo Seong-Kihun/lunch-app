@@ -1360,10 +1360,9 @@ export default function RandomLunchScreen({ navigation, route }) {
                 .map(user => user.employee_id)
                 .filter(id => id && id.trim().length > 0);
             const response = await unifiedApiClient.post('/api/proposals', {
-                    proposer_id: user.employee_id,
-                    recipient_ids: recipientIds,
-                    proposed_date: toKoreanDateString(currentDate)
-                })
+                proposer_id: user.employee_id,
+                recipient_ids: recipientIds,
+                proposed_date: toKoreanDateString(currentDate)
             });
             const data = await response.json();
             if (response.ok) {
@@ -1545,7 +1544,7 @@ export default function RandomLunchScreen({ navigation, route }) {
     const reconnectDelay = 3000; // 3초
 
     // WebSocket 연결 함수
-    const connectWebSocket = useCallback(() => {
+    const connectWebSocket = useCallback(async () => {
         try {
             // WebSocket 서버 URL (통합 API 클라이언트에서 서버 URL 가져오기)
             const serverURL = await unifiedApiClient.getServerURL();
@@ -1877,11 +1876,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                             
                             // 백엔드 API 호출하여 그룹에서 나가기
                             const response = await unifiedApiClient.post(`/parties/${group.id}/leave`, {
-                                    'Authorization': `Bearer ${global.myToken || 'dev-token'}`
-                                },
-                                body: JSON.stringify({
-                                    employee_id: global.myEmployeeId || '1'
-                                })
+                                employee_id: global.myEmployeeId || '1'
                             });
 
                             if (response.ok) {
