@@ -9,7 +9,6 @@ from typing import Optional
 from datetime import datetime
 import hashlib
 import secrets
-import bcrypt
 
 from backend.core.exceptions import ValidationError, UserDomainError
 from backend.core.value_objects.user_id import UserId
@@ -82,24 +81,29 @@ class User:
     
     @staticmethod
     def _hash_password(password: str) -> str:
-        """비밀번호 해싱"""
+        """비밀번호 해싱 (표준 라이브러리 사용)"""
         if not password:
             raise ValidationError("비밀번호는 필수입니다")
         
         if len(password) < 8:
             raise ValidationError("비밀번호는 최소 8자 이상이어야 합니다")
         
-        # BCrypt로 해싱
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-        return hashed.decode('utf-8')
+        # PBKDF2로 해싱 (표준 라이브러리)
+        salt = secrets.token_hex(16)
+        key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
+        return f"{salt}:{key.hex()}"
     
     def verify_password(self, password: str) -> bool:
         """비밀번호 검증"""
         if not self.password_hash:
             return False
         
-        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        try:
+            salt, stored_hash = self.password_hash.split(':')
+            key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
+            return key.hex() == stored_hash
+        except (ValueError, AttributeError):
+            return False
     
     def change_password(self, new_password: str) -> None:
         """비밀번호 변경"""
