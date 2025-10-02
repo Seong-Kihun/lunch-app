@@ -83,10 +83,17 @@ def root_dev_my_dangolpots(employee_id):
             logger.info("모델 import 성공")
             
             try:
-                # 내 단골파티 조회 (실제 모델 구조에 맞게 수정)
-                my_dangolpots = DangolPot.query.filter(
-                    DangolPot.host_id == employee_id
-                ).all()
+                # 내 단골파티 조회 (SQLAlchemy 쿼리 수정)
+                if hasattr(DangolPot, 'query'):
+                    # 모델 클래스인 경우
+                    my_dangolpots = DangolPot.query.filter(
+                        DangolPot.host_id == employee_id
+                    ).all()
+                else:
+                    # 테이블 객체인 경우 - db.session.query 사용
+                    my_dangolpots = db.session.query(DangolPot).filter(
+                        DangolPot.c.host_id == employee_id
+                    ).all()
                 
                 logger.info(f"내 단골파티 조회 성공: {len(my_dangolpots)}개")
                 
@@ -181,8 +188,13 @@ def root_dev_schedules():
             
             # 데이터베이스 연결 테스트
             try:
-                # 간단한 쿼리로 연결 테스트
-                test_query = PersonalSchedule.query.limit(1).all()
+                # 간단한 쿼리로 연결 테스트 (SQLAlchemy 쿼리 수정)
+                if hasattr(PersonalSchedule, 'query'):
+                    # 모델 클래스인 경우
+                    test_query = PersonalSchedule.query.limit(1).all()
+                else:
+                    # 테이블 객체인 경우 - db.session.query 사용
+                    test_query = db.session.query(PersonalSchedule).limit(1).all()
                 logger.info("데이터베이스 연결 성공")
             except Exception as conn_error:
                 logger.error(f"데이터베이스 연결 실패: {conn_error}")
@@ -191,8 +203,15 @@ def root_dev_schedules():
             
             # 일정 조회 (가장 안전한 방식)
             try:
-                # 먼저 모든 일정 조회
-                all_schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
+                # 먼저 모든 일정 조회 (SQLAlchemy 쿼리 수정)
+                if hasattr(PersonalSchedule, 'query'):
+                    # 모델 클래스인 경우
+                    all_schedules = PersonalSchedule.query.filter_by(employee_id=employee_id).all()
+                else:
+                    # 테이블 객체인 경우 - db.session.query 사용
+                    all_schedules = db.session.query(PersonalSchedule).filter(
+                        PersonalSchedule.c.employee_id == employee_id
+                    ).all()
                 logger.info(f"전체 일정 조회 성공: {len(all_schedules)}개")
                 
                 # 메모리에서 날짜 필터링 (안전한 방식)

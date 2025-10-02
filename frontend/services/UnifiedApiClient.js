@@ -73,29 +73,13 @@ class UnifiedApiClient {
   }
 
   /**
-   * 서버 URL 가져오기 (안전한 방식) - 근본적 해결책
+   * 서버 URL 가져오기 (근본적 해결책) - 렌더 서버 강제 사용
    */
   async getServerURL() {
-    try {
-      // 1. 네트워크 설정 초기화 시도
-      const { initializeNetwork, getServerURL } = await import('../config/networkConfig');
-      await initializeNetwork();
-      const serverURL = getServerURL();
-      
-      if (serverURL && serverURL !== 'undefined' && serverURL !== 'null') {
-        console.log('✅ [UnifiedApiClient] 네트워크 설정에서 서버 URL 가져옴:', serverURL);
-        return serverURL;
-      }
-      
-      throw new Error('네트워크 설정에서 유효한 URL을 가져올 수 없음');
-    } catch (error) {
-      console.error('❌ [UnifiedApiClient] 네트워크 설정 실패:', error);
-      
-      // 2. 직접 URL 반환 (근본적 해결책)
-      const fallbackURL = 'https://lunch-app-backend-ra12.onrender.com';
-      console.log('🔧 [UnifiedApiClient] 직접 URL 사용:', fallbackURL);
-      return fallbackURL;
-    }
+    // 근본적 해결책: 항상 렌더 서버 사용
+    const renderURL = 'https://lunch-app-backend-ra12.onrender.com';
+    console.log('🔧 [UnifiedApiClient] 렌더 서버 강제 사용:', renderURL);
+    return renderURL;
   }
 
   /**
