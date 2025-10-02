@@ -11,8 +11,8 @@ class UnifiedApiClient {
   constructor() {
     this.isInitialized = false;
     this.retryAttempts = 3;
-    this.retryDelay = 1000; // 1초
-    this.timeout = 10000; // 10초로 단축 (프로덕션 환경 최적화)
+    this.retryDelay = 2000; // 2초로 증가 (렌더 서버 대응)
+    this.timeout = 30000; // 30초로 증가 (렌더 서버 응답 속도 대응)
     this.requestQueue = [];
     this.isProcessingQueue = false;
     
@@ -281,11 +281,14 @@ class UnifiedApiClient {
   }
 
   /**
-   * 타임아웃이 있는 fetch
+   * 타임아웃이 있는 fetch (렌더 서버 최적화)
    */
   async fetchWithTimeout(url, options) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const timeoutId = setTimeout(() => {
+      console.warn(`⏰ [UnifiedApiClient] 요청 타임아웃: ${url} (${this.timeout}ms)`);
+      controller.abort();
+    }, this.timeout);
     
     try {
       const response = await fetch(url, {
@@ -294,12 +297,22 @@ class UnifiedApiClient {
       });
       
       clearTimeout(timeoutId);
+      
+      // 렌더 서버 응답 시간 로깅
+      if (response.status >= 200 && response.status < 300) {
+        console.log(`✅ [UnifiedApiClient] 요청 성공: ${url}`);
+      } else {
+        console.warn(`⚠️ [UnifiedApiClient] 응답 상태: ${response.status} - ${url}`);
+      }
+      
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
       
+      // 타임아웃 오류 구체적 처리
       if (error.name === 'AbortError') {
-        throw new Error(`요청 타임아웃 (${this.timeout}ms)`);
+        console.error(`❌ [UnifiedApiClient] 네트워크 타임아웃: ${url} (${this.timeout}ms)`);
+        throw new Error(`네트워크 요청이 시간 초과되었습니다. (${this.timeout/1000}초)`);
       }
       
       throw error;
