@@ -1,13 +1,13 @@
 # Gunicorn 설정 파일
-# WebSocket 지원을 위한 eventlet worker 사용
+# 기본 HTTP 처리용 gthread worker 사용 (WebSocket 비활성화)
 
 import os
 
 # 기본 설정
 bind = f"0.0.0.0:{os.environ.get('PORT', 5000)}"
-workers = 1  # WebSocket을 위해 단일 worker 사용
-worker_class = "eventlet"  # WebSocket 지원
-worker_connections = 1000
+workers = 2
+worker_class = "gthread"
+threads = 8
 
 # 타임아웃 설정
 timeout = 30

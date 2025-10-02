@@ -39,12 +39,18 @@ def create_app(config_name=None):
     CORS(app, resources={r"/api/*": cors_config})
 
     # 기본 설정
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
+    raw_db_url = os.getenv("DATABASE_URL", "sqlite:///site.db")
+    if raw_db_url.startswith("postgres://"):
+        # SQLAlchemy 2.x 호환을 위한 스킴 정규화
+        normalized_db_url = raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    else:
+        normalized_db_url = raw_db_url
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalized_db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = AuthConfig.SECRET_KEY
     
     # PostgreSQL 연결 풀 설정 (프로덕션 최적화)
-    if os.getenv("DATABASE_URL", "").startswith("postgresql://"):
+    if normalized_db_url.startswith("postgresql://") or normalized_db_url.startswith("postgresql+psycopg2://"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             "pool_size": 10,
             "pool_recycle": 3600,

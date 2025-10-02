@@ -43,14 +43,14 @@ def root_auth_profile():
 def root_register():
     """루트 레벨 회원가입 API"""
     logger.info("루트 레벨 회원가입 API 호출됨")
-    from auth.routes import register_user
+    from backend.auth.routes import register_user
     return register_user()
 
 @root_compatibility_bp.route('/auth/login', methods=['POST'])
 def root_login():
     """루트 레벨 로그인 API"""
     logger.info("루트 레벨 로그인 API 호출됨")
-    from auth.routes import test_login
+    from backend.auth.routes import test_login
     data = request.get_json()
     if data and 'employee_id' in data:
         return test_login(data['employee_id'])
@@ -413,7 +413,7 @@ def root_dev_friends(employee_id):
     
     # 실제 친구 데이터 조회
     try:
-        from auth.models import Friendship, User
+        from backend.auth.models import Friendship, User
         from backend.app.extensions import db
         
         # 친구 관계 조회 (실제 컬럼명 사용)
@@ -513,7 +513,7 @@ def root_friends(employee_id):
     
     # 개발 환경에서는 인증 우회하고 실제 친구 데이터 반환
     try:
-        from auth.models import Friendship, User
+        from backend.auth.models import Friendship, User
         from backend.app.extensions import db
         
         # 친구 관계 조회 (실제 컬럼명 사용)
