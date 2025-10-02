@@ -20,10 +20,10 @@ def get_user_model():
     if User is not None:
         print(f"[DEBUG] get_user_model - 이미 로드된 User 모델 사용: {User}")
         return User
-        
+
     try:
         print(f"[DEBUG] get_user_model 시작 - 메타데이터 상태: {list(db.metadata.tables.keys())}")
-        
+
         # 근본적 해결: app.config에서 모델 가져오기 (중복 import 방지)
         from flask import current_app
         with current_app.app_context():
@@ -34,7 +34,7 @@ def get_user_model():
                 User = UserModel
             else:
                 print("[SUCCESS] app.config에서 User 모델을 가져왔습니다.")
-            
+
             print(f"[DEBUG] User 모델: {User}")
             print(f"[DEBUG] 메타데이터 상태 (import 후): {list(db.metadata.tables.keys())}")
             return User
@@ -46,7 +46,6 @@ def get_user_model():
         return None
 
 # 그 다음에 다른 모델들을 import
-from backend.models.schedule_models import PersonalSchedule, ScheduleException
 # 🚨 중요: app.py에 이미 정의된 모델들을 사용하므로 중복 import 제거
 # from models.app_models import Party, PartyMember, DangolPot, DangolPotMember, ChatRoom, ChatParticipant, LunchProposal, ProposalAcceptance, ChatMessage, Notification, UserAnalytics, RestaurantAnalytics, Restaurant, Review, Friendship, UserActivity, RestaurantVisit
 
@@ -57,10 +56,10 @@ def init_database():
     with app.app_context():
         try:
             print("🔧 데이터베이스 초기화 시작...")
-            
+
             # 🚨 중요: 모든 모델을 올바른 순서로 메타데이터에 등록
             print("🔧 모델 메타데이터 등록 중...")
-            
+
             # 1단계: User 모델 확인 (app_factory에서 이미 등록됨)
             if 'users' not in db.metadata.tables:
                 print("❌ User 모델이 메타데이터에 등록되지 않았습니다.")
@@ -68,14 +67,14 @@ def init_database():
                 return False
             else:
                 print("✅ User 모델이 이미 메타데이터에 등록되어 있습니다.")
-            
+
             # 2단계: 다른 모델들 확인 (app_factory에서 이미 등록됨)
             print("✅ 모든 모델이 app_factory에서 메타데이터에 등록되었습니다.")
-            
+
             # app_factory에서 이미 모든 모델이 메타데이터에 등록됨
             # db.create_all()은 메타데이터 충돌을 일으킬 수 있으므로 제거
             print("✅ app_factory에서 모든 모델이 메타데이터에 등록되었습니다.")
-            
+
             # 기본 사용자 생성 (세션 재설정 후)
             try:
                 db.session.rollback()  # 세션 상태 초기화
@@ -83,9 +82,9 @@ def init_database():
                 print("✅ 기본 사용자 생성 완료")
             except Exception as e:
                 print(f"[ERROR] 기본 사용자 생성 실패: {e}")
-            
+
             print("🎉 데이터베이스 초기화 완료!")
-            
+
         except Exception as e:
             print(f"❌ 데이터베이스 초기화 실패: {e}")
             import traceback
@@ -96,31 +95,31 @@ def create_default_users():
     try:
         # 환경 설정 확인
         create_virtual_users = os.getenv('CREATE_VIRTUAL_USERS', 'false').lower() == 'true'
-        
+
         if not create_virtual_users:
             print("ℹ️ 가상 유저 생성이 비활성화되어 있습니다. 실제 테스터 계정을 사용하세요.")
             return
-        
+
         # User 모델 동적 로드
         User = get_user_model()
         if User is None:
             print("❌ User 모델을 로드할 수 없습니다.")
             return
-            
+
         # 가상 사용자 데이터 (개발 환경에서만)
         # 프로덕션 환경에서는 기본 사용자 생성하지 않음
         default_users = []
-        
+
         for user_data in default_users:
             # password_hash 필드가 있는지 확인하고 기본값 설정
             if hasattr(User, 'password_hash'):
                 user_data['password_hash'] = None  # 기본값으로 None 설정
             user = User(**user_data)
             db.session.add(user)
-        
+
         db.session.commit()
         print(f"✅ {len(default_users)}명의 기본 사용자 생성 완료")
-        
+
     except Exception as e:
         print(f"❌ 기본 사용자 생성 실패: {e}")
         db.session.rollback()

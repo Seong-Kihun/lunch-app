@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 from enum import Enum
 
 class ChallengeType(Enum):
@@ -17,9 +16,9 @@ class ChallengeStatus(Enum):
 
 class Challenge:
     """챌린지 정보 클래스"""
-    
-    def __init__(self, id: str, name: str, description: str, points: int, 
-                 type: ChallengeType, requirements: Dict, category: str):
+
+    def __init__(self, id: str, name: str, description: str, points: int,
+                 type: ChallengeType, requirements: dict, category: str):
         self.id = id
         self.name = name
         self.description = description
@@ -28,7 +27,7 @@ class Challenge:
         self.requirements = requirements
         self.category = category
         self.created_at = datetime.now()
-        
+
         # 타입에 따른 만료 시간 설정
         if type == ChallengeType.DAILY:
             self.expires_at = self.created_at.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -48,9 +47,9 @@ class Challenge:
 
 class ChallengeSystem:
     """챌린지 시스템 관리 클래스"""
-    
+
     @staticmethod
-    def get_daily_challenges() -> List[Challenge]:
+    def get_daily_challenges() -> list[Challenge]:
         """일일 챌린지 목록 반환"""
         return [
             Challenge(
@@ -126,9 +125,9 @@ class ChallengeSystem:
                 category="습관"
             )
         ]
-    
+
     @staticmethod
-    def get_weekly_challenges() -> List[Challenge]:
+    def get_weekly_challenges() -> list[Challenge]:
         """주간 챌린지 목록 반환"""
         return [
             Challenge(
@@ -195,9 +194,9 @@ class ChallengeSystem:
                 category="습관"
             )
         ]
-    
+
     @staticmethod
-    def get_monthly_challenges() -> List[Challenge]:
+    def get_monthly_challenges() -> list[Challenge]:
         """월간 챌린지 목록 반환"""
         return [
             Challenge(
@@ -264,54 +263,53 @@ class ChallengeSystem:
                 category="습관"
             )
         ]
-    
+
     @staticmethod
-    def get_special_challenges() -> List[Challenge]:
+    def get_special_challenges() -> list[Challenge]:
         """특별 미션 목록 반환 (상시 진행)"""
         challenges = [
             Challenge(
                 "special_first_visit", "첫 발걸음", "첫 식당 방문",
-                ChallengeType.SPECIAL, 100, {"first_restaurant_visit": 1}, 
+                ChallengeType.SPECIAL, 100, {"first_restaurant_visit": 1},
                 datetime.min, datetime.max
             ),
             Challenge(
                 "special_first_review", "첫 이야기", "첫 리뷰 작성",
-                ChallengeType.SPECIAL, 80, {"first_review": 1}, 
+                ChallengeType.SPECIAL, 80, {"first_review": 1},
                 datetime.min, datetime.max
             ),
             Challenge(
                 "special_first_party", "첫 만남", "첫 파티 참여",
-                ChallengeType.SPECIAL, 120, {"first_party": 1}, 
+                ChallengeType.SPECIAL, 120, {"first_party": 1},
                 datetime.min, datetime.max
             ),
             Challenge(
                 "special_first_random_lunch", "첫 도전", "첫 랜덤런치",
-                ChallengeType.SPECIAL, 150, {"first_random_lunch": 1}, 
+                ChallengeType.SPECIAL, 150, {"first_random_lunch": 1},
                 datetime.min, datetime.max
             ),
             Challenge(
                 "special_friend_invite", "친구 초대", "친구 초대하기",
-                ChallengeType.SPECIAL, 200, {"friend_invite": 1}, 
+                ChallengeType.SPECIAL, 200, {"friend_invite": 1},
                 datetime.min, datetime.max
             )
         ]
-        
+
         return challenges
-    
+
     @staticmethod
-    def check_challenge_progress(user_id: str, challenge: Challenge) -> Tuple[int, bool]:
+    def check_challenge_progress(user_id: str, challenge: Challenge) -> tuple[int, bool]:
         """챌린지 진행률 확인"""
         try:
             from backend.models.app_models import UserActivity
-            from backend.app.extensions import db
-            
+
             # 챌린지 기간 내 활동 확인
             activities = UserActivity.query.filter(
                 UserActivity.user_id == user_id,
                 UserActivity.created_at >= challenge.start_date,
                 UserActivity.created_at < challenge.end_date
             ).all()
-            
+
             # 요구사항에 따른 진행률 계산
             progress = 0
             for requirement_type, required_count in challenge.requirements.items():
@@ -351,18 +349,18 @@ class ChallengeSystem:
                     progress = len([a for a in activities if a.activity_type == "first_random_lunch"])
                 elif requirement_type == "friend_invite":
                     progress = len([a for a in activities if a.activity_type == "friend_invite"])
-            
+
             # 완료 여부 확인
             is_completed = progress >= required_count
-            
+
             return progress, is_completed
-            
+
         except Exception as e:
             print(f"챌린지 진행률 확인 실패: {e}")
             return 0, False
-    
+
     @staticmethod
-    def get_user_challenges(user_id: str) -> Dict[str, List[Challenge]]:
+    def get_user_challenges(user_id: str) -> dict[str, list[Challenge]]:
         """사용자의 모든 챌린지 반환"""
         return {
             "daily": ChallengeSystem.get_daily_challenges(),

@@ -3,10 +3,9 @@
 707개 식당 데이터를 위한 깔끔하고 효율적인 API
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from backend.utils.safe_jsonify import safe_jsonify
 from datetime import datetime
-from typing import Dict, Any, List, Optional
 from backend.app.extensions import db
 from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2, RestaurantRecommendV2, RestaurantSavedV2
 import logging
@@ -42,10 +41,10 @@ def get_restaurants():
         sort = request.args.get('sort', 'distance' if lat and lng else 'name')
         limit = min(request.args.get('limit', 20, type=int), 100)  # 최대 100개
         offset = request.args.get('offset', 0, type=int)
-        
+
         # 기본 쿼리
         query = RestaurantV2.query.filter(RestaurantV2.is_active == True)
-        
+
         # 검색 필터
         if search:
             search_filter = f"%{search}%"
@@ -56,24 +55,24 @@ def get_restaurants():
                     RestaurantV2.category.ilike(search_filter)
                 )
             )
-        
+
         # 카테고리 필터
         if category:
             query = query.filter(RestaurantV2.category.ilike(f"%{category}%"))
-        
+
         # 위치 기반 필터링 (선택적)
         if lat and lng and radius:
             # 간단한 경계 박스 필터링 (성능 최적화)
             lat_delta = radius / 111.0  # 대략적인 위도 차이
             lng_delta = radius / (111.0 * math.cos(math.radians(lat)))  # 경도 차이
-            
+
             query = query.filter(
                 db.and_(
                     RestaurantV2.latitude.between(lat - lat_delta, lat + lat_delta),
                     RestaurantV2.longitude.between(lng - lng_delta, lng + lng_delta)
                 )
             )
-        
+
         # 정렬
         if sort == 'distance' and lat and lng:
             # 거리순 정렬은 애플리케이션 레벨에서 처리
@@ -94,24 +93,24 @@ def get_restaurants():
             restaurants = query.all()
         else:
             restaurants = query.all()
-        
+
         # 페이지네이션
         total_count = len(restaurants)
         paginated_restaurants = restaurants[offset:offset + limit]
-        
+
         # 응답 데이터 구성
         restaurants_data = []
         for restaurant in paginated_restaurants:
             restaurant_dict = restaurant.to_dict()
             if lat and lng:
                 restaurant_dict['distance'] = restaurant.distance
-            
+
             # 추천 수와 저장 수 추가
             restaurant_dict['recommend_count'] = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant.id).count()
             restaurant_dict['saved_count'] = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant.id).count()
-            
+
             restaurants_data.append(restaurant_dict)
-        
+
         return safe_jsonify({
             'success': True,
             'message': '식당 목록 조회 성공',
@@ -131,7 +130,7 @@ def get_restaurants():
                 }
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurants: {e}")
         return safe_jsonify({
@@ -148,15 +147,15 @@ def get_restaurant(restaurant_id):
     """
     try:
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         if not restaurant.is_active:
             return safe_jsonify({
                 'success': False,
                 'error': '비활성화된 식당입니다.'
             }), 404
-        
+
         restaurant_data = restaurant.to_dict()
-        
+
         # 리뷰 통계 추가
         reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).all()
         if reviews:
@@ -166,13 +165,13 @@ def get_restaurant(restaurant_id):
         else:
             restaurant_data['avg_rating'] = 0.0
             restaurant_data['total_reviews'] = 0
-        
+
         return safe_jsonify({
             'success': True,
             'message': '식당 상세 정보 조회 성공',
             'data': restaurant_data
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurant: {e}")
         return safe_jsonify({
@@ -193,10 +192,10 @@ def get_categories():
             RestaurantV2.category.isnot(None),
             RestaurantV2.category != ''
         ).distinct().all()
-        
+
         category_list = [cat[0] for cat in categories if cat[0]]
         category_list.sort()
-        
+
         return safe_jsonify({
             'success': True,
             'message': '카테고리 목록 조회 성공',
@@ -205,7 +204,7 @@ def get_categories():
                 'total': len(category_list)
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_categories: {e}")
         return safe_jsonify({
@@ -232,37 +231,37 @@ def get_nearby_restaurants():
         radius = request.args.get('radius', 2, type=float)
         limit = min(request.args.get('limit', 20, type=int), 50)
         category = request.args.get('category', '').strip()
-        
+
         if not lat or not lng:
             return safe_jsonify({
                 'success': False,
                 'error': '위도와 경도가 필요합니다.'
             }), 400
-        
+
         # 기본 쿼리
         query = RestaurantV2.query.filter(RestaurantV2.is_active == True)
-        
+
         # 카테고리 필터
         if category:
             query = query.filter(RestaurantV2.category.ilike(f"%{category}%"))
-        
+
         # 모든 식당 조회 후 거리 계산
         restaurants = query.all()
         nearby_restaurants = []
-        
+
         for restaurant in restaurants:
             distance = restaurant.calculate_distance(lat, lng)
             if distance <= radius:
                 restaurant_dict = restaurant.to_dict()
                 restaurant_dict['distance'] = distance
                 nearby_restaurants.append(restaurant_dict)
-        
+
         # 거리순 정렬
         nearby_restaurants.sort(key=lambda x: x['distance'])
-        
+
         # 결과 제한
         results = nearby_restaurants[:limit]
-        
+
         return safe_jsonify({
             'success': True,
             'message': f'반경 {radius}km 내 식당 조회 성공',
@@ -273,7 +272,7 @@ def get_nearby_restaurants():
                 'total': len(results)
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_nearby_restaurants: {e}")
         return safe_jsonify({
@@ -290,13 +289,13 @@ def add_restaurant_visit(restaurant_id):
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return safe_jsonify({
                 'success': False,
                 'error': '요청 데이터가 필요합니다.'
             }), 400
-        
+
         # 필수 필드 검증
         required_fields = ['user_id', 'visit_date']
         for field in required_fields:
@@ -305,10 +304,10 @@ def add_restaurant_visit(restaurant_id):
                     'success': False,
                     'error': f'{field} 필드가 필요합니다.'
                 }), 400
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 방문 기록 생성
         visit = RestaurantVisitV2(
             restaurant_id=restaurant_id,
@@ -318,17 +317,17 @@ def add_restaurant_visit(restaurant_id):
             party_size=data.get('party_size', 1),
             notes=data.get('notes', '')
         )
-        
+
         db.session.add(visit)
         db.session.commit()
-        
+
         return safe_jsonify({
             'success': True,
             'message': '방문 기록이 추가되었습니다.',
             'data': visit.to_dict()
         })
-        
-    except ValueError as e:
+
+    except ValueError:
         return safe_jsonify({
             'success': False,
             'error': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD, HH:MM)'
@@ -350,13 +349,13 @@ def add_restaurant_review(restaurant_id):
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return safe_jsonify({
                 'success': False,
                 'error': '요청 데이터가 필요합니다.'
             }), 400
-        
+
         # 필수 필드 검증
         required_fields = ['user_id', 'rating']
         for field in required_fields:
@@ -365,17 +364,17 @@ def add_restaurant_review(restaurant_id):
                     'success': False,
                     'error': f'{field} 필드가 필요합니다.'
                 }), 400
-        
+
         # 평점 범위 검증
         if not (1 <= data['rating'] <= 5):
             return safe_jsonify({
                 'success': False,
                 'error': '평점은 1-5 사이의 값이어야 합니다.'
             }), 400
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 리뷰 생성
         review = RestaurantReviewV2(
             restaurant_id=restaurant_id,
@@ -384,25 +383,25 @@ def add_restaurant_review(restaurant_id):
             comment=data.get('comment', ''),
             visit_date=datetime.strptime(data['visit_date'], '%Y-%m-%d').date() if data.get('visit_date') else None
         )
-        
+
         db.session.add(review)
-        
+
         # 식당 평점 업데이트
         all_reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).all()
         if all_reviews:
             avg_rating = sum(r.rating for r in all_reviews) / len(all_reviews)
             restaurant.rating = round(avg_rating, 1)
             restaurant.review_count = len(all_reviews)
-        
+
         db.session.commit()
-        
+
         return safe_jsonify({
             'success': True,
             'message': '리뷰가 추가되었습니다.',
             'data': review.to_dict()
         })
-        
-    except ValueError as e:
+
+    except ValueError:
         return safe_jsonify({
             'success': False,
             'error': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'
@@ -426,7 +425,7 @@ def get_restaurant_stats():
         total_restaurants = RestaurantV2.query.filter(RestaurantV2.is_active == True).count()
         total_reviews = RestaurantReviewV2.query.count()
         total_visits = RestaurantVisitV2.query.count()
-        
+
         # 카테고리별 통계
         category_stats = db.session.query(
             RestaurantV2.category,
@@ -436,10 +435,10 @@ def get_restaurant_stats():
             RestaurantV2.category.isnot(None),
             RestaurantV2.category != ''
         ).group_by(RestaurantV2.category).all()
-        
+
         categories = [{'name': cat[0], 'count': cat[1]} for cat in category_stats]
         categories.sort(key=lambda x: x['count'], reverse=True)
-        
+
         return safe_jsonify({
             'success': True,
             'message': '식당 통계 조회 성공',
@@ -450,7 +449,7 @@ def get_restaurant_stats():
                 'categories': categories[:10]  # 상위 10개 카테고리
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurant_stats: {e}")
         return safe_jsonify({
@@ -467,24 +466,24 @@ def toggle_restaurant_recommend(restaurant_id):
     """
     try:
         data = request.get_json()
-        
+
         if not data or 'user_id' not in data:
             return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
-        
+
         user_id = data['user_id']
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 기존 추천 확인
         existing_recommend = RestaurantRecommendV2.query.filter_by(
             restaurant_id=restaurant_id,
             user_id=user_id
         ).first()
-        
+
         if existing_recommend:
             # 추천 취소
             db.session.delete(existing_recommend)
@@ -499,19 +498,19 @@ def toggle_restaurant_recommend(restaurant_id):
             db.session.add(recommend)
             action = 'added'
             message = '오찬추천이 등록되었습니다!'
-        
+
         db.session.commit()
-        
+
         # 추천 수 계산
         recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
-        
+
         return safe_jsonify({
             'success': True,
             'message': message,
             'action': action,
             'recommend_count': recommend_count
         })
-        
+
     except Exception as e:
         logger.error(f"Error in toggle_restaurant_recommend: {e}")
         db.session.rollback()
@@ -529,24 +528,24 @@ def toggle_restaurant_save(restaurant_id):
     """
     try:
         data = request.get_json()
-        
+
         if not data or 'user_id' not in data:
             return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
-        
+
         user_id = data['user_id']
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 기존 저장 확인
         existing_save = RestaurantSavedV2.query.filter_by(
             restaurant_id=restaurant_id,
             user_id=user_id
         ).first()
-        
+
         if existing_save:
             # 저장 해제
             db.session.delete(existing_save)
@@ -561,19 +560,19 @@ def toggle_restaurant_save(restaurant_id):
             db.session.add(saved)
             action = 'saved'
             message = '식당이 저장되었습니다!'
-        
+
         db.session.commit()
-        
+
         # 저장 수 계산
         saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
-        
+
         return safe_jsonify({
             'success': True,
             'message': message,
             'action': action,
             'saved_count': saved_count
         })
-        
+
     except Exception as e:
         logger.error(f"Error in toggle_restaurant_save: {e}")
         db.session.rollback()
@@ -591,25 +590,25 @@ def get_restaurant_recommend_status(restaurant_id):
     """
     try:
         user_id = request.args.get('user_id')
-        
+
         if not user_id:
             return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 사용자의 추천 상태 확인
         is_recommended = RestaurantRecommendV2.query.filter_by(
             restaurant_id=restaurant_id,
             user_id=user_id
         ).first() is not None
-        
+
         # 전체 추천 수
         recommend_count = RestaurantRecommendV2.query.filter_by(restaurant_id=restaurant_id).count()
-        
+
         return safe_jsonify({
             'success': True,
             'data': {
@@ -617,7 +616,7 @@ def get_restaurant_recommend_status(restaurant_id):
                 'recommend_count': recommend_count
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurant_recommend_status: {e}")
         return safe_jsonify({
@@ -634,25 +633,25 @@ def get_restaurant_save_status(restaurant_id):
     """
     try:
         user_id = request.args.get('user_id')
-        
+
         if not user_id:
             return safe_jsonify({
                 'success': False,
                 'error': 'user_id가 필요합니다.'
             }), 400
-        
+
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 사용자의 저장 상태 확인
         is_saved = RestaurantSavedV2.query.filter_by(
             restaurant_id=restaurant_id,
             user_id=user_id
         ).first() is not None
-        
+
         # 전체 저장 수
         saved_count = RestaurantSavedV2.query.filter_by(restaurant_id=restaurant_id).count()
-        
+
         return safe_jsonify({
             'success': True,
             'data': {
@@ -660,7 +659,7 @@ def get_restaurant_save_status(restaurant_id):
                 'saved_count': saved_count
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurant_save_status: {e}")
         return safe_jsonify({
@@ -678,12 +677,12 @@ def get_restaurant_reviews(restaurant_id):
     try:
         # 식당 존재 확인
         restaurant = RestaurantV2.query.get_or_404(restaurant_id)
-        
+
         # 리뷰 조회
         reviews = RestaurantReviewV2.query.filter_by(restaurant_id=restaurant_id).order_by(
             RestaurantReviewV2.created_at.desc()
         ).all()
-        
+
         return safe_jsonify({
             'success': True,
             'data': {
@@ -693,7 +692,7 @@ def get_restaurant_reviews(restaurant_id):
                 'total_count': len(reviews)
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in get_restaurant_reviews: {e}")
         return safe_jsonify({

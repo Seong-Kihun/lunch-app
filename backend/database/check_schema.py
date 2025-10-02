@@ -5,7 +5,7 @@ def check_schema():
     """스키마 확인 (CLI에서 호출)"""
     from backend.app.app_factory import create_app
     app = create_app()
-    
+
     with app.app_context():
         with db.engine.connect() as conn:
             result = conn.execute(db.text('PRAGMA table_info(chat_participant)'))

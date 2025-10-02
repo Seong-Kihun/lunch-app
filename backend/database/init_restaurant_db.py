@@ -4,7 +4,6 @@
 
 # 레거시 import 제거 - CLI에서 create_app() 사용
 from backend.app.extensions import db
-from backend.models.restaurant_models import RestaurantV2, RestaurantReviewV2, RestaurantVisitV2
 
 def init_restaurant_database():
     """
@@ -12,28 +11,28 @@ def init_restaurant_database():
     """
     try:
         print("🗄️ 식당 데이터베이스 테이블 생성 중...")
-        
+
         with app.app_context():
             # 테이블 생성
             db.create_all()
-            
+
             print("✅ 식당 데이터베이스 테이블 생성 완료!")
             print("   - restaurants 테이블")
-            print("   - restaurant_reviews 테이블") 
+            print("   - restaurant_reviews 테이블")
             print("   - restaurant_visits 테이블")
-            
+
             # 테이블 정보 확인
             from sqlalchemy import inspect
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
-            
-            print(f"\n📊 생성된 테이블 목록:")
+
+            print("\n📊 생성된 테이블 목록:")
             for table in tables:
                 if 'restaurant' in table:
                     print(f"   - {table}")
-            
+
             return True
-            
+
     except Exception as e:
         print(f"❌ 데이터베이스 초기화 실패: {e}")
         return False

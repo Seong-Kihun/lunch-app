@@ -26,7 +26,7 @@ def get_next_recurrence_date(current_date, recurrence_type, interval=1):
     """반복 일정의 다음 날짜 계산"""
     if not isinstance(current_date, date):
         current_date = datetime.strptime(current_date, "%Y-%m-%d").date()
-    
+
     if recurrence_type == "daily":
         return current_date + timedelta(days=interval)
     elif recurrence_type == "weekly":
@@ -36,12 +36,12 @@ def get_next_recurrence_date(current_date, recurrence_type, interval=1):
         year = current_date.year
         month = current_date.month + interval
         day = current_date.day
-        
+
         # 월이 12를 넘으면 연도 증가
         while month > 12:
             month -= 12
             year += 1
-        
+
         try:
             return date(year, month, day)
         except ValueError:

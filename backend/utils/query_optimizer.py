@@ -3,26 +3,25 @@
 효율적인 데이터베이스 쿼리를 위한 도구들을 제공합니다.
 """
 
-from sqlalchemy import text, func, desc, asc
-from sqlalchemy.orm import joinedload, selectinload, subqueryload
+from sqlalchemy import func, desc, asc
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app.extensions import db
 from backend.models.app_models import (
-    ChatMessage, MessageStatus, MessageReaction, MessageAttachment,
-    ChatRoomMember, ChatRoomSettings, NotificationSettings, ChatNotification
+    ChatMessage, MessageStatus, MessageReaction, ChatRoomMember
 )
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
 
 class QueryOptimizer:
     """쿼리 최적화 클래스"""
-    
+
     @staticmethod
-    def get_messages_optimized(chat_type: str, chat_id: int, limit: int = 50, offset: int = 0, 
-                              include_reactions: bool = True, include_attachments: bool = True) -> List[Dict]:
+    def get_messages_optimized(chat_type: str, chat_id: int, limit: int = 50, offset: int = 0,
+                              include_reactions: bool = True, include_attachments: bool = True) -> list[dict]:
         """최적화된 메시지 조회"""
         try:
             # 기본 쿼리
@@ -31,20 +30,20 @@ class QueryOptimizer:
                 chat_id=chat_id,
                 is_deleted=False
             )
-            
+
             # 관련 데이터 미리 로드
             if include_reactions:
                 query = query.options(joinedload(ChatMessage.reactions))
-            
+
             if include_attachments:
                 query = query.options(joinedload(ChatMessage.attachments))
-            
+
             # 정렬 및 페이징
             messages = query.order_by(desc(ChatMessage.created_at))\
                            .offset(offset)\
                            .limit(limit)\
                            .all()
-            
+
             # 결과 변환
             result = []
             for message in messages:
@@ -65,7 +64,7 @@ class QueryOptimizer:
                     'reactions': [],
                     'attachments': []
                 }
-                
+
                 # 반응 데이터 추가
                 if include_reactions and hasattr(message, 'reactions'):
                     for reaction in message.reactions:
@@ -75,7 +74,7 @@ class QueryOptimizer:
                             'reaction_type': reaction.reaction_type,
                             'created_at': reaction.created_at.isoformat()
                         })
-                
+
                 # 첨부파일 데이터 추가
                 if include_attachments and hasattr(message, 'attachments'):
                     for attachment in message.attachments:
@@ -89,15 +88,15 @@ class QueryOptimizer:
                             'thumbnail_path': attachment.thumbnail_path,
                             'created_at': attachment.created_at.isoformat()
                         })
-                
+
                 result.append(message_data)
-            
+
             return result
-            
+
         except SQLAlchemyError as e:
             logger.error(f"메시지 조회 실패: {e}")
             return []
-    
+
     @staticmethod
     def get_unread_count_optimized(user_id: str, chat_type: str = None, chat_id: int = None) -> int:
         """최적화된 읽지 않은 메시지 수 조회"""
@@ -113,21 +112,21 @@ class QueryOptimizer:
                     .filter(MessageStatus.user_id == user_id)\
                     .filter(MessageStatus.is_read == True)
                 ).subquery()
-            
+
             # 읽지 않은 메시지 수 계산
             count = db.session.query(func.count(ChatMessage.id))\
                 .filter(ChatMessage.id.in_(
                     db.session.query(unread_message_ids.c.id)
                 )).scalar()
-            
+
             return count or 0
-            
+
         except SQLAlchemyError as e:
             logger.error(f"읽지 않은 메시지 수 조회 실패: {e}")
             return 0
-    
+
     @staticmethod
-    def get_chat_rooms_optimized(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict]:
+    def get_chat_rooms_optimized(user_id: str, limit: int = 20, offset: int = 0) -> list[dict]:
         """최적화된 채팅방 목록 조회"""
         try:
             # 사용자가 참여한 채팅방 조회
@@ -138,7 +137,7 @@ class QueryOptimizer:
                 .offset(offset)\
                 .limit(limit)\
                 .all()
-            
+
             result = []
             for room in chat_rooms:
                 # 최신 메시지 조회
@@ -148,12 +147,12 @@ class QueryOptimizer:
                     .filter(ChatMessage.is_deleted == False)\
                     .order_by(desc(ChatMessage.created_at))\
                     .first()
-                
+
                 # 읽지 않은 메시지 수 조회
                 unread_count = QueryOptimizer.get_unread_count_optimized(
                     user_id, room.chat_type, room.chat_id
                 )
-                
+
                 room_data = {
                     'id': f"{room.chat_type}_{room.chat_id}",
                     'chat_type': room.chat_type,
@@ -168,49 +167,49 @@ class QueryOptimizer:
                     'joined_at': room.joined_at.isoformat(),
                     'last_read_message_id': room.last_read_message_id
                 }
-                
+
                 result.append(room_data)
-            
+
             return result
-            
+
         except SQLAlchemyError as e:
             logger.error(f"채팅방 목록 조회 실패: {e}")
             return []
-    
+
     @staticmethod
-    def search_messages_optimized(query: str, user_id: str, chat_type: str = None, 
-                                 chat_id: int = None, limit: int = 50, offset: int = 0) -> List[Dict]:
+    def search_messages_optimized(query: str, user_id: str, chat_type: str = None,
+                                 chat_id: int = None, limit: int = 50, offset: int = 0) -> list[dict]:
         """최적화된 메시지 검색"""
         try:
             # 검색 쿼리
             search_query = db.session.query(ChatMessage)\
                 .filter(ChatMessage.message.contains(query))\
                 .filter(ChatMessage.is_deleted == False)
-            
+
             # 채팅방 필터
             if chat_type:
                 search_query = search_query.filter(ChatMessage.chat_type == chat_type)
             if chat_id:
                 search_query = search_query.filter(ChatMessage.chat_id == chat_id)
-            
+
             # 사용자 권한 확인 (사용자가 참여한 채팅방만)
             user_chats = db.session.query(ChatRoomMember.chat_type, ChatRoomMember.chat_id)\
                 .filter(ChatRoomMember.user_id == user_id)\
                 .filter(ChatRoomMember.is_left == False)\
                 .subquery()
-            
+
             search_query = search_query.join(
                 user_chats,
                 (ChatMessage.chat_type == user_chats.c.chat_type) &
                 (ChatMessage.chat_id == user_chats.c.chat_id)
             )
-            
+
             # 결과 조회
             messages = search_query.order_by(desc(ChatMessage.created_at))\
                                  .offset(offset)\
                                  .limit(limit)\
                                  .all()
-            
+
             # 결과 변환
             result = []
             for message in messages:
@@ -226,15 +225,15 @@ class QueryOptimizer:
                     'highlight': query  # 검색어 하이라이트용
                 }
                 result.append(message_data)
-            
+
             return result
-            
+
         except SQLAlchemyError as e:
             logger.error(f"메시지 검색 실패: {e}")
             return []
-    
+
     @staticmethod
-    def get_message_reactions_optimized(message_id: int) -> Dict[str, List[Dict]]:
+    def get_message_reactions_optimized(message_id: int) -> dict[str, list[dict]]:
         """최적화된 메시지 반응 조회"""
         try:
             # 반응 그룹화 조회
@@ -245,22 +244,22 @@ class QueryOptimizer:
             ).filter(MessageReaction.message_id == message_id)\
              .group_by(MessageReaction.reaction_type)\
              .all()
-            
+
             result = {}
             for reaction in reactions:
                 result[reaction.reaction_type] = {
                     'count': reaction.count,
                     'user_ids': reaction.user_ids
                 }
-            
+
             return result
-            
+
         except SQLAlchemyError as e:
             logger.error(f"메시지 반응 조회 실패: {e}")
             return {}
-    
+
     @staticmethod
-    def bulk_update_message_status(user_id: str, message_ids: List[int]) -> bool:
+    def bulk_update_message_status(user_id: str, message_ids: list[int]) -> bool:
         """메시지 읽음 상태 일괄 업데이트"""
         try:
             # 기존 읽음 상태 확인
@@ -268,9 +267,9 @@ class QueryOptimizer:
                 .filter(MessageStatus.user_id == user_id)\
                 .filter(MessageStatus.message_id.in_(message_ids))\
                 .all()
-            
+
             existing_message_ids = {status.message_id for status in existing_statuses}
-            
+
             # 새로운 읽음 상태 생성
             new_statuses = []
             for message_id in message_ids:
@@ -281,10 +280,10 @@ class QueryOptimizer:
                         is_read=True,
                         read_at=datetime.utcnow()
                     ))
-            
+
             if new_statuses:
                 db.session.add_all(new_statuses)
-            
+
             # 기존 상태 업데이트
             db.session.query(MessageStatus)\
                 .filter(MessageStatus.user_id == user_id)\
@@ -293,21 +292,21 @@ class QueryOptimizer:
                     'is_read': True,
                     'read_at': datetime.utcnow()
                 }, synchronize_session=False)
-            
+
             db.session.commit()
             return True
-            
+
         except SQLAlchemyError as e:
             logger.error(f"메시지 상태 일괄 업데이트 실패: {e}")
             db.session.rollback()
             return False
-    
+
     @staticmethod
-    def get_chat_statistics(chat_type: str, chat_id: int, days: int = 30) -> Dict[str, Any]:
+    def get_chat_statistics(chat_type: str, chat_id: int, days: int = 30) -> dict[str, Any]:
         """채팅 통계 조회"""
         try:
             start_date = datetime.utcnow() - timedelta(days=days)
-            
+
             # 메시지 수 통계
             message_stats = db.session.query(
                 func.count(ChatMessage.id).label('total_messages'),
@@ -320,14 +319,14 @@ class QueryOptimizer:
              .filter(ChatMessage.chat_id == chat_id)\
              .filter(ChatMessage.created_at >= start_date)\
              .first()
-            
+
             # 활성 사용자 수
             active_users = db.session.query(func.count(func.distinct(ChatMessage.sender_employee_id)))\
                 .filter(ChatMessage.chat_type == chat_type)\
                 .filter(ChatMessage.chat_id == chat_id)\
                 .filter(ChatMessage.created_at >= start_date)\
                 .scalar()
-            
+
             # 일별 메시지 수
             daily_messages = db.session.query(
                 func.date(ChatMessage.created_at).label('date'),
@@ -338,7 +337,7 @@ class QueryOptimizer:
              .group_by(func.date(ChatMessage.created_at))\
              .order_by(asc(func.date(ChatMessage.created_at)))\
              .all()
-            
+
             return {
                 'total_messages': message_stats.total_messages or 0,
                 'text_messages': message_stats.text_messages or 0,
@@ -352,7 +351,7 @@ class QueryOptimizer:
                     for day in daily_messages
                 ]
             }
-            
+
         except SQLAlchemyError as e:
             logger.error(f"채팅 통계 조회 실패: {e}")
             return {}

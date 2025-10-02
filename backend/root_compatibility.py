@@ -8,6 +8,7 @@ from flask import Blueprint, request, jsonify
 from backend.auth.middleware import check_authentication
 from backend.auth.routes import get_profile
 import logging
+from datetime import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def root_login():
 def root_dev_my_dangolpots(employee_id):
     """루트 레벨 개발용 내 단골파티 조회 API"""
     logger.info(f"루트 레벨 개발용 내 단골파티 조회 API 호출됨: {employee_id}")
-    
+
     try:
         response_data = {
             'success': True,
@@ -68,10 +69,10 @@ def root_dev_my_dangolpots(employee_id):
             'employee_id': employee_id,
             'message': '내 단골파티 조회 완료'
         }
-        
+
         try:
             from backend.app.extensions import db
-            
+
             # 기존 테이블이 이미 정의되어 있는지 확인
             if 'dangol_pot' in db.metadata.tables:
                 logger.info("dangol_pot 테이블이 이미 메타데이터에 존재함")
@@ -79,9 +80,9 @@ def root_dev_my_dangolpots(employee_id):
             else:
                 from backend.models.app_models import DangolPot
                 logger.info("DangolPot 모델 새로 import")
-            
+
             logger.info("모델 import 성공")
-            
+
             try:
                 # 내 단골파티 조회 (SQLAlchemy 쿼리 수정)
                 if hasattr(DangolPot, 'query'):
@@ -94,9 +95,9 @@ def root_dev_my_dangolpots(employee_id):
                     my_dangolpots = db.session.query(DangolPot).filter(
                         DangolPot.c.host_id == employee_id
                     ).all()
-                
+
                 logger.info(f"내 단골파티 조회 성공: {len(my_dangolpots)}개")
-                
+
                 for pot in my_dangolpots:
                     try:
                         pot_data = {
@@ -121,25 +122,25 @@ def root_dev_my_dangolpots(employee_id):
                     except Exception as format_error:
                         logger.warning(f"단골파티 데이터 포맷팅 오류: {format_error}")
                         continue
-                
+
                 logger.info(f"최종 단골파티 데이터: {len(response_data['dangolpots'])}개")
-                
+
             except Exception as query_error:
                 logger.error(f"단골파티 조회 오류: {query_error}")
                 response_data['message'] = '단골파티 조회 중 오류가 발생했습니다.'
                 response_data['error'] = str(query_error)
-                
+
         except Exception as import_error:
             logger.error(f"모델 import 오류: {import_error}")
             response_data['message'] = '시스템 초기화 중 오류가 발생했습니다.'
             response_data['error'] = str(import_error)
-        
+
         return jsonify(response_data), 200
-        
+
     except Exception as e:
         logger.error(f"개발용 내 단골파티 API 전체 오류: {e}")
         logger.error(f"오류 타입: {type(e).__name__}")
-        
+
         return jsonify({
             'success': False,
             'error': f'서버 내부 오류가 발생했습니다: {str(e)}',
@@ -152,14 +153,14 @@ def root_dev_my_dangolpots(employee_id):
 def root_dev_schedules():
     """루트 레벨 개발용 일정 조회 API - 안전한 방식으로 재작성"""
     logger.info("루트 레벨 개발용 일정 조회 API 호출됨")
-    
+
     try:
         employee_id = request.args.get('employee_id', '1')
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
-        
+
         logger.info(f"요청 파라미터: employee_id={employee_id}, start_date={start_date}, end_date={end_date}")
-        
+
         # 기본 응답 구조
         response_data = {
             'success': True,
@@ -169,11 +170,11 @@ def root_dev_schedules():
             'end_date': end_date,
             'message': '일정 조회 완료'
         }
-        
+
         try:
             # SQLAlchemy 메타데이터 충돌 방지를 위한 안전한 import
             from backend.app.extensions import db
-            
+
             # 기존 테이블이 이미 정의되어 있는지 확인
             if 'personal_schedules' in db.metadata.tables:
                 logger.info("personal_schedules 테이블이 이미 메타데이터에 존재함")
@@ -183,9 +184,9 @@ def root_dev_schedules():
                 # 새로 import
                 from models.schedule_models import PersonalSchedule
                 logger.info("PersonalSchedule 모델 새로 import")
-            
+
             logger.info("모델 import 성공")
-            
+
             # 데이터베이스 연결 테스트
             try:
                 # 간단한 쿼리로 연결 테스트 (SQLAlchemy 쿼리 수정)
@@ -200,7 +201,7 @@ def root_dev_schedules():
                 logger.error(f"데이터베이스 연결 실패: {conn_error}")
                 response_data['message'] = '데이터베이스 연결에 문제가 있습니다.'
                 return jsonify(response_data), 200
-            
+
             # 일정 조회 (가장 안전한 방식)
             try:
                 # 먼저 모든 일정 조회 (SQLAlchemy 쿼리 수정)
@@ -213,22 +214,22 @@ def root_dev_schedules():
                         PersonalSchedule.c.employee_id == employee_id
                     ).all()
                 logger.info(f"전체 일정 조회 성공: {len(all_schedules)}개")
-                
+
                 # 메모리에서 날짜 필터링 (안전한 방식)
                 filtered_schedules = []
                 for schedule in all_schedules:
                     schedule_date = schedule.schedule_date
-                    
+
                     # 날짜 필터링
                     if start_date and schedule_date < start_date:
                         continue
                     if end_date and schedule_date > end_date:
                         continue
-                    
+
                     filtered_schedules.append(schedule)
-                
+
                 logger.info(f"필터링 후 일정: {len(filtered_schedules)}개")
-                
+
                 # 일정 데이터 포맷팅
                 for schedule in filtered_schedules:
                     try:
@@ -246,25 +247,25 @@ def root_dev_schedules():
                     except Exception as format_error:
                         logger.warning(f"일정 데이터 포맷팅 오류: {format_error}")
                         continue
-                
+
                 logger.info(f"최종 일정 데이터: {len(response_data['schedules'])}개")
-                
+
             except Exception as query_error:
                 logger.error(f"일정 조회 오류: {query_error}")
                 response_data['message'] = '일정 조회 중 오류가 발생했습니다.'
                 response_data['error'] = str(query_error)
-                
+
         except Exception as import_error:
             logger.error(f"모델 import 오류: {import_error}")
             response_data['message'] = '시스템 초기화 중 오류가 발생했습니다.'
             response_data['error'] = str(import_error)
-        
+
         return jsonify(response_data), 200
-        
+
     except Exception as e:
         logger.error(f"개발용 일정 API 전체 오류: {e}")
         logger.error(f"오류 타입: {type(e).__name__}")
-        
+
         return jsonify({
             'success': False,
             'error': f'서버 내부 오류가 발생했습니다: {str(e)}',
@@ -279,7 +280,7 @@ def root_dev_schedules():
 def root_dev_create_schedule():
     """루트 레벨 개발용 일정 생성 API - 실제 데이터 사용"""
     logger.info("루트 레벨 개발용 일정 생성 API 호출됨")
-    
+
     try:
         # 요청 데이터 파싱
         data = request.get_json()
@@ -288,7 +289,7 @@ def root_dev_create_schedule():
                 'success': False,
                 'error': '요청 데이터가 없습니다.'
             }), 400
-        
+
         # 필수 필드 확인
         required_fields = ['employee_id', 'title', 'start_date']
         for field in required_fields:
@@ -297,12 +298,12 @@ def root_dev_create_schedule():
                     'success': False,
                     'error': f'필수 필드가 누락되었습니다: {field}'
                 }), 400
-        
+
         # 실제 일정 생성
         from models.schedule_models import PersonalSchedule
         from backend.app.extensions import db
         from datetime import datetime
-        
+
         # 일정 객체 생성
         schedule = PersonalSchedule(
             employee_id=data['employee_id'],
@@ -320,11 +321,11 @@ def root_dev_create_schedule():
             master_schedule_id=data.get('master_schedule_id'),
             created_by=data.get('created_by', data['employee_id'])
         )
-        
+
         # 데이터베이스에 저장
         db.session.add(schedule)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'schedule': {
@@ -345,7 +346,7 @@ def root_dev_create_schedule():
                 'created_at': schedule.created_at.isoformat() if schedule.created_at and hasattr(schedule.created_at, 'isoformat') else str(schedule.created_at) if schedule.created_at else None
             }
         })
-        
+
     except Exception as e:
         logger.error(f"개발용 일정 생성 API 오류: {e}")
         return jsonify({
@@ -357,12 +358,12 @@ def root_dev_create_schedule():
 def root_dev_random_lunch_int(employee_id):
     """루트 레벨 개발용 랜덤런치 API - 정수형 employee_id"""
     logger.info(f"루트 레벨 개발용 랜덤런치 API 호출됨: {employee_id}")
-    
+
     # 실제 식당 데이터에서 랜덤 선택
     try:
         from models.restaurant_models import RestaurantV2
         import random
-        
+
         # 모든 식당 조회
         restaurants = RestaurantV2.query.all()
         if not restaurants:
@@ -370,10 +371,10 @@ def root_dev_random_lunch_int(employee_id):
                 'success': False,
                 'error': '식당 데이터가 없습니다.'
             }), 404
-        
+
         # 랜덤 식당 선택
         random_restaurant = random.choice(restaurants)
-        
+
         return jsonify({
             'success': True,
             'groupsData': [{
@@ -410,24 +411,24 @@ def root_dev_random_lunch_int(employee_id):
 def root_dev_friends(employee_id):
     """루트 레벨 개발용 친구 API - 실제 데이터 사용"""
     logger.info(f"루트 레벨 개발용 친구 API 호출됨: {employee_id}")
-    
+
     # 실제 친구 데이터 조회
     try:
         from backend.auth.models import Friendship, User
         from backend.app.extensions import db
-        
+
         # 친구 관계 조회 (실제 컬럼명 사용)
         friendships = Friendship.query.filter(
-            (Friendship.requester_id == str(employee_id)) | 
+            (Friendship.requester_id == str(employee_id)) |
             (Friendship.receiver_id == str(employee_id))
         ).filter(Friendship.status == 'accepted').all()
-        
+
         # 친구 목록 생성
         friends = []
         for friendship in friendships:
             # 친구 ID 결정 (실제 컬럼명 사용)
             friend_id = friendship.receiver_id if friendship.requester_id == str(employee_id) else friendship.requester_id
-            
+
             # 친구 정보 조회
             friend = User.query.filter_by(employee_id=friend_id).first()
             if friend:
@@ -437,18 +438,18 @@ def root_dev_friends(employee_id):
                     'email': friend.email,
                     'is_active': friend.is_active
                 })
-        
+
         # 개발용 친구 관계가 없으면 생성
         if not friends and employee_id == 1:
             logger.info("개발용 친구 관계 데이터 생성 중...")
-            
+
             # 개발용 사용자들 생성
             dev_users = [
                 {'employee_id': '2', 'nickname': '친구1', 'email': 'friend1@example.com'},
                 {'employee_id': '3', 'nickname': '친구2', 'email': 'friend2@example.com'},
                 {'employee_id': '4', 'nickname': '친구3', 'email': 'friend3@example.com'}
             ]
-            
+
             for user_data in dev_users:
                 # 사용자 생성
                 user = User.query.filter_by(employee_id=user_data['employee_id']).first()
@@ -460,7 +461,7 @@ def root_dev_friends(employee_id):
                         is_active=True
                     )
                     db.session.add(user)
-                
+
                 # 친구 관계 생성 (양방향)
                 friendship1 = Friendship(
                     requester_id=str(employee_id),
@@ -474,16 +475,16 @@ def root_dev_friends(employee_id):
                 )
                 db.session.add(friendship1)
                 db.session.add(friendship2)
-            
+
             db.session.commit()
             logger.info("개발용 친구 관계 데이터 생성 완료")
-            
+
             # 다시 친구 목록 조회
             friendships = Friendship.query.filter(
-                (Friendship.requester_id == str(employee_id)) | 
+                (Friendship.requester_id == str(employee_id)) |
                 (Friendship.receiver_id == str(employee_id))
             ).filter(Friendship.status == 'accepted').all()
-            
+
             for friendship in friendships:
                 friend_id = friendship.receiver_id if friendship.requester_id == str(employee_id) else friendship.requester_id
                 friend = User.query.filter_by(employee_id=friend_id).first()
@@ -494,7 +495,7 @@ def root_dev_friends(employee_id):
                         'email': friend.email,
                         'is_active': friend.is_active
                     })
-        
+
         return jsonify({
             'success': True,
             'friends': friends
@@ -510,24 +511,24 @@ def root_dev_friends(employee_id):
 def root_friends(employee_id):
     """루트 레벨 친구 API - 실제 데이터 사용"""
     logger.info(f"루트 레벨 친구 API 호출됨: {employee_id}")
-    
+
     # 개발 환경에서는 인증 우회하고 실제 친구 데이터 반환
     try:
         from backend.auth.models import Friendship, User
         from backend.app.extensions import db
-        
+
         # 친구 관계 조회 (실제 컬럼명 사용)
         friendships = Friendship.query.filter(
-            (Friendship.requester_id == str(employee_id)) | 
+            (Friendship.requester_id == str(employee_id)) |
             (Friendship.receiver_id == str(employee_id))
         ).filter(Friendship.status == 'accepted').all()
-        
+
         # 친구 목록 생성
         friends = []
         for friendship in friendships:
             # 친구 ID 결정 (실제 컬럼명 사용)
             friend_id = friendship.receiver_id if friendship.requester_id == str(employee_id) else friendship.requester_id
-            
+
             # 친구 정보 조회
             friend = User.query.filter_by(employee_id=friend_id).first()
             if friend:
@@ -537,18 +538,18 @@ def root_friends(employee_id):
                     'email': friend.email,
                     'is_active': friend.is_active
                 })
-        
+
         # 개발용 친구 관계가 없으면 생성
         if not friends and employee_id == 1:
             logger.info("개발용 친구 관계 데이터 생성 중...")
-            
+
             # 개발용 사용자들 생성
             dev_users = [
                 {'employee_id': '2', 'nickname': '친구1', 'email': 'friend1@example.com'},
                 {'employee_id': '3', 'nickname': '친구2', 'email': 'friend2@example.com'},
                 {'employee_id': '4', 'nickname': '친구3', 'email': 'friend3@example.com'}
             ]
-            
+
             for user_data in dev_users:
                 # 사용자 생성
                 user = User.query.filter_by(employee_id=user_data['employee_id']).first()
@@ -560,7 +561,7 @@ def root_friends(employee_id):
                         is_active=True
                     )
                     db.session.add(user)
-                
+
                 # 친구 관계 생성 (양방향)
                 friendship1 = Friendship(
                     requester_id=str(employee_id),
@@ -574,16 +575,16 @@ def root_friends(employee_id):
                 )
                 db.session.add(friendship1)
                 db.session.add(friendship2)
-            
+
             db.session.commit()
             logger.info("개발용 친구 관계 데이터 생성 완료")
-            
+
             # 다시 친구 목록 조회
             friendships = Friendship.query.filter(
-                (Friendship.requester_id == str(employee_id)) | 
+                (Friendship.requester_id == str(employee_id)) |
                 (Friendship.receiver_id == str(employee_id))
             ).filter(Friendship.status == 'accepted').all()
-            
+
             for friendship in friendships:
                 friend_id = friendship.receiver_id if friendship.requester_id == str(employee_id) else friendship.requester_id
                 friend = User.query.filter_by(employee_id=friend_id).first()
@@ -594,7 +595,7 @@ def root_friends(employee_id):
                         'email': friend.email,
                         'is_active': friend.is_active
                     })
-        
+
         return jsonify(friends)
     except Exception as e:
         logger.error(f"친구 API 오류: {e}")
@@ -606,26 +607,26 @@ def root_friends(employee_id):
 def root_today():
     """루트 레벨 오늘 날짜 API - 근본적 해결책"""
     logger.info("루트 레벨 오늘 날짜 API 호출됨")
-    
+
     try:
         from datetime import datetime, timezone, timedelta
-        
+
         # 한국 시간대 (UTC+9)
         korean_tz = timezone(timedelta(hours=9))
         now_korean = datetime.now(korean_tz)
-        
+
         # 오늘 날짜 문자열 (YYYY-MM-DD)
         today_date = now_korean.strftime('%Y-%m-%d')
-        
+
         # 오늘 날짜의 시작 시간 (00:00:00)
         today_datetime = now_korean.replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         return jsonify({
             'success': True,
             'data': {
                 'today_date': today_date,
                 'today_datetime': today_datetime.isoformat(),
-                'current_utc': datetime.now(timezone.utc).isoformat(),
+                'current_utc': datetime.now(UTC).isoformat(),
                 'current_korean': now_korean.isoformat(),
                 'timezone_info': {
                     'utc_offset': '+00:00',
@@ -634,7 +635,7 @@ def root_today():
             },
             'message': '오늘 날짜 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"오늘 날짜 API 오류: {e}")
         return jsonify({
@@ -646,7 +647,7 @@ def root_today():
 def root_chats(user_id):
     """루트 레벨 채팅 목록 API"""
     logger.info(f"루트 레벨 채팅 목록 API 호출됨: {user_id}")
-    
+
     # 개발 환경에서는 인증 우회하고 가상 채팅 데이터 반환
     try:
         return jsonify({
@@ -682,28 +683,28 @@ def root_chats(user_id):
 def root_dev_restaurants():
     """루트 레벨 개발용 식당 목록 API"""
     logger.info("루트 레벨 개발용 식당 목록 API 호출됨")
-    
+
     # 실제 식당 데이터 조회
     try:
         from models.restaurant_models import RestaurantV2
-        
+
         # 쿼리 파라미터
         lat = request.args.get('lat', type=float)
         lng = request.args.get('lng', type=float)
         radius = request.args.get('radius', 5, type=float)
         limit = request.args.get('limit', 100, type=int)
         sort = request.args.get('sort', 'distance')
-        
+
         # 기본 쿼리
         query = RestaurantV2.query.filter_by(is_active=True)
-        
+
         # 위치 기반 필터링 (간단한 구현)
         if lat and lng:
             # 실제로는 거리 계산이 필요하지만, 여기서는 간단히 처리
             restaurants = query.limit(limit).all()
         else:
             restaurants = query.limit(limit).all()
-        
+
         # 식당 데이터 포맷팅
         restaurant_list = []
         for restaurant in restaurants:
@@ -719,7 +720,7 @@ def root_dev_restaurants():
                 'longitude': restaurant.longitude,
                 'review_count': restaurant.review_count or 0
             })
-        
+
         return jsonify({
             'success': True,
             'restaurants': restaurant_list,
@@ -736,18 +737,18 @@ def root_dev_restaurants():
 def root_restaurant_categories():
     """루트 레벨 식당 카테고리 API - 실제 데이터 사용"""
     logger.info("루트 레벨 식당 카테고리 API 호출됨")
-    
+
     # 실제 카테고리 데이터 조회
     try:
         from models.restaurant_models import RestaurantV2
         from sqlalchemy import func
-        
+
         # 카테고리별 식당 수 조회
         category_stats = RestaurantV2.query.filter_by(is_active=True).with_entities(
             RestaurantV2.category,
             func.count(RestaurantV2.id).label('count')
         ).group_by(RestaurantV2.category).all()
-        
+
         # 카테고리 데이터 포맷팅
         categories = []
         for i, (category, count) in enumerate(category_stats, 1):
@@ -757,7 +758,7 @@ def root_restaurant_categories():
                     'name': category,
                     'count': count
                 })
-        
+
         return jsonify({
             'success': True,
             'categories': categories
@@ -773,23 +774,23 @@ def root_restaurant_categories():
 def root_dev_parties():
     """루트 레벨 개발용 파티 목록 API - 실제 데이터 사용"""
     logger.info("루트 레벨 개발용 파티 목록 API 호출됨")
-    
+
     # 실제 파티 데이터 조회
     try:
         from models.app_models import Party, PartyMember
         from backend.auth.models import User
-        
+
         # 쿼리 파라미터
         employee_id = request.args.get('employee_id', '1')
         is_from_match = request.args.get('is_from_match', 'false').lower() == 'true'
-        
+
         # 사용자가 참여한 파티 조회
         party_memberships = PartyMember.query.filter_by(employee_id=employee_id).all()
         party_ids = [pm.party_id for pm in party_memberships]
-        
+
         # 파티 목록 조회
         parties = Party.query.filter(Party.id.in_(party_ids)).all()
-        
+
         # 파티 데이터 포맷팅
         party_list = []
         for party in parties:
@@ -804,7 +805,7 @@ def root_dev_parties():
                         'nickname': user.nickname,
                         'email': user.email
                     })
-            
+
             party_list.append({
                 'id': party.id,
                 'title': party.title,
@@ -818,7 +819,7 @@ def root_dev_parties():
                 'members': member_list,
                 'created_at': party.created_at.isoformat() if party.created_at else None
             })
-        
+
         return jsonify({
             'success': True,
             'parties': party_list,
@@ -835,25 +836,25 @@ def root_dev_parties():
 def root_dev_random_lunch(employee_id):
     """루트 레벨 개발용 랜덤런치 API - 근본적 해결책"""
     logger.info(f"루트 레벨 개발용 랜덤런치 API 호출됨: {employee_id}")
-    
+
     try:
         # 데이터베이스 연결 테스트
         from backend.app.extensions import db
-        from backend.models.app_models import User, PersonalSchedule
-        
+        from backend.models.app_models import User
+
         # 간단한 쿼리로 연결 테스트
         if hasattr(User, 'query'):
             test_query = User.query.limit(1).all()
         else:
             test_query = db.session.query(User).limit(1).all()
         logger.info("데이터베이스 연결 성공")
-        
+
         # 사용자 확인
         if hasattr(User, 'query'):
             user = User.query.filter_by(employee_id=employee_id).first()
         else:
             user = db.session.query(User).filter(User.c.employee_id == employee_id).first()
-        
+
         if not user:
             logger.warning(f"사용자를 찾을 수 없음: {employee_id}")
             return jsonify({
@@ -861,22 +862,22 @@ def root_dev_random_lunch(employee_id):
                 'groups': [],
                 'message': '사용자를 찾을 수 없습니다.'
             })
-        
+
         # 실제 데이터베이스에서 랜덤런치 그룹 조회 (프로덕션 환경)
         from datetime import datetime, timezone, timedelta
-        
+
         # 한국 시간대 (UTC+9)
         korean_tz = timezone(timedelta(hours=9))
         now_korean = datetime.now(korean_tz)
         today = now_korean.strftime('%Y-%m-%d')
-        
+
         # 실제 랜덤런치 그룹 조회 (데이터베이스에서)
         random_groups = []
-        
+
         try:
             # 1. 오늘 날짜의 기존 랜덤런치 그룹 조회
             from backend.models.app_models import RandomLunchGroup, RandomLunchMember
-            
+
             if hasattr(RandomLunchGroup, 'query'):
                 # 모델 클래스인 경우
                 existing_groups = RandomLunchGroup.query.filter_by(date=today).all()
@@ -885,9 +886,9 @@ def root_dev_random_lunch(employee_id):
                 existing_groups = db.session.query(RandomLunchGroup).filter(
                     RandomLunchGroup.c.date == today
                 ).all()
-            
+
             logger.info(f"기존 랜덤런치 그룹 조회: {len(existing_groups)}개")
-            
+
             # 2. 기존 그룹이 있으면 반환
             for group in existing_groups:
                 # 그룹 멤버 조회
@@ -897,7 +898,7 @@ def root_dev_random_lunch(employee_id):
                     members = db.session.query(RandomLunchMember).filter(
                         RandomLunchMember.c.group_id == group.id
                     ).all()
-                
+
                 # 멤버 정보 구성
                 member_list = []
                 for member in members:
@@ -907,14 +908,14 @@ def root_dev_random_lunch(employee_id):
                         member_user = db.session.query(User).filter(
                             User.c.employee_id == member.employee_id
                         ).first()
-                    
+
                     if member_user:
                         member_list.append({
                             'employee_id': member_user.employee_id,
                             'nickname': member_user.nickname,
                             'email': member_user.email
                         })
-                
+
                 random_groups.append({
                     'id': group.id,
                     'date': group.date,
@@ -926,11 +927,11 @@ def root_dev_random_lunch(employee_id):
                     'current_members': len(member_list),
                     'status': group.status
                 })
-            
+
             # 3. 기존 그룹이 없으면 새로 생성 (실제 로직)
             if not random_groups:
                 logger.info("기존 랜덤런치 그룹이 없음 - 새 그룹 생성 로직 실행")
-                
+
                 # 실제 사용자들 중에서 랜덤하게 선택하여 그룹 생성
                 if hasattr(User, 'query'):
                     all_users = User.query.filter(User.employee_id != employee_id).limit(10).all()
@@ -938,12 +939,12 @@ def root_dev_random_lunch(employee_id):
                     all_users = db.session.query(User).filter(
                         User.c.employee_id != employee_id
                     ).limit(10).all()
-                
+
                 if len(all_users) >= 2:  # 최소 2명 이상의 다른 사용자가 있어야 함
                     # 랜덤하게 2-3명 선택
                     import random
                     selected_users = random.sample(all_users, min(3, len(all_users)))
-                    
+
                     # 새 랜덤런치 그룹 생성
                     new_group = RandomLunchGroup(
                         date=today,
@@ -954,10 +955,10 @@ def root_dev_random_lunch(employee_id):
                         status='active',
                         created_by=employee_id
                     )
-                    
+
                     db.session.add(new_group)
                     db.session.flush()  # ID 생성
-                    
+
                     # 호스트 추가
                     host_member = RandomLunchMember(
                         group_id=new_group.id,
@@ -965,7 +966,7 @@ def root_dev_random_lunch(employee_id):
                         role='host'
                     )
                     db.session.add(host_member)
-                    
+
                     # 선택된 사용자들 추가
                     for selected_user in selected_users:
                         member = RandomLunchMember(
@@ -974,23 +975,23 @@ def root_dev_random_lunch(employee_id):
                             role='member'
                         )
                         db.session.add(member)
-                    
+
                     db.session.commit()
-                    
+
                     # 생성된 그룹 정보 반환
                     member_list = [{
                         'employee_id': employee_id,
                         'nickname': user.nickname,
                         'email': user.email
                     }]
-                    
+
                     for selected_user in selected_users:
                         member_list.append({
                             'employee_id': selected_user.employee_id,
                             'nickname': selected_user.nickname,
                             'email': selected_user.email
                         })
-                    
+
                     random_groups.append({
                         'id': new_group.id,
                         'date': new_group.date,
@@ -1002,22 +1003,22 @@ def root_dev_random_lunch(employee_id):
                         'current_members': len(member_list),
                         'status': new_group.status
                     })
-                    
+
                     logger.info(f"새 랜덤런치 그룹 생성 완료: {new_group.id}")
                 else:
                     logger.warning("랜덤런치 그룹 생성에 필요한 사용자가 부족함")
-            
+
         except Exception as db_error:
             logger.error(f"랜덤런치 그룹 조회/생성 오류: {db_error}")
             # 데이터베이스 오류 시 빈 배열 반환
             random_groups = []
-        
+
         return jsonify({
             'success': True,
             'groups': random_groups,
             'message': '랜덤런치 그룹 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"랜덤런치 API 오류: {e}")
         return jsonify({
@@ -1029,7 +1030,7 @@ def root_dev_random_lunch(employee_id):
 def root_dev_chat_messages(chat_type, chat_id):
     """루트 레벨 개발용 채팅 메시지 API"""
     logger.info(f"루트 레벨 개발용 채팅 메시지 API 호출됨: {chat_type}/{chat_id}")
-    
+
     # 개발 환경에서는 인증 우회하고 가상 메시지 데이터 반환
     try:
         return jsonify({
@@ -1069,7 +1070,7 @@ def root_dev_chat_messages(chat_type, chat_id):
 def root_events(employee_id):
     """이벤트 조회 API - 근본적 해결책"""
     logger.info(f"이벤트 조회 API 호출됨: {employee_id}")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1078,7 +1079,7 @@ def root_events(employee_id):
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         # 간단한 이벤트 데이터 반환 (개발용)
         events = [
             {
@@ -1090,13 +1091,13 @@ def root_events(employee_id):
                 'status': 'confirmed'
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'events': events,
             'message': '이벤트 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"이벤트 조회 API 오류: {e}")
         return jsonify({
@@ -1108,7 +1109,7 @@ def root_events(employee_id):
 def root_proposals_mine():
     """내 제안 조회 API - 근본적 해결책"""
     logger.info("내 제안 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1117,21 +1118,21 @@ def root_proposals_mine():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
-        
+
         # 간단한 제안 데이터 반환 (개발용)
         proposals = {
             'sent_proposals': [],
             'received_proposals': []
         }
-        
+
         return jsonify({
             'success': True,
             'proposals': proposals,
             'message': '제안 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"제안 조회 API 오류: {e}")
         return jsonify({
@@ -1143,7 +1144,7 @@ def root_proposals_mine():
 def root_parties():
     """파티 조회 API - 근본적 해결책"""
     logger.info("파티 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1152,19 +1153,19 @@ def root_parties():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
         is_from_match = request.args.get('is_from_match', 'false')
-        
+
         # 간단한 파티 데이터 반환 (개발용)
         parties = []
-        
+
         return jsonify({
             'success': True,
             'parties': parties,
             'message': '파티 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"파티 조회 API 오류: {e}")
         return jsonify({
@@ -1176,7 +1177,7 @@ def root_parties():
 def root_users_profile():
     """사용자 프로필 조회 API - 근본적 해결책"""
     logger.info("사용자 프로필 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1185,7 +1186,7 @@ def root_users_profile():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         # 프로필 데이터 반환
         profile = {
             'employee_id': 'KOICA347',
@@ -1194,13 +1195,13 @@ def root_users_profile():
             'preferred_time': '12:00',
             'lunch_preference': '새로운 맛집 탐방'
         }
-        
+
         return jsonify({
             'success': True,
             'profile': profile,
             'message': '프로필 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"프로필 조회 API 오류: {e}")
         return jsonify({
@@ -1212,7 +1213,7 @@ def root_users_profile():
 def root_restaurants():
     """식당 조회 API - 근본적 해결책"""
     logger.info("식당 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1221,7 +1222,7 @@ def root_restaurants():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         # 간단한 식당 데이터 반환 (개발용)
         restaurants = [
             {
@@ -1232,13 +1233,13 @@ def root_restaurants():
                 'rating': 4.5
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'restaurants': restaurants,
             'message': '식당 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"식당 조회 API 오류: {e}")
         return jsonify({
@@ -1250,7 +1251,7 @@ def root_restaurants():
 def root_api_parties():
     """API 파티 목록 조회 - 근본적 해결책"""
     logger.info("API 파티 목록 조회 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1259,19 +1260,19 @@ def root_api_parties():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
         is_from_match = request.args.get('is_from_match', 'false')
-        
+
         # 간단한 파티 데이터 반환 (개발용)
         parties = []
-        
+
         return jsonify({
             'success': True,
             'parties': parties,
             'message': 'API 파티 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"API 파티 조회 오류: {e}")
         return jsonify({
@@ -1283,7 +1284,7 @@ def root_api_parties():
 def root_api_my_parties():
     """내 파티 목록 조회 API - 근본적 해결책"""
     logger.info("내 파티 목록 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1292,18 +1293,18 @@ def root_api_my_parties():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
-        
+
         # 간단한 내 파티 데이터 반환 (개발용)
         parties = []
-        
+
         return jsonify({
             'success': True,
             'parties': parties,
             'message': '내 파티 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"내 파티 조회 API 오류: {e}")
         return jsonify({
@@ -1319,7 +1320,7 @@ def root_api_my_parties():
 def root_api_friends():
     """친구 목록 조회 API - 근본적 해결책"""
     logger.info("친구 목록 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1328,9 +1329,9 @@ def root_api_friends():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
-        
+
         # 간단한 친구 데이터 반환 (개발용)
         friends = [
             {
@@ -1348,13 +1349,13 @@ def root_api_friends():
                 'status': 'active'
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'friends': friends,
             'message': '친구 목록 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 목록 조회 API 오류: {e}")
         return jsonify({
@@ -1366,7 +1367,7 @@ def root_api_friends():
 def root_api_friend_requests():
     """친구 요청 목록 조회 API - 근본적 해결책"""
     logger.info("친구 요청 목록 조회 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1375,18 +1376,18 @@ def root_api_friend_requests():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         employee_id = request.args.get('employee_id', '1')
-        
+
         # 간단한 친구 요청 데이터 반환 (개발용)
         requests = []
-        
+
         return jsonify({
             'success': True,
             'requests': requests,
             'message': '친구 요청 목록 조회 완료'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 요청 목록 조회 API 오류: {e}")
         return jsonify({
@@ -1398,7 +1399,7 @@ def root_api_friend_requests():
 def root_api_add_friend():
     """친구 추가 API - 근본적 해결책"""
     logger.info("친구 추가 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1407,21 +1408,21 @@ def root_api_add_friend():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         data = request.get_json()
         friend_employee_id = data.get('employee_id')
-        
+
         if not friend_employee_id:
             return jsonify({
                 'success': False,
                 'error': '친구의 직원 ID가 필요합니다.'
             }), 400
-        
+
         return jsonify({
             'success': True,
             'message': '친구 요청이 전송되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 추가 API 오류: {e}")
         return jsonify({
@@ -1433,7 +1434,7 @@ def root_api_add_friend():
 def root_api_accept_friend():
     """친구 요청 수락 API - 근본적 해결책"""
     logger.info("친구 요청 수락 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1442,21 +1443,21 @@ def root_api_accept_friend():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         data = request.get_json()
         request_id = data.get('request_id')
-        
+
         if not request_id:
             return jsonify({
                 'success': False,
                 'error': '요청 ID가 필요합니다.'
             }), 400
-        
+
         return jsonify({
             'success': True,
             'message': '친구 요청이 수락되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 요청 수락 API 오류: {e}")
         return jsonify({
@@ -1468,7 +1469,7 @@ def root_api_accept_friend():
 def root_api_reject_friend():
     """친구 요청 거절 API - 근본적 해결책"""
     logger.info("친구 요청 거절 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1477,21 +1478,21 @@ def root_api_reject_friend():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         data = request.get_json()
         request_id = data.get('request_id')
-        
+
         if not request_id:
             return jsonify({
                 'success': False,
                 'error': '요청 ID가 필요합니다.'
             }), 400
-        
+
         return jsonify({
             'success': True,
             'message': '친구 요청이 거절되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 요청 거절 API 오류: {e}")
         return jsonify({
@@ -1503,7 +1504,7 @@ def root_api_reject_friend():
 def root_api_remove_friend():
     """친구 삭제 API - 근본적 해결책"""
     logger.info("친구 삭제 API 호출됨")
-    
+
     try:
         # 인증 확인
         auth_result = check_authentication()
@@ -1512,21 +1513,21 @@ def root_api_remove_friend():
                 'success': False,
                 'error': '인증이 필요합니다.'
             }), 401
-        
+
         data = request.get_json()
         friend_employee_id = data.get('employee_id')
-        
+
         if not friend_employee_id:
             return jsonify({
                 'success': False,
                 'error': '친구의 직원 ID가 필요합니다.'
             }), 400
-        
+
         return jsonify({
             'success': True,
             'message': '친구가 삭제되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"친구 삭제 API 오류: {e}")
         return jsonify({

@@ -3,7 +3,7 @@
 Pydantic 유효성 검증 실패와 기타 에러를 일관된 형식으로 처리
 """
 
-from flask import jsonify, request
+from flask import jsonify
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 import traceback
@@ -34,7 +34,7 @@ def handle_validation_error(error: ValidationError):
             'message': err['msg'],
             'type': err['type']
         })
-    
+
     return jsonify({
         'error': 'Validation Error',
         'message': '입력 데이터가 유효하지 않습니다.',
@@ -49,10 +49,10 @@ def handle_api_error(error: APIError):
         'message': error.message,
         'status_code': error.status_code
     }
-    
+
     if error.error_code:
         response['error_code'] = error.error_code
-    
+
     return jsonify(response), error.status_code
 
 def handle_http_exception(error: HTTPException):
@@ -67,7 +67,7 @@ def handle_generic_exception(error: Exception):
     """일반적인 예외를 처리"""
     logger.error(f"Unhandled exception: {str(error)}")
     logger.error(traceback.format_exc())
-    
+
     return jsonify({
         'error': 'Internal Server Error',
         'message': '서버 내부 오류가 발생했습니다.',
@@ -76,23 +76,23 @@ def handle_generic_exception(error: Exception):
 
 def register_error_handlers(app):
     """Flask 앱에 에러 핸들러를 등록"""
-    
+
     @app.errorhandler(ValidationError)
     def validation_error_handler(error):
         return handle_validation_error(error)
-    
+
     @app.errorhandler(APIError)
     def api_error_handler(error):
         return handle_api_error(error)
-    
+
     @app.errorhandler(HTTPException)
     def http_exception_handler(error):
         return handle_http_exception(error)
-    
+
     @app.errorhandler(Exception)
     def generic_exception_handler(error):
         return handle_generic_exception(error)
-    
+
     # 404 에러 핸들러
     @app.errorhandler(404)
     def not_found_handler(error):
@@ -101,7 +101,7 @@ def register_error_handlers(app):
             'message': '요청한 리소스를 찾을 수 없습니다.',
             'status_code': 404
         }), 404
-    
+
     # 405 에러 핸들러
     @app.errorhandler(405)
     def method_not_allowed_handler(error):

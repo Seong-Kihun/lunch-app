@@ -32,13 +32,13 @@ def create_notification(
             created_at=datetime.now(),
             is_read=False,
         )
-        
+
         db.session.add(notification)
         db.session.commit()
-        
+
         print(f"DEBUG: 알림 생성 완료 - 사용자: {user_id}, 제목: {title}")
         return notification
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"ERROR: 알림 생성 실패 - 사용자: {user_id}, 오류: {e}")
@@ -87,10 +87,10 @@ def format_notification_time(created_at):
     """알림 시간을 사용자 친화적 형태로 포맷팅"""
     if not created_at:
         return "알 수 없음"
-    
+
     now = datetime.now()
     diff = now - created_at
-    
+
     if diff.total_seconds() < 60:
         return "방금 전"
     elif diff.total_seconds() < 3600:  # 1시간 미만
@@ -128,39 +128,39 @@ def cleanup_expired_notifications():
     """만료된 알림 정리"""
     try:
         now = datetime.now()
-        
+
         # 만료된 알림 삭제
         expired_count = Notification.query.filter(
             Notification.expires_at < now
         ).count()
-        
+
         Notification.query.filter(
             Notification.expires_at < now
         ).delete()
-        
+
         # 30일 이상 된 읽은 알림 삭제
         old_date = now - timedelta(days=30)
         old_read_count = Notification.query.filter(
             Notification.is_read == True,
             Notification.created_at < old_date
         ).count()
-        
+
         Notification.query.filter(
             Notification.is_read == True,
             Notification.created_at < old_date
         ).delete()
-        
+
         db.session.commit()
-        
+
         total_cleaned = expired_count + old_read_count
         print(f"SUCCESS: 알림 정리 완료 - 만료: {expired_count}개, 오래된 읽은 알림: {old_read_count}개")
-        
+
         return {
             "expired_notifications": expired_count,
             "old_read_notifications": old_read_count,
             "total_cleaned": total_cleaned
         }
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"ERROR: 알림 정리 실패: {e}")
@@ -175,7 +175,7 @@ def get_unread_notification_count(user_id):
             is_read=False
         ).count()
         return count
-        
+
     except Exception as e:
         print(f"ERROR: 읽지 않은 알림 수 조회 실패 - 사용자: {user_id}, 오류: {e}")
         return 0
@@ -185,16 +185,16 @@ def mark_notifications_as_read(user_id, notification_ids=None):
     """알림을 읽음으로 표시"""
     try:
         query = Notification.query.filter_by(user_id=user_id, is_read=False)
-        
+
         if notification_ids:
             query = query.filter(Notification.id.in_(notification_ids))
-        
+
         updated_count = query.update({"is_read": True})
         db.session.commit()
-        
+
         print(f"SUCCESS: 알림 읽음 처리 완료 - 사용자: {user_id}, 처리된 알림: {updated_count}개")
         return updated_count
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"ERROR: 알림 읽음 처리 실패 - 사용자: {user_id}, 오류: {e}")

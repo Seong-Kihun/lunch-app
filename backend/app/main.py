@@ -14,10 +14,10 @@ if __name__ == '__main__':
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     port = int(os.getenv('PORT', 5000))
     host = os.getenv('HOST', '0.0.0.0')
-    
+
     print(f"🚀 서버 시작: http://{host}:{port}")
     print(f"🔧 디버그 모드: {debug_mode}")
-    
+
     app.run(
         host=host,
         port=port,

@@ -4,8 +4,7 @@
 도메인 계층과 인프라 계층 간의 변환을 담당합니다.
 """
 
-from typing import Optional
-from datetime import datetime, date, time
+from datetime import datetime
 
 from backend.core.entities import Party, User, PartyMember
 from backend.core.value_objects import RestaurantInfo, PartyTime, PartyId, UserId, PartyMemberId
@@ -16,7 +15,7 @@ from backend.infrastructure.models import (
 
 class PartyMapper:
     """파티 도메인 엔티티와 DB 모델 간의 매핑"""
-    
+
     def to_entity(self, model: PartyModel) -> Party:
         """DB 모델을 도메인 엔티티로 변환"""
         # PartyTime 값 객체 생성
@@ -24,13 +23,13 @@ class PartyMapper:
             date=model.party_date,
             time=model.party_time
         )
-        
+
         # RestaurantInfo 값 객체 생성
         restaurant = RestaurantInfo(
             name=model.restaurant_name,
             address=model.restaurant_address
         )
-        
+
         # Party 도메인 엔티티 생성
         party = Party(
             id=PartyId(model.id) if model.id else None,
@@ -43,9 +42,9 @@ class PartyMapper:
             is_active=model.is_active,
             created_at=model.created_at
         )
-        
+
         return party
-    
+
     def to_model(self, entity: Party) -> PartyModel:
         """도메인 엔티티를 DB 모델로 변환"""
         model = PartyModel(
@@ -61,13 +60,13 @@ class PartyMapper:
             is_active=entity.is_active,
             created_at=entity.created_at or datetime.utcnow()
         )
-        
+
         return model
 
 
 class UserMapper:
     """사용자 도메인 엔티티와 DB 모델 간의 매핑"""
-    
+
     def to_entity(self, model: UserModel) -> User:
         """DB 모델을 도메인 엔티티로 변환"""
         user = User(
@@ -78,9 +77,9 @@ class UserMapper:
             is_active=model.is_active,
             created_at=model.created_at
         )
-        
+
         return user
-    
+
     def to_model(self, entity: User) -> UserModel:
         """도메인 엔티티를 DB 모델로 변환"""
         model = UserModel(
@@ -91,13 +90,13 @@ class UserMapper:
             is_active=entity.is_active,
             created_at=entity.created_at or datetime.utcnow()
         )
-        
+
         return model
 
 
 class PartyMemberMapper:
     """파티 멤버 도메인 엔티티와 DB 모델 간의 매핑"""
-    
+
     def to_entity(self, model: PartyMemberModel) -> PartyMember:
         """DB 모델을 도메인 엔티티로 변환"""
         party_member = PartyMember(
@@ -107,9 +106,9 @@ class PartyMemberMapper:
             joined_at=model.joined_at,
             is_host=model.is_host
         )
-        
+
         return party_member
-    
+
     def to_model(self, entity: PartyMember) -> PartyMemberModel:
         """도메인 엔티티를 DB 모델로 변환"""
         model = PartyMemberModel(
@@ -119,13 +118,13 @@ class PartyMemberMapper:
             joined_at=entity.joined_at or datetime.utcnow(),
             is_host=entity.is_host
         )
-        
+
         return model
 
 
 class RestaurantMapper:
     """식당 도메인 엔티티와 DB 모델 간의 매핑"""
-    
+
     def to_entity(self, model: RestaurantModel) -> RestaurantInfo:
         """DB 모델을 도메인 엔티티로 변환"""
         restaurant = RestaurantInfo(
@@ -135,9 +134,9 @@ class RestaurantMapper:
             rating=model.rating,
             cuisine_type=model.cuisine_type
         )
-        
+
         return restaurant
-    
+
     def to_model(self, entity: RestaurantInfo) -> RestaurantModel:
         """도메인 엔티티를 DB 모델로 변환"""
         model = RestaurantModel(
@@ -151,13 +150,13 @@ class RestaurantMapper:
             is_active=True,  # 기본값
             created_at=datetime.utcnow()
         )
-        
+
         return model
 
 
 class ReviewMapper:
     """리뷰 도메인 엔티티와 DB 모델 간의 매핑"""
-    
+
     def to_entity(self, model: ReviewModel) -> dict:
         """DB 모델을 도메인 엔티티로 변환 (딕셔너리 형태)"""
         review = {
@@ -169,9 +168,9 @@ class ReviewMapper:
             'comment': model.comment,
             'created_at': model.created_at
         }
-        
+
         return review
-    
+
     def to_model(self, entity: dict) -> ReviewModel:
         """도메인 엔티티를 DB 모델로 변환"""
         model = ReviewModel(
@@ -183,13 +182,13 @@ class ReviewMapper:
             comment=entity.get('comment'),
             created_at=entity.get('created_at') or datetime.utcnow()
         )
-        
+
         return model
 
 
 class MapperRegistry:
     """매퍼 레지스트리 - 매퍼 인스턴스 관리"""
-    
+
     def __init__(self):
         self._mappers = {
             'party': PartyMapper(),
@@ -198,14 +197,14 @@ class MapperRegistry:
             'restaurant': RestaurantMapper(),
             'review': ReviewMapper(),
         }
-    
+
     def get_mapper(self, entity_type: str):
         """매퍼 인스턴스 반환"""
         mapper = self._mappers.get(entity_type)
         if mapper is None:
             raise ValueError(f"Unknown entity type: {entity_type}")
         return mapper
-    
+
     def register_mapper(self, entity_type: str, mapper):
         """새로운 매퍼 등록"""
         self._mappers[entity_type] = mapper

@@ -11,7 +11,7 @@ def create_app(config_name=None):
     # 환경변수 로드
     from backend.config.env_loader import load_environment_variables
     load_environment_variables()
-    
+
     # 데이터베이스 URL 정규화
     from backend.utils.database_url_normalizer import normalize_database_url, validate_database_url
     normalize_database_url()
@@ -20,18 +20,18 @@ def create_app(config_name=None):
         print(f"[WARNING] 데이터베이스 URL 검증 실패: {message}")
     else:
         print(f"[SUCCESS] 데이터베이스 URL 검증 성공: {message}")
-    
+
     # 보안 키 검증 (프로덕션에서 기본 키 사용 시 부팅 차단)
     from backend.config.auth_config import AuthConfig
     AuthConfig.validate_jwt_secret()
     AuthConfig.validate_production_secrets()
-    
+
     app = Flask(__name__)
-    
+
     # 로깅 시스템 초기화
     from backend.utils.logging import init_app_logging
     init_app_logging(app)
-     
+
     # CORS 화이트리스트 설정
     allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
     if not allowed_origins:
@@ -44,7 +44,7 @@ def create_app(config_name=None):
             "http://localhost:8081",      # React Native Metro 서버
             "http://127.0.0.1:8081",     # React Native Metro 서버 (로컬)
         ]
-    
+
     cors_config = {
         "origins": allowed_origins,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -58,7 +58,7 @@ def create_app(config_name=None):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///site.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = AuthConfig.SECRET_KEY
-    
+
     # PostgreSQL 연결 풀 설정 (프로덕션 최적화)
     if os.getenv("DATABASE_URL", "").startswith("postgresql://"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -67,7 +67,7 @@ def create_app(config_name=None):
             "pool_pre_ping": True,
             "max_overflow": 20
         }
-    
+
     # 테스트 환경 설정
     if config_name == 'testing':
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
@@ -75,63 +75,38 @@ def create_app(config_name=None):
 
     # 데이터베이스 객체 import (extensions.py에서)
     from backend.app.extensions import db
-    
+
     # 데이터베이스 초기화 - Factory 패턴에서 필수
     db.init_app(app)
 
     # 모델 import
-    from backend.models.app_models import (
-        Party,
-        PartyMember,
-        DangolPot,
-        ChatRoom,
-        ChatParticipant,
-        LunchProposal,
-        ProposalAcceptance,
-        ChatMessage,
-        Notification,
-        UserAnalytics,
-        Restaurant,
-        Review,
-        UserActivity,
-        RestaurantVisit,
-        OfflineData,
-        ChatMessageRead,
-        CategoryActivity,
-        Badge,
-        UserBadge,
-        DailyRecommendation,
-        RestaurantRequest,
-        UserFavorite,
-    )
-    
+
     # 문의사항 모델 import
-    from backend.models import Inquiry
 
     from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
-    
+
     # 인증 모델 import (표준 SQLAlchemy 방식)
     try:
         # 표준 SQLAlchemy 선언적 매핑 사용
-        from backend.auth.models import User, Friendship, RefreshToken, RevokedToken
+        from backend.auth.models import User, Friendship
         info("인증 모델을 불러왔습니다.")
-        
+
         print("[SUCCESS] 인증 모델이 표준 방식으로 등록되었습니다.")
         info("모든 모델이 메타데이터에 등록되었습니다.")
-        
+
         # 전역 변수로 모델 저장 (다른 모듈에서 사용 가능)
         app.config['USER_MODEL'] = User
         app.config['FRIENDSHIP_MODEL'] = Friendship
-        
+
         # 전역 모듈 변수로도 저장 (더 안정적인 접근)
         import backend.app.app as app_module
         app_module.User = User
         app_module.Friendship = Friendship
-        
+
         print(f"[DEBUG] 모델이 app.config에 저장됨: USER_MODEL={app.config.get('USER_MODEL')}")
         print(f"[DEBUG] 모델이 전역 변수로 저장됨: User={User}, Friendship={Friendship}")
-            
+
     except ImportError as e:
         warning(f"인증 모델 import 실패: {e}")
         warning("User, Friendship 모델은 비활성화됩니다.")
@@ -288,38 +263,38 @@ def create_app(config_name=None):
         from backend.cache.redis_cache import cache
         cache.init_app(app)
         print("[SUCCESS] Redis 캐시 시스템 초기화 완료")
-        
+
         # 데이터베이스 최적화
         from backend.optimization.query_optimizer import create_database_indexes
         create_database_indexes()
         print("[SUCCESS] 데이터베이스 최적화 완료")
-        
+
     except Exception as e:
         print(f"[WARNING] 성능 최적화 시스템 초기화 실패: {e}")
 
     # 통합 Blueprint 등록 시스템 사용 (단일 등록 지점)
     try:
         from backend.api.unified_blueprint import UnifiedBlueprintManager
-        
+
         # UnifiedBlueprintManager 초기화
         blueprint_manager = UnifiedBlueprintManager(app)
-        
+
         # 모든 Blueprint 등록 (유일한 등록 지점)
         registration_results = blueprint_manager.register_all_blueprints(app)
-        
+
         # API 정보 Blueprint 등록
         api_info_bp = blueprint_manager.create_api_info_blueprint()
         app.register_blueprint(api_info_bp)
-        
+
         # 모니터링 API는 UnifiedBlueprintManager에서 관리됨
-        
+
         # 등록 결과 검증
         failed_blueprints = [name for name, success in registration_results.items() if not success]
         if failed_blueprints:
             print(f"[WARNING] 일부 Blueprint 등록 실패: {failed_blueprints}")
         else:
             print("[SUCCESS] 모든 Blueprint가 성공적으로 등록되었습니다.")
-        
+
     except Exception as e:
         print(f"[CRITICAL] Blueprint 등록 시스템 실패: {e}")
         print("[ERROR] 애플리케이션을 시작할 수 없습니다.")
@@ -334,7 +309,7 @@ def create_app(config_name=None):
 if __name__ == "__main__":
     # 개발 환경에서 직접 실행할 때만 사용
     app = create_app()
-    
+
     # Socket.IO 설정 확인
     try:
         from backend.app.realtime_system import socketio

@@ -19,33 +19,33 @@ def migrate_random_lunch_models():
     """랜덤런치 모델 테이블 생성"""
     try:
         print("랜덤런치 모델 마이그레이션 시작...")
-        
+
         # Flask 앱 초기화
         from backend.app.app_factory import create_app
         app = create_app()
-        
+
         with app.app_context():
             from backend.app.extensions import db
             from backend.models.app_models import RandomLunchGroup, RandomLunchMember
-            
+
             print("데이터베이스 연결 확인...")
-            
+
             # 테이블 생성
             print("RandomLunchGroup 테이블 생성 중...")
             RandomLunchGroup.__table__.create(db.engine, checkfirst=True)
-            
+
             print("RandomLunchMember 테이블 생성 중...")
             RandomLunchMember.__table__.create(db.engine, checkfirst=True)
-            
+
             print("랜덤런치 모델 마이그레이션 완료!")
             print("생성된 테이블:")
             print("   - random_lunch_group")
             print("   - random_lunch_member")
-            
+
     except Exception as e:
         print(f"마이그레이션 실패: {e}")
         return False
-    
+
     return True
 
 if __name__ == "__main__":

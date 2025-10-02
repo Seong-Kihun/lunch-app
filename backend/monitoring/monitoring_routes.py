@@ -5,8 +5,6 @@
 
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta
-import json
-import os
 from .production_monitor import monitor, get_monitoring_dashboard
 
 # 모니터링 Blueprint 생성
@@ -67,12 +65,12 @@ def health_check():
     try:
         metrics = monitor.get_metrics_summary()
         alerts = monitor.check_alerts()
-        
+
         # 헬스 상태 결정
         health_status = 'healthy'
         if alerts:
             health_status = 'warning' if len(alerts) < 3 else 'critical'
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -101,9 +99,9 @@ def export_metrics():
     try:
         data = request.get_json() or {}
         filename = data.get('filename')
-        
+
         exported_file = monitor.export_metrics(filename)
-        
+
         return jsonify({
             'success': True,
             'message': '메트릭이 성공적으로 내보내졌습니다.',
@@ -123,7 +121,7 @@ def reset_metrics():
     """메트릭 데이터 초기화"""
     try:
         monitor.reset_metrics()
-        
+
         return jsonify({
             'success': True,
             'message': '메트릭이 성공적으로 초기화되었습니다.',
@@ -144,7 +142,7 @@ def get_config():
             'thresholds': monitor.thresholds,
             'timestamp': datetime.now().isoformat()
         }
-        
+
         return jsonify({
             'success': True,
             'data': config
@@ -165,17 +163,17 @@ def update_config():
                 'success': False,
                 'error': '설정 데이터가 필요합니다.'
             }), 400
-        
+
         # 임계값 업데이트
         if 'thresholds' in data:
             for key, value in data['thresholds'].items():
                 if key in monitor.thresholds:
                     monitor.thresholds[key] = value
-        
+
         # 모니터링 활성화/비활성화
         if 'enabled' in data:
             monitor.enabled = bool(data['enabled'])
-        
+
         return jsonify({
             'success': True,
             'message': '설정이 성공적으로 업데이트되었습니다.',
@@ -198,17 +196,17 @@ def get_realtime_data():
         # 최근 1시간 데이터
         now = datetime.now()
         one_hour_ago = now - timedelta(hours=1)
-        
+
         # 최근 에러 (최대 20개)
         recent_errors = list(monitor.recent_errors)[-20:]
-        
+
         # 최근 느린 요청 (최대 10개)
         recent_slow_requests = list(monitor.slow_requests)[-10:]
-        
+
         # 현재 시간대 통계
         current_hour = now.hour
         hourly_stats = monitor.metrics['hourly_stats'].get(current_hour, {})
-        
+
         realtime_data = {
             'timestamp': now.isoformat(),
             'current_hour_stats': hourly_stats,
@@ -217,7 +215,7 @@ def get_realtime_data():
             'active_users': len(monitor.metrics['user_activities']),
             'total_calls_today': sum(monitor.metrics['daily_stats'].get(now.date(), {}).values())
         }
-        
+
         return jsonify({
             'success': True,
             'data': realtime_data

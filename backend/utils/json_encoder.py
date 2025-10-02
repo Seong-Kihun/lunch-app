@@ -10,60 +10,60 @@ from sqlalchemy.inspection import inspect
 
 class CustomJSONEncoder(json.JSONEncoder):
     """커스텀 JSON 인코더 - 모든 데이터 타입을 안전하게 직렬화"""
-    
+
     def default(self, obj):
         # SQLAlchemy 모델 객체 처리
         if hasattr(obj, '__tablename__'):  # SQLAlchemy 모델인지 확인
             return self._sqlalchemy_to_dict(obj)
-        
+
         # datetime 객체들 처리
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
         elif isinstance(obj, time):
             return obj.isoformat()
-        
+
         # Decimal 처리
         elif isinstance(obj, Decimal):
             return float(obj)
-        
+
         # UUID 처리
         elif hasattr(obj, 'hex'):  # UUID 객체
             return str(obj)
-        
+
         # Enum 처리
         elif hasattr(obj, 'value'):  # Enum 객체
             return obj.value
-        
+
         # 객체의 속성을 딕셔너리로 변환
         elif hasattr(obj, '__dict__'):
             return self._object_to_dict(obj)
-        
+
         # 리스트나 튜플 처리
         elif isinstance(obj, (list, tuple)):
             return [self.default(item) for item in obj]
-        
+
         # 딕셔너리 처리
         elif isinstance(obj, dict):
             return {key: self.default(value) for key, value in obj.items()}
-        
+
         return super().default(obj)
-    
+
     def _sqlalchemy_to_dict(self, obj):
         """SQLAlchemy 모델을 딕셔너리로 변환"""
         try:
             # SQLAlchemy 인스펙터 사용
             mapper = inspect(obj.__class__)
             result = {}
-            
+
             for column in mapper.columns:
                 value = getattr(obj, column.name)
                 result[column.name] = self.default(value)
-            
+
             return result
         except Exception:
             # 인스펙터 실패 시 __dict__ 사용
             return self._object_to_dict(obj)
-    
+
     def _object_to_dict(self, obj):
         """일반 객체를 딕셔너리로 변환"""
         try:

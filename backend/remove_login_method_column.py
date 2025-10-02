@@ -6,7 +6,6 @@ User 테이블에서 login_method 컬럼 제거 스크립트
 
 import sqlite3
 import os
-from datetime import datetime
 
 def remove_login_method_column():
     """User 테이블에서 login_method 컬럼 제거"""
@@ -33,7 +32,7 @@ def remove_login_method_column():
         # login_method 컬럼이 존재하는지 확인
         if 'login_method' in columns:
             print("login_method 컬럼을 제거합니다...")
-            
+
             # SQLite에서는 ALTER TABLE DROP COLUMN을 직접 지원하지 않으므로
             # 새 테이블을 생성하고 데이터를 복사하는 방식 사용
             cursor.execute("""
@@ -69,7 +68,7 @@ def remove_login_method_column():
                     account_locked_until DATETIME
                 )
             """)
-            
+
             # 기존 데이터를 새 테이블로 복사 (login_method 제외)
             cursor.execute("""
                 INSERT INTO users_new (
@@ -89,13 +88,13 @@ def remove_login_method_column():
                     failed_login_attempts, account_locked_until
                 FROM users
             """)
-            
+
             # 기존 테이블 삭제
             cursor.execute("DROP TABLE users")
-            
+
             # 새 테이블을 users로 이름 변경
             cursor.execute("ALTER TABLE users_new RENAME TO users")
-            
+
             print("✅ login_method 컬럼 제거 완료")
         else:
             print("ℹ️ login_method 컬럼이 존재하지 않습니다")

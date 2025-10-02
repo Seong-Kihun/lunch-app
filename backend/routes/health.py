@@ -4,7 +4,7 @@
 
 from flask import Blueprint, jsonify
 from backend.app.extensions import db
-from backend.utils.logging import info, error
+from backend.utils.logging import error
 import os
 import time
 
@@ -33,7 +33,7 @@ def database_health_check():
     try:
         # 데이터베이스 연결 테스트
         db.session.execute('SELECT 1')
-        
+
         # 데이터베이스 URL 정보 (민감한 정보는 제거)
         db_url = os.getenv('DATABASE_URL', 'Not set')
         if db_url.startswith('postgresql://'):
@@ -42,7 +42,7 @@ def database_health_check():
             db_type = 'SQLite'
         else:
             db_type = 'Unknown'
-        
+
         return jsonify({
             'status': 'healthy',
             'database': {
@@ -52,7 +52,7 @@ def database_health_check():
             },
             'timestamp': time.time()
         }), 200
-        
+
     except Exception as e:
         error(f"데이터베이스 헬스체크 실패: {e}")
         return jsonify({
@@ -76,15 +76,15 @@ def full_health_check():
         except Exception as e:
             db_status = 'unhealthy'
             db_error = str(e)
-        
+
         # 환경 변수 확인
         required_env_vars = ['SECRET_KEY', 'JWT_SECRET_KEY']
         missing_env_vars = [var for var in required_env_vars if not os.getenv(var)]
-        
+
         # CORS 설정 확인
         allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
         cors_configured = len([o for o in allowed_origins if o.strip()]) > 0
-        
+
         return jsonify({
             'status': 'healthy' if db_status == 'healthy' and not missing_env_vars else 'degraded',
             'timestamp': time.time(),
@@ -101,7 +101,7 @@ def full_health_check():
                 'flask_env': os.getenv('FLASK_ENV', 'Unknown')
             }
         }), 200
-        
+
     except Exception as e:
         error(f"전체 헬스체크 실패: {e}")
         return jsonify({

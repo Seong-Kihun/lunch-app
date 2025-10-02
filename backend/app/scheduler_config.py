@@ -6,14 +6,14 @@ def setup_scheduler(app):
     """Celery Beat 스케줄러 설정"""
     try:
         from backend.app.celery_config import create_celery, setup_periodic_tasks
-        
+
         # Celery 앱 생성
         celery_app = create_celery(app)
-        
+
         if celery_app:
             # 주기적 작업 설정
             setup_periodic_tasks(celery_app)
-            
+
             # Celery Beat 스케줄러 설정
             celery_app.conf.beat_schedule = {
                 'daily-recommendations': {
@@ -41,7 +41,7 @@ def setup_scheduler(app):
                     'schedule': 60.0 * 60 * 24,  # 24시간마다
                 },
             }
-            
+
             print("[SUCCESS] Celery Beat 스케줄러가 설정되었습니다.")
             print("   - 일일 추천 생성")
             print("   - 추천 캐시 생성")
@@ -49,12 +49,12 @@ def setup_scheduler(app):
             print("   - 점심 추천 준비")
             print("   - 실시간 통계 업데이트")
             print("   - 포인트 정산")
-            
+
             return celery_app
         else:
             print("[WARNING] Celery 앱 생성 실패")
             return None
-            
+
     except ImportError as e:
         print(f"[WARNING] Celery Beat 설정 실패: {e}")
         print("   스케줄러는 비활성화됩니다.")

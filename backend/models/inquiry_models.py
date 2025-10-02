@@ -10,7 +10,7 @@ class Inquiry(db.Model):
     """문의사항 모델"""
     __tablename__ = 'inquiries'
     __table_args__ = {'extend_existing': True}
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)  # 문의자 이름
     email = db.Column(db.String(120), nullable=False)  # 문의자 이메일
@@ -19,22 +19,22 @@ class Inquiry(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending, answered, closed
     priority = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
     category = db.Column(db.String(50), nullable=True)  # 문의 카테고리
-    
+
     # 답변 관련 필드
     answer = db.Column(db.Text, nullable=True)  # 답변 내용
     answered_by = db.Column(db.String(50), nullable=True)  # 답변자
     answered_at = db.Column(db.DateTime, nullable=True)  # 답변 시간
-    
+
     # 메타데이터
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # 사용자 정보 (선택적)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    
+
     def __repr__(self):
         return f'<Inquiry {self.id}: {self.subject}>'
-    
+
     def to_dict(self):
         """딕셔너리로 변환"""
         return {
@@ -53,7 +53,7 @@ class Inquiry(db.Model):
             'updated_at': self.updated_at.isoformat(),
             'user_id': self.user_id
         }
-    
+
     @staticmethod
     def get_status_choices():
         """상태 선택지"""
@@ -62,7 +62,7 @@ class Inquiry(db.Model):
             ('answered', '답변완료'),
             ('closed', '종료')
         ]
-    
+
     @staticmethod
     def get_priority_choices():
         """우선순위 선택지"""
@@ -72,7 +72,7 @@ class Inquiry(db.Model):
             ('high', '높음'),
             ('urgent', '긴급')
         ]
-    
+
     @staticmethod
     def get_category_choices():
         """카테고리 선택지"""

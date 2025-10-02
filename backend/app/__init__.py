@@ -40,7 +40,7 @@ socketio = SocketIO(app, cors_allowed_origins=os.environ.get('ALLOWED_ORIGINS', 
 try:
     # 기존 라우트들을 가져와서 등록
     from backend.routes import health, users, parties, restaurants, chats, schedules, proposals, voting, matching, notifications, points, file_upload, optimized_chat
-    
+
     app.register_blueprint(health.bp, url_prefix='/api')
     app.register_blueprint(users.bp, url_prefix='/api/users')
     app.register_blueprint(parties.bp, url_prefix='/api/parties')
@@ -54,7 +54,7 @@ try:
     app.register_blueprint(points.bp, url_prefix='/api/points')
     app.register_blueprint(file_upload.bp, url_prefix='/api/upload')
     app.register_blueprint(optimized_chat.bp, url_prefix='/api/chat')
-    
+
 except ImportError as e:
     print(f"Warning: Could not import routes: {e}")
     # 기본 라우트 생성

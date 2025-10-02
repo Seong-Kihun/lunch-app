@@ -2,14 +2,14 @@
 환경변수 기반 모듈 로딩 시스템
 """
 import os
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class ModuleLoader:
     """환경변수 기반으로 모듈을 동적으로 로드하는 클래스"""
-    
+
     def __init__(self):
-        self.loaded_modules: Dict[str, Any] = {}
+        self.loaded_modules: dict[str, Any] = {}
         self.module_configs = {
             'auth': {
                 'env_var': 'ENABLE_AUTH',
@@ -54,16 +54,16 @@ class ModuleLoader:
                 'description': 'API Blueprint'
             }
         }
-    
+
     def is_module_enabled(self, module_name: str) -> bool:
         """모듈이 활성화되어 있는지 확인"""
         if module_name not in self.module_configs:
             return False
-        
+
         config = self.module_configs[module_name]
         env_var = config['env_var']
         default = config['default']
-        
+
         # 환경변수 확인 (대소문자 구분 없음)
         env_value = os.getenv(env_var, '').lower()
         if env_value in ['true', '1', 'yes', 'on']:
@@ -72,23 +72,23 @@ class ModuleLoader:
             return False
         else:
             return default
-    
-    def load_module(self, module_name: str) -> Optional[Any]:
+
+    def load_module(self, module_name: str) -> Any | None:
         """모듈을 동적으로 로드"""
         if module_name in self.loaded_modules:
             return self.loaded_modules[module_name]
-        
+
         if not self.is_module_enabled(module_name):
             print(f"ℹ️ {self.module_configs[module_name]['description']}이 비활성화되어 있습니다.")
             return None
-        
+
         try:
             config = self.module_configs[module_name]
             import_path = config['import_path']
-            
+
             # 모듈 동적 임포트
             module = __import__(import_path, fromlist=['*'])
-            
+
             # 초기화 함수가 있다면 실행
             if config['init_function']:
                 init_func = getattr(module, config['init_function'], None)
@@ -98,18 +98,18 @@ class ModuleLoader:
                     self.loaded_modules[module_name] = module
             else:
                 self.loaded_modules[module_name] = module
-            
+
             print(f"✅ {config['description']}을 성공적으로 로드했습니다.")
             return self.loaded_modules[module_name]
-            
+
         except ImportError as e:
             print(f"⚠️ {self.module_configs[module_name]['description']} 로드 실패: {e}")
             return None
         except Exception as e:
             print(f"❌ {self.module_configs[module_name]['description']} 로드 중 오류: {e}")
             return None
-    
-    def load_all_modules(self) -> Dict[str, Any]:
+
+    def load_all_modules(self) -> dict[str, Any]:
         """모든 활성화된 모듈을 로드"""
         loaded = {}
         for module_name in self.module_configs.keys():
@@ -117,11 +117,11 @@ class ModuleLoader:
             if module:
                 loaded[module_name] = module
         return loaded
-    
-    def get_module(self, module_name: str) -> Optional[Any]:
+
+    def get_module(self, module_name: str) -> Any | None:
         """로드된 모듈 반환"""
         return self.loaded_modules.get(module_name)
-    
+
     def is_loaded(self, module_name: str) -> bool:
         """모듈이 로드되었는지 확인"""
         return module_name in self.loaded_modules

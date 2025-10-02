@@ -12,7 +12,7 @@ from backend.app.extensions import db
 class Party(db.Model):
     """파티 모델"""
     __tablename__ = 'party'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     host_employee_id = db.Column(db.String(50), nullable=False)  # 외래키 제약조건 제거
     title = db.Column(db.String(100), nullable=False)
@@ -25,25 +25,25 @@ class Party(db.Model):
     is_from_match = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text, nullable=True)  # 파티 설명 필드 추가
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_party_date', 'party_date'),
         db.Index('idx_host_employee_id', 'host_employee_id'),
         db.Index('idx_party_restaurant', 'restaurant_name'),
     )
-    
+
     # __init__ 메서드 제거 - SQLAlchemy가 자동으로 처리하도록 함
 
     @property
     def current_members(self):
         return PartyMember.query.filter_by(party_id=self.id).count()
-    
+
     @property
     def member_ids(self):
         """파티 멤버 ID 목록 반환"""
         members = PartyMember.query.filter_by(party_id=self.id).all()
         return [member.employee_id for member in members]
-    
+
     @property
     def member_ids_string(self):
         """파티 멤버 ID를 쉼표로 구분된 문자열로 반환"""
@@ -52,19 +52,19 @@ class Party(db.Model):
 class PartyMember(db.Model):
     """파티 멤버 연결 테이블"""
     __tablename__ = 'party_member'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=False)
     employee_id = db.Column(db.String(50), nullable=False)  # 외래키 제약조건 제거
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_host = db.Column(db.Boolean, default=False)
-    
+
     __table_args__ = (
         db.Index('idx_party_member', 'party_id', 'employee_id'),
         db.Index('idx_member_party', 'employee_id', 'party_id'),
         {'extend_existing': True},
     )
-    
+
     def __init__(self, party_id, employee_id, is_host=False, joined_at=None):
         self.party_id = party_id
         self.employee_id = employee_id
@@ -82,12 +82,12 @@ class DangolPot(db.Model):
     category = db.Column(db.String(50), nullable=True)
     host_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_dangolpot_host', 'host_id'),
         db.Index('idx_dangolpot_category', 'category'),
     )
-    
+
     def __init__(self, name, description, tags, category, host_id):
         self.name = name
         self.description = description
@@ -101,12 +101,12 @@ class DangolPotMember(db.Model):
     dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=False)
     employee_id = db.Column(db.String(50), db.ForeignKey('users.employee_id'), nullable=False)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_dangolpot_member', 'dangolpot_id', 'employee_id'),
         db.Index('idx_member_dangolpot', 'employee_id', 'dangolpot_id'),
     )
-    
+
     def __init__(self, dangolpot_id, employee_id):
         self.dangolpot_id = dangolpot_id
         self.employee_id = employee_id
@@ -120,7 +120,7 @@ class ChatRoom(db.Model):
     party_id = db.Column(db.Integer, db.ForeignKey('party.id'), nullable=True)
     dangolpot_id = db.Column(db.Integer, db.ForeignKey('dangol_pot.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, name=None, title=None, type=None, party_id=None, dangolpot_id=None):
         self.name = name
         self.title = title
@@ -135,7 +135,7 @@ class ChatParticipant(db.Model):
     chat_id = db.Column(db.Integer, db.ForeignKey('chat_room.id'), nullable=False)
     employee_id = db.Column(db.String(50), nullable=False)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, chat_type, chat_id, employee_id):
         self.chat_type = chat_type
         self.chat_id = chat_id
@@ -150,7 +150,7 @@ class LunchProposal(db.Model):
     status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
-    
+
     def __init__(self, proposer_id, recipient_ids, proposed_date):
         self.proposer_id = proposer_id
         self.recipient_ids = recipient_ids
@@ -163,7 +163,7 @@ class ProposalAcceptance(db.Model):
     proposal_id = db.Column(db.Integer, db.ForeignKey('lunch_proposal.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)
     accepted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, proposal_id, user_id):
         self.proposal_id = proposal_id
         self.user_id = user_id
@@ -183,7 +183,7 @@ class ChatMessage(db.Model):
     deleted_at = db.Column(db.DateTime, nullable=True)
     reply_to_message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_chat_message_chat', 'chat_type', 'chat_id'),
         db.Index('idx_chat_message_sender', 'sender_employee_id'),
@@ -195,14 +195,14 @@ class ChatMessage(db.Model):
 class MessageStatus(db.Model):
     """메시지 읽음 상태 모델"""
     __tablename__ = 'message_status'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     read_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_message_status_message', 'message_id'),
         db.Index('idx_message_status_user', 'user_id'),
@@ -212,13 +212,13 @@ class MessageStatus(db.Model):
 class MessageReaction(db.Model):
     """메시지 반응(이모지) 모델"""
     __tablename__ = 'message_reaction'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)
     reaction_type = db.Column(db.String(20), nullable=False)  # 'like', 'heart', 'laugh', etc.
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_message_reaction_message', 'message_id'),
         db.Index('idx_message_reaction_user', 'user_id'),
@@ -228,7 +228,7 @@ class MessageReaction(db.Model):
 class MessageAttachment(db.Model):
     """메시지 첨부파일 모델"""
     __tablename__ = 'message_attachment'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
     file_name = db.Column(db.String(255), nullable=False)
@@ -238,7 +238,7 @@ class MessageAttachment(db.Model):
     mime_type = db.Column(db.String(100), nullable=False)
     thumbnail_path = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_message_attachment_message', 'message_id'),
         db.Index('idx_message_attachment_type', 'file_type'),
@@ -247,7 +247,7 @@ class MessageAttachment(db.Model):
 class ChatRoomMember(db.Model):
     """채팅방 멤버 관리 모델"""
     __tablename__ = 'chat_room_member'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     chat_type = db.Column(db.String(20), nullable=False)  # 'party', 'dangolpot', 'custom'
     chat_id = db.Column(db.Integer, nullable=False)
@@ -258,7 +258,7 @@ class ChatRoomMember(db.Model):
     is_muted = db.Column(db.Boolean, default=False)
     is_left = db.Column(db.Boolean, default=False)
     left_at = db.Column(db.DateTime, nullable=True)
-    
+
     __table_args__ = (
         db.Index('idx_chat_room_member_chat', 'chat_type', 'chat_id'),
         db.Index('idx_chat_room_member_user', 'user_id'),
@@ -268,7 +268,7 @@ class ChatRoomMember(db.Model):
 class ChatRoomSettings(db.Model):
     """채팅방 설정 모델"""
     __tablename__ = 'chat_room_settings'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     chat_type = db.Column(db.String(20), nullable=False)
     chat_id = db.Column(db.Integer, nullable=False)
@@ -279,7 +279,7 @@ class ChatRoomSettings(db.Model):
     allow_member_invite = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_chat_room_settings_chat', 'chat_type', 'chat_id'),
         db.UniqueConstraint('chat_type', 'chat_id', name='unique_chat_settings'),
@@ -288,7 +288,7 @@ class ChatRoomSettings(db.Model):
 class NotificationSettings(db.Model):
     """사용자별 알림 설정 모델"""
     __tablename__ = 'notification_settings'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(50), nullable=False)
     chat_notifications = db.Column(db.Boolean, default=True)
@@ -300,7 +300,7 @@ class NotificationSettings(db.Model):
     quiet_hours_end = db.Column(db.Time, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_notification_settings_user', 'user_id'),
         db.UniqueConstraint('user_id', name='unique_user_notification_settings'),
@@ -309,7 +309,7 @@ class NotificationSettings(db.Model):
 class ChatNotification(db.Model):
     """채팅 알림 모델"""
     __tablename__ = 'chat_notification'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(50), nullable=False)
     chat_type = db.Column(db.String(20), nullable=False)
@@ -321,7 +321,7 @@ class ChatNotification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     read_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_chat_notification_user', 'user_id'),
         db.Index('idx_chat_notification_chat', 'chat_type', 'chat_id'),
@@ -331,14 +331,14 @@ class ChatNotification(db.Model):
 class MessageSearchIndex(db.Model):
     """메시지 검색 인덱스 모델"""
     __tablename__ = 'message_search_index'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
     chat_type = db.Column(db.String(20), nullable=False)
     chat_id = db.Column(db.Integer, nullable=False)
     search_text = db.Column(db.Text, nullable=False)  # 검색용 텍스트 (한글, 영문 모두 포함)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_message_search_text', 'search_text'),
         db.Index('idx_message_search_chat', 'chat_type', 'chat_id'),
@@ -357,7 +357,7 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=True)
-    
+
     def __init__(self, user_id, type, title, message, related_id=None, related_type=None, expires_at=None):
         self.user_id = user_id
         self.type = type
@@ -378,7 +378,7 @@ class UserAnalytics(db.Model):
     favorite_restaurant_category = db.Column(db.String(50), nullable=True)
     average_rating_given = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, date):
         self.user_id = user_id
         self.date = date
@@ -393,7 +393,7 @@ class RestaurantAnalytics(db.Model):
     average_rating = db.Column(db.Float, default=0.0)
     total_likes = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, restaurant_id, date):
         self.restaurant_id = restaurant_id
         self.date = date
@@ -407,7 +407,7 @@ class Restaurant(db.Model):
     rating = db.Column(db.Float, default=0.0)
     total_reviews = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, name, address=None, category=None):
         self.name = name
         self.address = address
@@ -424,7 +424,7 @@ class Review(db.Model):
     photo_url = db.Column(db.String(255), nullable=True)
     tags = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, restaurant_id, user_id, nickname, rating, comment=None, photo_url=None, tags=None):
         self.restaurant_id = restaurant_id
         self.user_id = user_id
@@ -444,7 +444,7 @@ class UserActivity(db.Model):
     description = db.Column(db.Text, nullable=True)
     points_earned = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, activity_type, description=None, points_earned=0):
         self.user_id = user_id
         self.activity_type = activity_type
@@ -460,7 +460,7 @@ class RestaurantVisit(db.Model):
     visit_time = db.Column(db.String(10), nullable=True)
     party_size = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, restaurant_id, visit_date, visit_time=None, party_size=1):
         self.user_id = user_id
         self.restaurant_id = restaurant_id
@@ -476,7 +476,7 @@ class OfflineData(db.Model):
     data_json = db.Column(db.Text, nullable=False)  # JSON 형태로 저장된 데이터
     last_sync = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, data_type, data_json):
         self.user_id = user_id
         self.data_type = data_type
@@ -488,7 +488,7 @@ class ChatMessageRead(db.Model):
     message_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=False)
     user_id = db.Column(db.String(50), nullable=False)
     read_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, message_id, user_id):
         self.message_id = message_id
         self.user_id = user_id
@@ -501,7 +501,7 @@ class CategoryActivity(db.Model):
     activity_type = db.Column(db.String(50), nullable=False)  # 'search', 'review', 'visit' 등
     points_earned = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, category, activity_type, points_earned):
         self.user_id = user_id
         self.category = category
@@ -518,7 +518,7 @@ class Badge(db.Model):
     requirement_count = db.Column(db.Integer, nullable=False)
     description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, badge_name, badge_icon, requirement_type, requirement_count, description=None, badge_color=None):
         self.badge_name = badge_name
         self.badge_icon = badge_icon
@@ -533,7 +533,7 @@ class UserBadge(db.Model):
     user_id = db.Column(db.String(50), nullable=False)
     badge_id = db.Column(db.Integer, db.ForeignKey('badge.id'), nullable=False)
     earned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, badge_id):
         self.user_id = user_id
         self.badge_id = badge_id
@@ -555,7 +555,7 @@ class VotingSession(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     confirmed_date = db.Column(db.String(20), nullable=True)  # 확정된 날짜
     confirmed_at = db.Column(db.DateTime, nullable=True)
-    
+
     def __init__(self, chat_room_id, title, participants, created_by, expires_at, restaurant_name=None, restaurant_address=None, meeting_location=None, meeting_time=None):
         self.chat_room_id = chat_room_id
         self.title = title
@@ -574,7 +574,7 @@ class DateVote(db.Model):
     voter_id = db.Column(db.String(50), nullable=False)
     voted_date = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, voting_session_id, voter_id, voted_date):
         self.voting_session_id = voting_session_id
         self.voter_id = voter_id
@@ -586,7 +586,7 @@ class DailyRecommendation(db.Model):
     date = db.Column(db.String(20), nullable=False)  # YYYY-MM-DD 형식
     group_members = db.Column(db.Text, nullable=False)  # JSON 형태로 멤버 정보 저장
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, date, group_members):
         self.date = date
         self.group_members = group_members
@@ -606,7 +606,7 @@ class RestaurantRequest(db.Model):
     approved_at = db.Column(db.DateTime, nullable=True)
     approved_by = db.Column(db.String(50), nullable=True)
     rejection_reason = db.Column(db.Text, nullable=True)  # 거절 사유
-    
+
     def __init__(self, request_type, requester_id, requester_nickname, restaurant_name=None, restaurant_address=None, restaurant_id=None, reason=None):
         self.request_type = request_type
         self.requester_id = requester_id
@@ -622,14 +622,14 @@ class UserFavorite(db.Model):
     user_id = db.Column(db.String(50), nullable=False)  # 사용자 ID
     restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)  # 식당 ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # 관계 설정
     restaurant = db.relationship("Restaurant", backref="favorites")
-    
+
     def __init__(self, user_id, restaurant_id):
         self.user_id = user_id
         self.restaurant_id = restaurant_id
-    
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -645,7 +645,7 @@ class RestaurantFavorite(db.Model):
     user_id = db.Column(db.String(50), nullable=False)
     restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, user_id, restaurant_id):
         self.user_id = user_id
         self.restaurant_id = restaurant_id
@@ -661,7 +661,7 @@ class UserPreference(db.Model):
     preferred_time = db.Column(db.String(20), nullable=True)  # '12:00-13:00'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def __init__(self, user_id, food_preferences=None, lunch_style=None, max_distance=1000, budget_range=None, preferred_time=None):
         self.user_id = user_id
         self.food_preferences = food_preferences
@@ -678,7 +678,7 @@ class VotingOption(db.Model):
     option_type = db.Column(db.String(50), nullable=False)  # 'date', 'restaurant', 'time'
     votes_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, voting_session_id, option_text, option_type):
         self.voting_session_id = voting_session_id
         self.option_text = option_text
@@ -691,7 +691,7 @@ class Vote(db.Model):
     voter_id = db.Column(db.String(50), nullable=False)
     option_id = db.Column(db.Integer, db.ForeignKey("voting_option.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, voting_session_id, voter_id, option_id):
         self.voting_session_id = voting_session_id
         self.voter_id = voter_id
@@ -708,7 +708,7 @@ class MatchRequest(db.Model):
     status = db.Column(db.String(20), default="pending")  # 'pending', 'matched', 'cancelled'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     matched_at = db.Column(db.DateTime, nullable=True)
-    
+
     def __init__(self, requester_id, preferred_date=None, preferred_time=None, max_distance=1000, target_user_id=None):
         self.requester_id = requester_id
         self.preferred_date = preferred_date
@@ -727,7 +727,7 @@ class Match(db.Model):
     status = db.Column(db.String(20), default="active")  # 'active', 'completed', 'cancelled'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
-    
+
     def __init__(self, match_request_id, user1_id, user2_id, matched_date=None, matched_time=None):
         self.match_request_id = match_request_id
         self.user1_id = user1_id
@@ -743,7 +743,7 @@ class RestaurantReviews(db.Model):
     rating = db.Column(db.Float, nullable=False)
     comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __init__(self, restaurant_id, user_id, rating, comment=None):
         self.restaurant_id = restaurant_id
         self.user_id = user_id
@@ -753,7 +753,7 @@ class RestaurantReviews(db.Model):
 class RandomLunchGroup(db.Model):
     """랜덤런치 그룹 모델 - 프로덕션 환경용"""
     __tablename__ = 'random_lunch_group'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD 형식
     time = db.Column(db.String(10), nullable=False)  # HH:MM 형식
@@ -763,13 +763,13 @@ class RandomLunchGroup(db.Model):
     status = db.Column(db.String(20), default='active')  # 'active', 'completed', 'cancelled'
     created_by = db.Column(db.String(50), nullable=False)  # 그룹 생성자
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_random_lunch_date', 'date'),
         db.Index('idx_random_lunch_status', 'status'),
         db.Index('idx_random_lunch_created_by', 'created_by'),
     )
-    
+
     def __init__(self, date, time, restaurant_name, restaurant_address=None, max_members=4, status='active', created_by=None):
         self.date = date
         self.time = time
@@ -782,19 +782,19 @@ class RandomLunchGroup(db.Model):
 class RandomLunchMember(db.Model):
     """랜덤런치 그룹 멤버 모델 - 프로덕션 환경용"""
     __tablename__ = 'random_lunch_member'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     group_id = db.Column(db.Integer, db.ForeignKey('random_lunch_group.id'), nullable=False)
     employee_id = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(20), default='member')  # 'host', 'member'
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.Index('idx_random_lunch_member_group', 'group_id'),
         db.Index('idx_random_lunch_member_employee', 'employee_id'),
         db.UniqueConstraint('group_id', 'employee_id', name='uq_random_lunch_member_group_employee'),
     )
-    
+
     def __init__(self, group_id, employee_id, role='member'):
         self.group_id = group_id
         self.employee_id = employee_id

@@ -24,13 +24,13 @@ def load_environment_variables():
 
     # 환경 확인
     is_development = (
-        os.getenv("FLASK_ENV") == "development" or 
+        os.getenv("FLASK_ENV") == "development" or
         os.getenv("ENV") == "development" or
         os.getenv("RENDER_ENVIRONMENT") == "development"
     )
-    
+
     is_render = (
-        os.getenv("RENDER") == "true" or 
+        os.getenv("RENDER") == "true" or
         "onrender.com" in os.getenv("RENDER_EXTERNAL_URL", "") or
         os.getenv("RENDER_ENVIRONMENT") == "production" or
         "render.com" in os.getenv("RENDER_EXTERNAL_URL", "")
@@ -55,10 +55,10 @@ def load_environment_variables():
         project_root = os.path.dirname(current_dir)
         db_path = os.path.join(project_root, "instance", "lunch_app.db")
         db_url = f"sqlite:///{db_path}"
-        
+
         # 환경별 설정
         env_type = os.getenv('ENV_TYPE', 'development')  # development, testing, production
-        
+
         if env_type == 'testing':
             # 테스트 환경 - 가상 유저 생성 비활성화
             required_vars = {
@@ -121,7 +121,7 @@ def load_environment_variables():
         print("   - 오프라인 모드로 실행됩니다")
     else:
         print("[PROD] 프로덕션 환경으로 실행됩니다.")
-        
+
     # 프로덕션에서는 보안 키가 기본값이면 경고
     if not is_development and os.getenv("JWT_SECRET_KEY") == "dev-jwt-secret-key-change-in-production":
         print("[WARNING] 프로덕션 환경에서 기본 JWT_SECRET_KEY를 사용하고 있습니다!")

@@ -1,17 +1,12 @@
 from flask import Blueprint, jsonify, request
-from sqlalchemy import desc, or_, and_, func
+from sqlalchemy import desc, and_
 from backend.app.extensions import db
 from backend.models.app_models import (
-    ChatRoom, ChatMessage, ChatParticipant, Party, PartyMember,
-    MessageStatus, MessageReaction, MessageAttachment, ChatRoomMember,
-    ChatRoomSettings, NotificationSettings, ChatNotification, MessageSearchIndex
+    ChatRoom, ChatMessage, ChatParticipant, MessageStatus, MessageReaction, ChatRoomMember,
+    ChatRoomSettings, MessageSearchIndex
 )
 from backend.auth.models import User
 from datetime import datetime, timedelta
-import random
-import os
-import uuid
-from werkzeug.utils import secure_filename
 # Blueprint 생성
 chats_bp = Blueprint('chats', __name__)
 
@@ -30,20 +25,20 @@ def get_user_chats(employee_id):
         user_chats = ChatRoom.query.join(ChatParticipant).filter(
             ChatParticipant.user_id == employee_id
         ).all()
-        
+
         chats_data = []
         for chat in user_chats:
             # 마지막 메시지 조회
             last_message = ChatMessage.query.filter_by(
-                chat_type=chat.type, 
+                chat_type=chat.type,
                 chat_id=chat.id
             ).order_by(desc(ChatMessage.created_at)).first()
-            
+
             # 참여자 수
             participant_count = ChatParticipant.query.filter_by(
                 room_id=chat.id
             ).count()
-            
+
             chat_info = {
                 "id": chat.id,
                 "type": chat.type,
@@ -55,12 +50,12 @@ def get_user_chats(employee_id):
                 "created_at": chat.created_at.isoformat() if chat.created_at else None
             }
             chats_data.append(chat_info)
-        
+
         return jsonify({
             "success": True,
             "chats": chats_data
         })
-        
+
     except Exception as e:
         print(f"채팅방 목록 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -71,20 +66,20 @@ def get_chat_messages(chat_type, chat_id):
     try:
         page = request.args.get("page", 1, type=int)
         per_page = min(request.args.get("per_page", 50, type=int), 100)
-        
+
         messages_query = ChatMessage.query.filter_by(
-            chat_type=chat_type, 
+            chat_type=chat_type,
             chat_id=chat_id
         ).order_by(desc(ChatMessage.created_at))
-        
+
         total = messages_query.count()
         messages = messages_query.offset((page - 1) * per_page).limit(per_page).all()
-        
+
         messages_data = []
         for message in messages:
             # 발신자 정보 조회
             sender = User.query.filter_by(employee_id=message.sender_employee_id).first()
-            
+
             message_info = {
                 "id": message.id,
                 "content": message.message,
@@ -96,7 +91,7 @@ def get_chat_messages(chat_type, chat_id):
                 "message_type": message.message_type or "text"
             }
             messages_data.append(message_info)
-        
+
         return jsonify({
             "success": True,
             "messages": messages_data,
@@ -107,7 +102,7 @@ def get_chat_messages(chat_type, chat_id):
                 "pages": (total + per_page - 1) // per_page
             }
         })
-        
+
     except Exception as e:
         print(f"채팅 메시지 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -119,12 +114,12 @@ def send_chat_message():
         data = request.get_json()
         if not data:
             return jsonify({"error": "메시지 데이터가 없습니다."}), 400
-        
+
         required_fields = ["chat_type", "chat_id", "sender_id", "content"]
         for field in required_fields:
             if not data.get(field):
                 return jsonify({"error": f"{field}는 필수입니다."}), 400
-        
+
         new_message = ChatMessage(
             chat_type=data["chat_type"],
             chat_id=data["chat_id"],
@@ -133,10 +128,10 @@ def send_chat_message():
             message=data["content"],
             message_type=data.get("message_type", "text")
         )
-        
+
         db.session.add(new_message)
         db.session.flush()  # ID를 얻기 위해 flush
-        
+
         # 검색 인덱스 생성
         search_index = MessageSearchIndex(
             message_id=new_message.id,
@@ -145,14 +140,14 @@ def send_chat_message():
             search_text=data["content"]
         )
         db.session.add(search_index)
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "message": "메시지가 전송되었습니다!",
             "message_id": new_message.id
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"메시지 전송 오류: {e}")
@@ -165,14 +160,14 @@ def mark_messages_read():
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         employee_id = data.get("employee_id")
         chat_type = data.get("chat_type")
         chat_id = data.get("chat_id")
-        
+
         if not all([employee_id, chat_type, chat_id]):
             return jsonify({"error": "모든 필드가 필요합니다."}), 400
-        
+
         # 읽지 않은 메시지들을 읽음으로 표시
         unread_messages = ChatMessage.query.filter(
             and_(
@@ -181,17 +176,17 @@ def mark_messages_read():
                 ChatMessage.sender_id != employee_id
             )
         ).all()
-        
+
         for message in unread_messages:
             message.is_read = True
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "message": f"{len(unread_messages)}개의 메시지를 읽음으로 표시했습니다.",
             "read_count": len(unread_messages)
         })
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"메시지 읽음 표시 오류: {e}")
@@ -204,12 +199,12 @@ def search_chat_messages():
         query = request.args.get("q", "")
         chat_type = request.args.get("chat_type")
         chat_id = request.args.get("chat_id")
-        
+
         if not query:
             return jsonify({"error": "검색어가 필요합니다."}), 400
-        
+
         messages_query = ChatMessage.query
-        
+
         if chat_type and chat_id:
             messages_query = messages_query.filter(
                 and_(
@@ -217,11 +212,11 @@ def search_chat_messages():
                     ChatMessage.chat_id == chat_id
                 )
             )
-        
+
         messages = messages_query.filter(
             ChatMessage.content.ilike(f"%{query}%")
         ).order_by(desc(ChatMessage.created_at)).limit(20).all()
-        
+
         messages_data = []
         for message in messages:
             message_info = {
@@ -233,12 +228,12 @@ def search_chat_messages():
                 "created_at": message.created_at.isoformat() if message.created_at else None
             }
             messages_data.append(message_info)
-        
+
         return jsonify({
             "results": messages_data,
             "total": len(messages_data)
         })
-        
+
     except Exception as e:
         print(f"메시지 검색 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -250,30 +245,30 @@ def update_chat_room_title():
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         chat_type = data.get("chat_type")
         chat_id = data.get("chat_id")
         new_title = data.get("title")
-        
+
         if not all([chat_type, chat_id, new_title]):
             return jsonify({"error": "모든 필드가 필요합니다."}), 400
-        
+
         chat_room = ChatRoom.query.filter_by(
-            type=chat_type, 
+            type=chat_type,
             id=chat_id
         ).first()
-        
+
         if not chat_room:
             return jsonify({"error": "채팅방을 찾을 수 없습니다."}), 404
-        
+
         chat_room.title = new_title
         db.session.commit()
-        
+
         return jsonify({
             "message": "채팅방 제목이 수정되었습니다!",
             "new_title": new_title
         })
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"채팅방 제목 수정 오류: {e}")
@@ -284,10 +279,10 @@ def get_chat_room_members(chat_type, chat_id):
     """채팅방 멤버 목록 조회"""
     try:
         participants = ChatParticipant.query.filter_by(
-            chat_type=chat_type, 
+            chat_type=chat_type,
             chat_id=chat_id
         ).all()
-        
+
         members_data = []
         for participant in participants:
             user = User.query.filter_by(employee_id=participant.employee_id).first()
@@ -299,12 +294,12 @@ def get_chat_room_members(chat_type, chat_id):
                     "joined_at": participant.created_at.isoformat() if participant.created_at else None
                 }
                 members_data.append(member_info)
-        
+
         return jsonify({
             "members": members_data,
             "total": len(members_data)
         })
-        
+
     except Exception as e:
         print(f"채팅방 멤버 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -316,33 +311,33 @@ def leave_chat_room():
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         employee_id = data.get("employee_id")
         chat_type = data.get("chat_type")
         chat_id = data.get("chat_id")
-        
+
         if not all([employee_id, chat_type, chat_id]):
             return jsonify({"error": "모든 필드가 필요합니다."}), 400
-        
+
         # 참여자 정보 찾기
         participant = ChatParticipant.query.filter_by(
             employee_id=employee_id,
             chat_type=chat_type,
             chat_id=chat_id
         ).first()
-        
+
         if not participant:
             return jsonify({"error": "채팅방에 참여하지 않았습니다."}), 400
-        
+
         # 채팅방 나가기
         db.session.delete(participant)
         db.session.commit()
-        
+
         return jsonify({
             "message": "채팅방에서 나갔습니다.",
             "employee_id": employee_id
         })
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"채팅방 나가기 오류: {e}")
@@ -355,13 +350,13 @@ def create_friend_chat():
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         user1_id = data.get("user1_id")
         user2_id = data.get("user2_id")
-        
+
         if not all([user1_id, user2_id]):
             return jsonify({"error": "두 사용자 ID가 필요합니다."}), 400
-        
+
         # 기존 채팅방이 있는지 확인
         existing_chat = ChatRoom.query.join(ChatParticipant).filter(
             and_(
@@ -369,21 +364,21 @@ def create_friend_chat():
                 ChatParticipant.employee_id.in_([user1_id, user2_id])
             )
         ).first()
-        
+
         if existing_chat:
             return jsonify({
                 "message": "이미 존재하는 채팅방입니다.",
                 "chat_id": existing_chat.id
             })
-        
+
         # 새 채팅방 생성
         new_chat = ChatRoom(
             type="direct",
-            title=f"1:1 채팅"
+            title="1:1 채팅"
         )
         db.session.add(new_chat)
         db.session.flush()
-        
+
         # 참여자 추가
         participant1 = ChatParticipant(
             chat_type="direct",
@@ -395,16 +390,16 @@ def create_friend_chat():
             chat_id=new_chat.id,
             employee_id=user2_id
         )
-        
+
         db.session.add(participant1)
         db.session.add(participant2)
         db.session.commit()
-        
+
         return jsonify({
             "message": "1:1 채팅방이 생성되었습니다!",
             "chat_id": new_chat.id
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"친구 채팅방 생성 오류: {e}")
@@ -417,13 +412,13 @@ def create_group_chat():
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         title = data.get("title")
         employee_ids = data.get("employee_ids", [])
-        
+
         if not title or not employee_ids:
             return jsonify({"error": "제목과 참여자 목록이 필요합니다."}), 400
-        
+
         # 새 그룹 채팅방 생성
         new_chat = ChatRoom(
             type="group",
@@ -431,7 +426,7 @@ def create_group_chat():
         )
         db.session.add(new_chat)
         db.session.flush()
-        
+
         # 참여자들 추가
         for employee_id in employee_ids:
             participant = ChatParticipant(
@@ -440,15 +435,15 @@ def create_group_chat():
                 employee_id=employee_id
             )
             db.session.add(participant)
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "message": "그룹 채팅방이 생성되었습니다!",
             "chat_id": new_chat.id,
             "title": title
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"그룹 채팅방 생성 오류: {e}")
@@ -460,27 +455,27 @@ def get_filtered_chats():
     try:
         employee_id = request.args.get("employee_id")
         chat_type = request.args.get("type")
-        
+
         if not employee_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         chats_query = ChatRoom.query.join(ChatParticipant).filter(
             ChatParticipant.employee_id == employee_id
         )
-        
+
         if chat_type:
             chats_query = chats_query.filter(ChatRoom.type == chat_type)
-        
+
         chats = chats_query.all()
-        
+
         chats_data = []
         for chat in chats:
             # 마지막 메시지 조회
             last_message = ChatMessage.query.filter_by(
-                chat_type=chat.type, 
+                chat_type=chat.type,
                 chat_id=chat.id
             ).order_by(desc(ChatMessage.created_at)).first()
-            
+
             chat_info = {
                 "id": chat.id,
                 "type": chat.type,
@@ -490,12 +485,12 @@ def get_filtered_chats():
                 "created_at": chat.created_at.isoformat() if chat.created_at else None
             }
             chats_data.append(chat_info)
-        
+
         return jsonify({
             "chats": chats_data,
             "total": len(chats_data)
         })
-        
+
     except Exception as e:
         print(f"필터링된 채팅방 조회 오류: {e}")
         return jsonify({"error": str(e)}), 500
@@ -507,13 +502,13 @@ def suggest_chat_dates(room_id):
         data = request.get_json()
         if not data:
             return jsonify({"error": "데이터가 없습니다."}), 400
-        
+
         suggested_date = data.get("suggested_date")
         suggested_by = data.get("suggested_by")
-        
+
         if not all([suggested_date, suggested_by]):
             return jsonify({"error": "제안 날짜와 제안자가 필요합니다."}), 400
-        
+
         # 날짜 제안 메시지 생성
         suggestion_message = ChatMessage(
             chat_type="group",
@@ -522,16 +517,16 @@ def suggest_chat_dates(room_id):
             content=f"📅 {suggested_date}에 만나요!",
             message_type="date_suggestion"
         )
-        
+
         db.session.add(suggestion_message)
         db.session.commit()
-        
+
         return jsonify({
             "message": "날짜가 제안되었습니다!",
             "suggested_date": suggested_date,
             "message_id": suggestion_message.id
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"날짜 제안 오류: {e}")
@@ -545,16 +540,16 @@ def mark_message_read(message_id):
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        
+
         if not user_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         # 기존 읽음 상태 확인
         message_status = MessageStatus.query.filter_by(
             message_id=message_id,
             user_id=user_id
         ).first()
-        
+
         if message_status:
             # 이미 읽음 상태면 업데이트
             message_status.is_read = True
@@ -568,14 +563,14 @@ def mark_message_read(message_id):
                 read_at=datetime.utcnow()
             )
             db.session.add(message_status)
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "메시지가 읽음으로 표시되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -587,17 +582,17 @@ def add_message_reaction(message_id):
         data = request.get_json()
         user_id = data.get('user_id')
         reaction_type = data.get('reaction_type')
-        
+
         if not user_id or not reaction_type:
             return jsonify({"error": "사용자 ID와 반응 타입이 필요합니다."}), 400
-        
+
         # 기존 반응 확인
         existing_reaction = MessageReaction.query.filter_by(
             message_id=message_id,
             user_id=user_id,
             reaction_type=reaction_type
         ).first()
-        
+
         if existing_reaction:
             # 이미 같은 반응이 있으면 제거
             db.session.delete(existing_reaction)
@@ -611,15 +606,15 @@ def add_message_reaction(message_id):
             )
             db.session.add(reaction)
             action = "added"
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "action": action,
             "message": f"반응이 {action}되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -629,7 +624,7 @@ def get_message_reactions(message_id):
     """메시지의 모든 반응 조회"""
     try:
         reactions = MessageReaction.query.filter_by(message_id=message_id).all()
-        
+
         # 반응 타입별로 그룹화
         reaction_groups = {}
         for reaction in reactions:
@@ -639,12 +634,12 @@ def get_message_reactions(message_id):
                 "user_id": reaction.user_id,
                 "created_at": reaction.created_at.isoformat()
             })
-        
+
         return jsonify({
             "success": True,
             "reactions": reaction_groups
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -655,37 +650,37 @@ def edit_message(message_id):
         data = request.get_json()
         user_id = data.get('user_id')
         new_content = data.get('content')
-        
+
         if not user_id or not new_content:
             return jsonify({"error": "사용자 ID와 수정할 내용이 필요합니다."}), 400
-        
+
         # 메시지 조회
         message = ChatMessage.query.get(message_id)
         if not message:
             return jsonify({"error": "메시지를 찾을 수 없습니다."}), 404
-        
+
         # 작성자 확인
         if message.sender_employee_id != user_id:
             return jsonify({"error": "메시지를 수정할 권한이 없습니다."}), 403
-        
+
         # 메시지 수정
         message.message = new_content
         message.is_edited = True
         message.edited_at = datetime.utcnow()
-        
+
         # 검색 인덱스 업데이트
         search_index = MessageSearchIndex.query.filter_by(message_id=message_id).first()
         if search_index:
             search_index.search_text = new_content
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "메시지가 수정되었습니다.",
             "edited_at": message.edited_at.isoformat()
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -696,31 +691,31 @@ def delete_message(message_id):
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        
+
         if not user_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         # 메시지 조회
         message = ChatMessage.query.get(message_id)
         if not message:
             return jsonify({"error": "메시지를 찾을 수 없습니다."}), 404
-        
+
         # 작성자 확인
         if message.sender_employee_id != user_id:
             return jsonify({"error": "메시지를 삭제할 권한이 없습니다."}), 403
-        
+
         # 소프트 삭제
         message.is_deleted = True
         message.deleted_at = datetime.utcnow()
         message.message = "[삭제된 메시지입니다]"
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "메시지가 삭제되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -734,28 +729,28 @@ def search_messages():
         query = request.args.get('q')
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 20))
-        
+
         if not query:
             return jsonify({"error": "검색어가 필요합니다."}), 400
-        
+
         # 검색 쿼리
         search_query = MessageSearchIndex.query.filter(
             MessageSearchIndex.search_text.contains(query)
         )
-        
+
         if chat_type and chat_id:
             search_query = search_query.filter(
                 MessageSearchIndex.chat_type == chat_type,
                 MessageSearchIndex.chat_id == int(chat_id)
             )
-        
+
         # 페이징
         search_results = search_query.order_by(
             desc(MessageSearchIndex.created_at)
         ).paginate(
             page=page, per_page=per_page, error_out=False
         )
-        
+
         # 결과 포맷팅
         results = []
         for search_result in search_results.items:
@@ -770,7 +765,7 @@ def search_messages():
                     "created_at": message.created_at.isoformat(),
                     "is_edited": message.is_edited
                 })
-        
+
         return jsonify({
             "success": True,
             "results": results,
@@ -779,7 +774,7 @@ def search_messages():
             "per_page": per_page,
             "pages": search_results.pages
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -792,7 +787,7 @@ def get_chat_room_members_v2(chat_type, chat_id):
             chat_id=chat_id,
             is_left=False
         ).all()
-        
+
         members_data = []
         for member in members:
             user = User.query.filter_by(employee_id=member.user_id).first()
@@ -803,12 +798,12 @@ def get_chat_room_members_v2(chat_type, chat_id):
                 "joined_at": member.joined_at.isoformat(),
                 "is_muted": member.is_muted
             })
-        
+
         return jsonify({
             "success": True,
             "members": members_data
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -819,10 +814,10 @@ def add_chat_room_member(chat_type, chat_id):
         data = request.get_json()
         user_id = data.get('user_id')
         added_by = data.get('added_by')
-        
+
         if not user_id or not added_by:
             return jsonify({"error": "사용자 ID와 추가한 사용자 ID가 필요합니다."}), 400
-        
+
         # 권한 확인 (관리자만 추가 가능)
         admin_member = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
@@ -830,17 +825,17 @@ def add_chat_room_member(chat_type, chat_id):
             user_id=added_by,
             role='admin'
         ).first()
-        
+
         if not admin_member:
             return jsonify({"error": "채팅방에 멤버를 추가할 권한이 없습니다."}), 403
-        
+
         # 이미 멤버인지 확인
         existing_member = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
             chat_id=chat_id,
             user_id=user_id
         ).first()
-        
+
         if existing_member:
             if existing_member.is_left:
                 # 나갔다가 다시 들어오는 경우
@@ -858,14 +853,14 @@ def add_chat_room_member(chat_type, chat_id):
                 role='member'
             )
             db.session.add(new_member)
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "멤버가 추가되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -876,10 +871,10 @@ def remove_chat_room_member(chat_type, chat_id, user_id):
     try:
         data = request.get_json()
         removed_by = data.get('removed_by')
-        
+
         if not removed_by:
             return jsonify({"error": "제거한 사용자 ID가 필요합니다."}), 400
-        
+
         # 권한 확인
         admin_member = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
@@ -887,31 +882,31 @@ def remove_chat_room_member(chat_type, chat_id, user_id):
             user_id=removed_by,
             role='admin'
         ).first()
-        
+
         if not admin_member and removed_by != user_id:
             return jsonify({"error": "채팅방에서 멤버를 제거할 권한이 없습니다."}), 403
-        
+
         # 멤버 조회
         member = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
             chat_id=chat_id,
             user_id=user_id
         ).first()
-        
+
         if not member:
             return jsonify({"error": "채팅방 멤버를 찾을 수 없습니다."}), 404
-        
+
         # 소프트 삭제 (나가기)
         member.is_left = True
         member.left_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "멤버가 제거되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -924,7 +919,7 @@ def get_chat_room_settings(chat_type, chat_id):
             chat_type=chat_type,
             chat_id=chat_id
         ).first()
-        
+
         if not settings:
             # 기본 설정 생성
             settings = ChatRoomSettings(
@@ -933,7 +928,7 @@ def get_chat_room_settings(chat_type, chat_id):
             )
             db.session.add(settings)
             db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "settings": {
@@ -946,7 +941,7 @@ def get_chat_room_settings(chat_type, chat_id):
                 "updated_at": settings.updated_at.isoformat()
             }
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -956,10 +951,10 @@ def update_chat_room_settings(chat_type, chat_id):
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        
+
         if not user_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         # 권한 확인 (관리자만 설정 변경 가능)
         admin_member = ChatRoomMember.query.filter_by(
             chat_type=chat_type,
@@ -967,23 +962,23 @@ def update_chat_room_settings(chat_type, chat_id):
             user_id=user_id,
             role='admin'
         ).first()
-        
+
         if not admin_member:
             return jsonify({"error": "채팅방 설정을 변경할 권한이 없습니다."}), 403
-        
+
         # 설정 조회 또는 생성
         settings = ChatRoomSettings.query.filter_by(
             chat_type=chat_type,
             chat_id=chat_id
         ).first()
-        
+
         if not settings:
             settings = ChatRoomSettings(
                 chat_type=chat_type,
                 chat_id=chat_id
             )
             db.session.add(settings)
-        
+
         # 설정 업데이트
         if 'room_name' in data:
             settings.room_name = data['room_name']
@@ -995,16 +990,16 @@ def update_chat_room_settings(chat_type, chat_id):
             settings.is_public = data['is_public']
         if 'allow_member_invite' in data:
             settings.allow_member_invite = data['allow_member_invite']
-        
+
         settings.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "채팅방 설정이 업데이트되었습니다."
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

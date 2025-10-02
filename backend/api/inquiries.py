@@ -18,24 +18,24 @@ def create_inquiry():
     """문의사항 등록"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': '문의사항 데이터가 필요합니다.'}), 400
-        
+
         # 필수 필드 검증
         required_fields = ['email', 'subject', 'message']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field}는 필수입니다.'}), 400
-        
+
         # 이메일 형식 검증
         email = data['email'].strip().lower()
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             return jsonify({'error': '올바른 이메일 형식이 아닙니다.'}), 400
-        
+
         # 문의사항 생성 (이름은 이메일에서 자동 추출)
         name = email.split('@')[0]  # 이메일 아이디 부분을 이름으로 사용
-        
+
         inquiry = Inquiry(
             name=name,
             email=email,
@@ -45,23 +45,23 @@ def create_inquiry():
             priority=data.get('priority', 'normal'),
             user_id=data.get('user_id')  # 로그인한 사용자의 경우
         )
-        
+
         db.session.add(inquiry)
         db.session.commit()
-        
+
         # 이메일 알림 발송
         try:
             send_inquiry_notification(inquiry)
         except Exception as e:
             current_app.logger.error(f"문의사항 이메일 알림 발송 실패: {str(e)}")
             # 이메일 발송 실패해도 문의사항은 저장됨
-        
+
         return jsonify({
             'message': '문의사항이 성공적으로 등록되었습니다.',
             'inquiry_id': inquiry.id,
             'inquiry': inquiry.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"문의사항 등록 실패: {str(e)}")
@@ -80,29 +80,29 @@ def get_inquiries():
         status = request.args.get('status')
         priority = request.args.get('priority')
         category = request.args.get('category')
-        
+
         # 쿼리 빌드
         query = Inquiry.query
-        
+
         if status:
             query = query.filter(Inquiry.status == status)
         if priority:
             query = query.filter(Inquiry.priority == priority)
         if category:
             query = query.filter(Inquiry.category == category)
-        
+
         # 최신순 정렬
         query = query.order_by(Inquiry.created_at.desc())
-        
+
         # 페이지네이션 적용
         pagination = query.paginate(
-            page=page, 
-            per_page=per_page, 
+            page=page,
+            per_page=per_page,
             error_out=False
         )
-        
+
         inquiries = [inquiry.to_dict() for inquiry in pagination.items]
-        
+
         return jsonify({
             'inquiries': inquiries,
             'pagination': {
@@ -114,7 +114,7 @@ def get_inquiries():
                 'has_prev': pagination.has_prev
             }
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"문의사항 목록 조회 실패: {str(e)}")
         return jsonify({
@@ -130,7 +130,7 @@ def get_inquiry(inquiry_id):
         return jsonify({
             'inquiry': inquiry.to_dict()
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"문의사항 조회 실패: {str(e)}")
         return jsonify({
@@ -143,30 +143,30 @@ def answer_inquiry(inquiry_id):
     """문의사항 답변"""
     try:
         inquiry = Inquiry.query.get_or_404(inquiry_id)
-        
+
         data = request.get_json()
         if not data or 'answer' not in data:
             return jsonify({'error': '답변 내용이 필요합니다.'}), 400
-        
+
         # 답변 업데이트
         inquiry.answer = data['answer'].strip()
         inquiry.answered_by = data.get('answered_by', '관리자')
         inquiry.answered_at = datetime.utcnow()
         inquiry.status = 'answered'
-        
+
         db.session.commit()
-        
+
         # 답변 이메일 발송
         try:
             send_answer_notification(inquiry)
         except Exception as e:
             current_app.logger.error(f"답변 이메일 발송 실패: {str(e)}")
-        
+
         return jsonify({
             'message': '답변이 성공적으로 등록되었습니다.',
             'inquiry': inquiry.to_dict()
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"문의사항 답변 실패: {str(e)}")
@@ -180,25 +180,25 @@ def update_inquiry_status(inquiry_id):
     """문의사항 상태 변경"""
     try:
         inquiry = Inquiry.query.get_or_404(inquiry_id)
-        
+
         data = request.get_json()
         if not data or 'status' not in data:
             return jsonify({'error': '상태 정보가 필요합니다.'}), 400
-        
+
         valid_statuses = ['pending', 'answered', 'closed']
         if data['status'] not in valid_statuses:
             return jsonify({'error': '유효하지 않은 상태입니다.'}), 400
-        
+
         inquiry.status = data['status']
         inquiry.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'message': '상태가 성공적으로 변경되었습니다.',
             'inquiry': inquiry.to_dict()
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"문의사항 상태 변경 실패: {str(e)}")
@@ -215,13 +215,13 @@ def get_inquiry_stats():
         pending = Inquiry.query.filter(Inquiry.status == 'pending').count()
         answered = Inquiry.query.filter(Inquiry.status == 'answered').count()
         closed = Inquiry.query.filter(Inquiry.status == 'closed').count()
-        
+
         # 카테고리별 통계
         category_stats = db.session.query(
-            Inquiry.category, 
+            Inquiry.category,
             db.func.count(Inquiry.id)
         ).group_by(Inquiry.category).all()
-        
+
         return jsonify({
             'total': total,
             'pending': pending,
@@ -229,7 +229,7 @@ def get_inquiry_stats():
             'closed': closed,
             'category_stats': dict(category_stats)
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"문의사항 통계 조회 실패: {str(e)}")
         return jsonify({
@@ -241,9 +241,9 @@ def send_inquiry_notification(inquiry):
     """문의사항 등록 시 관리자에게 이메일 알림"""
     try:
         email_service = EmailService()
-        
+
         subject = f"[밥플떼기] 새로운 문의사항 - {inquiry.subject}"
-        
+
         # HTML 이메일 내용
         html_content = f"""
         <!DOCTYPE html>
@@ -364,7 +364,7 @@ def send_inquiry_notification(inquiry):
         </body>
         </html>
         """
-        
+
         # 텍스트 이메일 내용
         text_content = f"""
 🍽️ 밥플떼기 - 새로운 문의사항
@@ -381,22 +381,22 @@ def send_inquiry_notification(inquiry):
 
 관리자 페이지에서 답변을 등록해주세요.
         """
-        
+
         # 이메일 발송
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
-        
+
         msg = MIMEMultipart('alternative')
         msg['From'] = f'밥플떼기 <{email_service.username}>'
         from backend.config.auth_config import AuthConfig
         msg['To'] = AuthConfig.INQUIRY_EMAIL
         msg['Subject'] = subject
-        
+
         msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
         msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-        
+
         return email_service._send_email(msg)
-        
+
     except Exception as e:
         current_app.logger.error(f"문의사항 이메일 알림 발송 실패: {str(e)}")
         return False
@@ -405,9 +405,9 @@ def send_answer_notification(inquiry):
     """문의사항 답변 시 문의자에게 이메일 발송"""
     try:
         email_service = EmailService()
-        
+
         subject = f"[밥플떼기] 문의사항 답변 - {inquiry.subject}"
-        
+
         # HTML 이메일 내용
         html_content = f"""
         <!DOCTYPE html>
@@ -482,7 +482,7 @@ def send_answer_notification(inquiry):
         </body>
         </html>
         """
-        
+
         # 텍스트 이메일 내용
         text_content = f"""
 🍽️ 밥플떼기 - 문의사항 답변
@@ -494,21 +494,21 @@ def send_answer_notification(inquiry):
 
 추가 문의사항이 있으시면 언제든지 연락해주세요.
         """
-        
+
         # 이메일 발송
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
-        
+
         msg = MIMEMultipart('alternative')
         msg['From'] = f'밥플떼기 <{email_service.username}>'
         msg['To'] = inquiry.email
         msg['Subject'] = subject
-        
+
         msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
         msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-        
+
         return email_service._send_email(msg)
-        
+
     except Exception as e:
         current_app.logger.error(f"답변 이메일 발송 실패: {str(e)}")
         return False

@@ -5,7 +5,7 @@ API 에러 매핑 시스템
 """
 
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any
 from flask import jsonify, Response
 from datetime import datetime
 
@@ -28,7 +28,7 @@ class ErrorCode(Enum):
 
 class HTTPStatusMapping:
     """에러 코드 → HTTP 상태코드 매핑"""
-    
+
     MAPPING = {
         ErrorCode.VALIDATION_ERROR: 422,
         ErrorCode.AUTHENTICATION_ERROR: 401,
@@ -43,22 +43,22 @@ class HTTPStatusMapping:
         ErrorCode.UNPROCESSABLE_ENTITY: 422,
         ErrorCode.TOO_MANY_REQUESTS: 429,
     }
-    
+
     @classmethod
     def get_status_code(cls, error_code: ErrorCode) -> int:
         """에러 코드에 해당하는 HTTP 상태코드 반환"""
         return cls.MAPPING.get(error_code, 500)
-    
+
     @classmethod
     def create_error_response(
-        cls, 
-        error_code: ErrorCode, 
-        message: str, 
-        details: Optional[Dict[str, Any]] = None
+        cls,
+        error_code: ErrorCode,
+        message: str,
+        details: dict[str, Any] | None = None
     ) -> Response:
         """표준 에러 응답 생성"""
         status_code = cls.get_status_code(error_code)
-        
+
         response_data = {
             "error": {
                 "code": error_code.value,
@@ -66,20 +66,20 @@ class HTTPStatusMapping:
                 "timestamp": datetime.utcnow().isoformat()
             }
         }
-        
+
         if details:
             response_data["error"]["details"] = details
-        
+
         return jsonify(response_data), status_code
 
 
 class ErrorResponse:
     """에러 응답 생성 클래스"""
-    
+
     @staticmethod
     def validation_error(
         message: str = "요청 데이터가 올바르지 않습니다",
-        validation_errors: Optional[Dict[str, Any]] = None
+        validation_errors: dict[str, Any] | None = None
     ) -> Response:
         """검증 오류 응답 - 422 Unprocessable Entity"""
         details = {"validation_errors": validation_errors} if validation_errors else None
@@ -88,7 +88,7 @@ class ErrorResponse:
             message,
             details
         )
-    
+
     @staticmethod
     def authentication_error(
         message: str = "인증이 필요합니다"
@@ -98,7 +98,7 @@ class ErrorResponse:
             ErrorCode.AUTHENTICATION_ERROR,
             message
         )
-    
+
     @staticmethod
     def authorization_error(
         message: str = "권한이 없습니다"
@@ -108,21 +108,21 @@ class ErrorResponse:
             ErrorCode.AUTHORIZATION_ERROR,
             message
         )
-    
+
     @staticmethod
     def not_found(
         resource: str = "리소스",
-        message: Optional[str] = None
+        message: str | None = None
     ) -> Response:
         """리소스 없음 응답 - 404 Not Found"""
         if not message:
             message = f"{resource}를 찾을 수 없습니다"
-        
+
         return HTTPStatusMapping.create_error_response(
             ErrorCode.NOT_FOUND,
             message
         )
-    
+
     @staticmethod
     def conflict(
         message: str = "리소스 충돌이 발생했습니다"
@@ -132,11 +132,11 @@ class ErrorResponse:
             ErrorCode.CONFLICT,
             message
         )
-    
+
     @staticmethod
     def rate_limit_exceeded(
         message: str = "요청 한도를 초과했습니다",
-        retry_after: Optional[int] = None
+        retry_after: int | None = None
     ) -> Response:
         """속도 제한 초과 응답 - 429 Too Many Requests"""
         details = {"retry_after": retry_after} if retry_after else None
@@ -145,11 +145,11 @@ class ErrorResponse:
             message,
             details
         )
-    
+
     @staticmethod
     def internal_server_error(
         message: str = "내부 서버 오류가 발생했습니다",
-        error_id: Optional[str] = None
+        error_id: str | None = None
     ) -> Response:
         """내부 서버 오류 응답 - 500 Internal Server Error"""
         details = {"error_id": error_id} if error_id else None
@@ -158,11 +158,11 @@ class ErrorResponse:
             message,
             details
         )
-    
+
     @staticmethod
     def service_unavailable(
         message: str = "서비스를 사용할 수 없습니다",
-        retry_after: Optional[int] = None
+        retry_after: int | None = None
     ) -> Response:
         """서비스 사용 불가 응답 - 503 Service Unavailable"""
         details = {"retry_after": retry_after} if retry_after else None
@@ -171,7 +171,7 @@ class ErrorResponse:
             message,
             details
         )
-    
+
     @staticmethod
     def bad_request(
         message: str = "잘못된 요청입니다"

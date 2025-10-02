@@ -5,7 +5,6 @@
 
 import sqlite3
 import os
-from datetime import datetime
 
 def create_inquiry_table():
     """문의사항 테이블 생성"""
@@ -31,7 +30,7 @@ def create_inquiry_table():
 
         if 'inquiries' not in [table[0] for table in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]:
             print("inquiries 테이블을 생성합니다...")
-            
+
             # 문의사항 테이블 생성
             cursor.execute("""
                 CREATE TABLE inquiries (
@@ -52,7 +51,7 @@ def create_inquiry_table():
                     FOREIGN KEY (user_id) REFERENCES users (id)
                 )
             """)
-            
+
             print("✅ inquiries 테이블 생성 완료")
         else:
             print("ℹ️ inquiries 테이블이 이미 존재합니다")

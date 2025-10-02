@@ -4,12 +4,9 @@
 """
 
 from flask import Blueprint, request, jsonify
-from backend.app.extensions import db
-from backend.models.app_models import ChatNotification, NotificationSettings
 from backend.utils.notification_manager import notification_manager
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
-from datetime import datetime, timedelta
-import json
+from datetime import datetime
 
 # Blueprint 생성
 notifications_bp = Blueprint('notifications', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
@@ -21,12 +18,12 @@ def send_notification():
     """알림 전송"""
     try:
         data = request.get_json()
-        
+
         required_fields = ['user_id', 'notification_type', 'title', 'message']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({"error": f"{field}는 필수입니다."}), 400
-        
+
         # 알림 생성
         notification, message = notification_manager.create_notification(
             user_id=data['user_id'],
@@ -39,16 +36,16 @@ def send_notification():
             related_data=data.get('related_data'),
             expires_at=datetime.fromisoformat(data['expires_at']) if data.get('expires_at') else None
         )
-        
+
         if not notification:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message,
             "notification_id": notification.id
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 전송 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -57,12 +54,12 @@ def send_bulk_notification():
     """대량 알림 전송"""
     try:
         data = request.get_json()
-        
+
         required_fields = ['user_ids', 'notification_type', 'title', 'message']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({"error": f"{field}는 필수입니다."}), 400
-        
+
         # 대량 알림 전송
         success, message = notification_manager.send_bulk_notification(
             user_ids=data['user_ids'],
@@ -74,15 +71,15 @@ def send_bulk_notification():
             message_id=data.get('message_id'),
             related_data=data.get('related_data')
         )
-        
+
         if not success:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"대량 알림 전송 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -92,20 +89,20 @@ def mark_notification_read(notification_id):
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        
+
         if not user_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         success, message = notification_manager.mark_notification_read(notification_id, user_id)
-        
+
         if not success:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 읽음 처리 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -117,22 +114,22 @@ def mark_all_notifications_read():
         user_id = data.get('user_id')
         chat_type = data.get('chat_type')
         chat_id = data.get('chat_id')
-        
+
         if not user_id:
             return jsonify({"error": "사용자 ID가 필요합니다."}), 400
-        
+
         success, message = notification_manager.mark_all_notifications_read(
             user_id, chat_type, chat_id
         )
-        
+
         if not success:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 읽음 처리 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -143,18 +140,18 @@ def get_user_notifications(user_id):
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
         unread_only = request.args.get('unread_only', 'false').lower() == 'true'
-        
+
         notifications, message = notification_manager.get_user_notifications(
             user_id, limit, offset, unread_only
         )
-        
+
         return jsonify({
             "success": True,
             "notifications": notifications,
             "total": len(notifications),
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 목록 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -164,15 +161,15 @@ def get_unread_count(user_id):
     try:
         chat_type = request.args.get('chat_type')
         chat_id = request.args.get('chat_id')
-        
+
         count, message = notification_manager.get_unread_count(user_id, chat_type, chat_id)
-        
+
         return jsonify({
             "success": True,
             "unread_count": count,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"읽지 않은 알림 수 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -181,16 +178,16 @@ def get_notification_settings(user_id):
     """알림 설정 조회"""
     try:
         settings, message = notification_manager.get_notification_settings(user_id)
-        
+
         if not settings:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "settings": settings,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 설정 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -199,20 +196,20 @@ def update_notification_settings(user_id):
     """알림 설정 업데이트"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({"error": "설정 데이터가 필요합니다."}), 400
-        
+
         success, message = notification_manager.update_notification_settings(user_id, data)
-        
+
         if not success:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 설정 업데이트 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -222,17 +219,17 @@ def cleanup_notifications():
     try:
         data = request.get_json() if request.is_json else {}
         days = data.get('days', 30)
-        
+
         success, message = notification_manager.cleanup_expired_notifications(days)
-        
+
         if not success:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": message
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 정리 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -241,12 +238,12 @@ def get_notification_types():
     """알림 타입 목록 조회"""
     try:
         types = notification_manager.notification_types
-        
+
         return jsonify({
             "success": True,
             "notification_types": types
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"알림 타입 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
@@ -257,7 +254,7 @@ def test_notification():
         data = request.get_json()
         user_id = data.get('user_id', '1')
         notification_type = data.get('notification_type', 'system')
-        
+
         # 테스트 알림 생성
         notification, message = notification_manager.create_notification(
             user_id=user_id,
@@ -267,15 +264,15 @@ def test_notification():
             chat_type='test',
             chat_id=1
         )
-        
+
         if not notification:
             return jsonify({"error": message}), 400
-        
+
         return jsonify({
             "success": True,
             "message": "테스트 알림이 전송되었습니다.",
             "notification_id": notification.id
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": f"테스트 알림 전송 중 오류가 발생했습니다: {str(e)}"}), 500

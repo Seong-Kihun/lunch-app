@@ -19,20 +19,20 @@ def main():
     parser.add_argument('--port', type=int, default=5000, help='Port to bind to')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--env', choices=['dev', 'prod'], default='dev', help='Environment')
-    
+
     args = parser.parse_args()
-    
+
     # 환경 변수 설정
     os.environ['FLASK_ENV'] = 'development' if args.env == 'dev' else 'production'
     os.environ['FLASK_DEBUG'] = 'true' if args.debug else 'false'
     os.environ['HOST'] = args.host
     os.environ['PORT'] = str(args.port)
-    
+
     try:
         # 앱 팩토리에서 앱 생성
         from backend.app.app_factory import create_app
         app = create_app()
-        
+
         print("=" * 60)
         print("🚀 Lunch App Backend Server")
         print("=" * 60)
@@ -42,7 +42,7 @@ def main():
         print(f"🌍 Environment: {args.env}")
         print(f"🔗 URL: http://{args.host}:{args.port}")
         print("=" * 60)
-        
+
         # Socket.IO 지원 확인
         try:
             from backend.app.realtime_system import socketio
@@ -54,7 +54,7 @@ def main():
         except ImportError:
             print("🔌 일반 Flask 모드로 실행")
             app.run(host=args.host, port=args.port, debug=args.debug)
-            
+
     except Exception as e:
         print(f"❌ 서버 시작 실패: {e}")
         sys.exit(1)

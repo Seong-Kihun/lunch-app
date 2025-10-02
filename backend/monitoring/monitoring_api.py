@@ -6,10 +6,9 @@
 
 from flask import Blueprint, jsonify, request
 from backend.monitoring.unified_monitor import monitor
-import logging
 import os
 import psutil
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 # 모니터링 Blueprint 생성
 monitoring_bp = Blueprint('monitoring', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
@@ -21,20 +20,20 @@ def health_check():
         # 기본 시스템 정보
         system_info = {
             'status': 'healthy',
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'uptime': _get_uptime(),
             'memory_usage': _get_memory_usage(),
             'cpu_usage': _get_cpu_usage(),
             'disk_usage': _get_disk_usage()
         }
-        
+
         return jsonify(system_info), 200
-        
+
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            'timestamp': datetime.now(UTC).isoformat()
         }), 500
 
 @monitoring_bp.route('/metrics', methods=['GET'])
@@ -43,7 +42,7 @@ def get_metrics():
     try:
         metrics = monitor.get_metrics()
         return jsonify(metrics), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -53,7 +52,7 @@ def reset_metrics():
     try:
         monitor.reset_metrics()
         return jsonify({'message': '메트릭이 초기화되었습니다.'}), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -62,26 +61,26 @@ def get_logs():
     """로그 조회 (최근 100줄)"""
     try:
         log_type = request.args.get('type', 'app')  # app, error
-        
+
         if log_type == 'error':
             log_file = 'logs/error.log'
         else:
             log_file = 'logs/app.log'
-        
+
         if not os.path.exists(log_file):
             return jsonify({'logs': [], 'message': '로그 파일이 존재하지 않습니다.'}), 200
-        
+
         # 최근 100줄 읽기
-        with open(log_file, 'r', encoding='utf-8') as f:
+        with open(log_file, encoding='utf-8') as f:
             lines = f.readlines()
             recent_lines = lines[-100:] if len(lines) > 100 else lines
-        
+
         return jsonify({
             'logs': [line.strip() for line in recent_lines],
             'total_lines': len(lines),
             'returned_lines': len(recent_lines)
         }), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -90,7 +89,7 @@ def get_system_info():
     """시스템 정보 조회"""
     try:
         system_info = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'platform': os.name,
             'python_version': os.sys.version,
             'memory': _get_memory_usage(),
@@ -98,9 +97,9 @@ def get_system_info():
             'disk': _get_disk_usage(),
             'process_info': _get_process_info()
         }
-        
+
         return jsonify(system_info), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

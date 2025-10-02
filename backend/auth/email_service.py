@@ -1,23 +1,20 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from typing import Optional
 from backend.config.auth_config import AuthConfig
 
 class EmailService:
     """이메일 발송 서비스"""
-    
+
     def __init__(self):
         self.smtp_server = AuthConfig.MAIL_SERVER
         self.smtp_port = AuthConfig.MAIL_PORT
         self.username = AuthConfig.MAIL_USERNAME
         self.password = AuthConfig.MAIL_PASSWORD
         self.use_tls = AuthConfig.MAIL_USE_TLS
-    
-    
-    
+
+
+
     def _send_email(self, msg: MIMEMultipart) -> bool:
         """이메일 발송 실행"""
         try:
@@ -25,23 +22,23 @@ class EmailService:
             if not self.username or not self.password:
                 print("⚠️ 이메일 설정이 없어 발송을 건너뜁니다.")
                 return False
-                
+
             # Gmail SMTP 서버 연결
             server = smtplib.SMTP(self.smtp_server, self.smtp_port)
             server.starttls()  # TLS 암호화 활성화
-            
+
             # Gmail 인증 (앱 비밀번호 사용)
             server.login(self.username, self.password)
-            
+
             # 이메일 발송
             server.send_message(msg)
-            
+
             # 연결 종료
             server.quit()
-            
+
             print(f"✅ 이메일 발송 성공: {msg['To']}")
             return True
-            
+
         except smtplib.SMTPAuthenticationError as e:
             print(f"❌ 이메일 인증 실패: {str(e)}")
             print("💡 Gmail 앱 비밀번호를 확인해주세요.")
@@ -52,7 +49,7 @@ class EmailService:
         except Exception as e:
             print(f"❌ 이메일 발송 실패: {str(e)}")
             return False
-    
+
     def send_password_reset_email(self, to_email: str, temp_password: str, user_name: str) -> bool:
         """비밀번호 재설정 이메일 발송"""
         try:
@@ -61,7 +58,7 @@ class EmailService:
             msg['From'] = self.username
             msg['To'] = to_email
             msg['Subject'] = '[밥플떼기] 비밀번호 재설정 안내'
-            
+
             # HTML 내용
             html_content = f"""
             <!DOCTYPE html>
@@ -116,7 +113,7 @@ class EmailService:
             </body>
             </html>
             """
-            
+
             # 텍스트 내용
             text_content = f"""
 밥플떼기 비밀번호 재설정 안내
@@ -141,17 +138,17 @@ class EmailService:
 이 이메일은 자동으로 발송되었습니다. 회신하지 마세요.
 © 2024 밥플떼기. All rights reserved.
             """
-            
+
             # HTML과 텍스트 파트 추가
             html_part = MIMEText(html_content, 'html', 'utf-8')
             text_part = MIMEText(text_content, 'plain', 'utf-8')
-            
+
             msg.attach(text_part)
             msg.attach(html_part)
-            
+
             # 이메일 발송
             return self._send_email(msg)
-            
+
         except Exception as e:
             print(f"비밀번호 재설정 이메일 생성 실패: {str(e)}")
             return False
@@ -163,19 +160,19 @@ class EmailService:
             if not self.username or not self.password:
                 print("⚠️ 이메일 설정이 없어 연결 테스트를 건너뜁니다.")
                 return False
-                
+
             if self.use_tls:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()
             else:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            
+
             server.login(self.username, self.password)
             server.quit()
-            
+
             print("SMTP 연결 테스트 성공")
             return True
-            
+
         except Exception as e:
             print(f"SMTP 연결 테스트 실패: {str(e)}")
             return False

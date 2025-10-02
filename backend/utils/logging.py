@@ -8,13 +8,13 @@ import logging.handlers
 import os
 import sys
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 import json
 
 
 class StructuredFormatter(logging.Formatter):
     """구조화된 JSON 로그 포맷터"""
-    
+
     def format(self, record):
         log_entry = {
             'timestamp': datetime.utcnow().isoformat() + 'Z',
@@ -25,21 +25,21 @@ class StructuredFormatter(logging.Formatter):
             'function': record.funcName,
             'line': record.lineno,
         }
-        
+
         # 예외 정보가 있는 경우 추가
         if record.exc_info:
             log_entry['exception'] = self.formatException(record.exc_info)
-        
+
         # 추가 컨텍스트 정보가 있는 경우 추가
         if hasattr(record, 'extra_data'):
             log_entry.update(record.extra_data)
-        
+
         return json.dumps(log_entry, ensure_ascii=False)
 
 
 class ColoredFormatter(logging.Formatter):
     """개발 환경용 컬러 포맷터"""
-    
+
     COLORS = {
         'DEBUG': '\033[36m',    # 청록색
         'INFO': '\033[32m',     # 녹색
@@ -48,11 +48,11 @@ class ColoredFormatter(logging.Formatter):
         'CRITICAL': '\033[35m', # 자주색
         'RESET': '\033[0m'      # 리셋
     }
-    
+
     def format(self, record):
         color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
         reset = self.COLORS['RESET']
-        
+
         record.levelname = f"{color}{record.levelname}{reset}"
         return super().format(record)
 
@@ -79,18 +79,18 @@ def setup_logging(
     log_level = log_level or os.getenv('LOG_LEVEL', 'INFO').upper()
     log_file = log_file or os.getenv('LOG_FILE')
     use_json = use_json if use_json is not None else os.getenv('LOG_FORMAT', 'text').lower() == 'json'
-    
+
     # 로그 레벨 설정
     numeric_level = getattr(logging, log_level, logging.INFO)
-    
+
     # 루트 로거 설정
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
-    
+
     # 기존 핸들러 제거
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # 포맷터 설정
     if use_json:
         formatter = StructuredFormatter()
@@ -103,21 +103,21 @@ def setup_logging(
             formatter = logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             )
-    
+
     # 콘솔 핸들러
     if enable_console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(numeric_level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
-    
+
     # 파일 핸들러
     if log_file:
         # 로그 디렉토리 생성
         log_dir = os.path.dirname(log_file)
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        
+
         # 로테이팅 파일 핸들러
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
@@ -127,7 +127,7 @@ def setup_logging(
         file_handler.setLevel(numeric_level)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
-    
+
     return root_logger
 
 
@@ -140,7 +140,7 @@ def log_with_context(
     logger: logging.Logger,
     level: int,
     message: str,
-    extra_data: Optional[Dict[str, Any]] = None,
+    extra_data: dict[str, Any] | None = None,
     exc_info: bool = False
 ):
     """컨텍스트 정보와 함께 로그 기록"""
@@ -156,8 +156,8 @@ def log_api_request(
     path: str,
     status_code: int,
     response_time: float,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None
+    user_id: str | None = None,
+    ip_address: str | None = None
 ):
     """API 요청 로그 기록"""
     extra_data = {
@@ -177,7 +177,7 @@ def log_database_operation(
     operation: str,
     table: str,
     duration: float,
-    rows_affected: Optional[int] = None
+    rows_affected: int | None = None
 ):
     """데이터베이스 작업 로그 기록"""
     extra_data = {
@@ -194,8 +194,8 @@ def log_security_event(
     logger: logging.Logger,
     event_type: str,
     description: str,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    user_id: str | None = None,
+    ip_address: str | None = None,
     severity: str = 'medium'
 ):
     """보안 이벤트 로그 기록"""
@@ -215,7 +215,7 @@ def log_performance_metric(
     metric_name: str,
     value: float,
     unit: str = 'ms',
-    tags: Optional[Dict[str, str]] = None
+    tags: dict[str, str] | None = None
 ):
     """성능 메트릭 로그 기록"""
     extra_data = {
@@ -235,23 +235,23 @@ def init_app_logging(app):
         log_level = app.config.get('LOG_LEVEL', 'INFO')
         log_file = app.config.get('LOG_FILE', 'logs/app.log')
         use_json = app.config.get('LOG_FORMAT', 'text').lower() == 'json'
-        
+
         setup_logging(
             log_level=log_level,
             log_file=log_file,
             use_json=use_json,
             enable_console=True
         )
-        
+
         # Flask 앱 로거 설정
         app.logger.setLevel(logging.INFO)
-        
+
         print("[SUCCESS] 고급 로깅 시스템이 초기화되었습니다.")
-        
+
     except Exception as e:
         # 폴백: 기본 Python 로깅 사용
         print(f"[WARNING] 고급 로깅 시스템 초기화 실패, 기본 로깅으로 폴백: {e}")
-        
+
         # 기본 로깅 설정
         logging.basicConfig(
             level=logging.INFO,
@@ -261,14 +261,14 @@ def init_app_logging(app):
                 logging.FileHandler('logs/app.log', mode='a')
             ]
         )
-        
+
         app.logger.setLevel(logging.INFO)
         print("[SUCCESS] 기본 로깅 시스템이 초기화되었습니다.")
-    
+
     # SQLAlchemy 로깅 설정
     if app.config.get('SQLALCHEMY_ECHO'):
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-    
+
     return get_logger('app')
 
 

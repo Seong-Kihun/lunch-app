@@ -4,7 +4,7 @@
 기존 경로를 새로운 API 경로로 리다이렉트합니다.
 """
 
-from flask import Blueprint, request, jsonify, redirect
+from flask import Blueprint, request, jsonify
 from auth.middleware import check_authentication
 from auth.routes import get_profile
 import logging
@@ -27,12 +27,12 @@ def compatibility_magic_link():
 def compatibility_dev_user(employee_id):
     """개발용 사용자 API 호환성 엔드포인트"""
     logger.info(f"호환성 개발용 사용자 API 호출됨: {employee_id}")
-    
+
     # 인증 확인
     auth_result = check_authentication()
     if auth_result:
         return auth_result
-    
+
     # 사용자 프로필 조회로 리다이렉트
     return get_profile()
 
