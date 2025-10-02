@@ -13,7 +13,7 @@ from backend.application.repositories import (
     EntityNotFoundError
 )
 from backend.core.entities import Party
-from backend.infrastructure.models import (
+from backend.infrastructure.infrastructure_models import (
     PartyModel, UserModel, PartyMemberModel
 )
 from backend.infrastructure.mappers import (

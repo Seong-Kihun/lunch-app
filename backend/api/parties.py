@@ -8,7 +8,7 @@ from sqlalchemy import desc, or_, and_
 from datetime import datetime, timedelta
 from backend.app.extensions import db
 from backend.models.app_models import Party, PartyMember
-from backend.utils.performance_optimizer import measure_performance, optimize_database_query, cache_query_result
+from backend.utils.utils_performance_optimizer import measure_performance, optimize_database_query, cache_query_result
 from backend.utils.safe_jsonify import safe_jsonify
 
 # 파티 Blueprint 생성

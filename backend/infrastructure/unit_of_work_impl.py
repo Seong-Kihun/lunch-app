@@ -10,7 +10,7 @@ from backend.application.unit_of_work import (
     UnitOfWork, UnitOfWorkBase, TransactionManager
 )
 from backend.application.repositories import PartyRepository, UserRepository, PartyMemberRepository
-from backend.infrastructure.repositories import SQLPartyRepository, SQLUserRepository, SQLPartyMemberRepository
+from backend.infrastructure.infrastructure_repositories import SQLPartyRepository, SQLUserRepository, SQLPartyMemberRepository
 from backend.app.extensions import db
 # import structlog
 # logger = structlog.get_logger()

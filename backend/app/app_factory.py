@@ -150,7 +150,7 @@ def create_app(config_name=None):
 
     # 성능 모니터링 설정 (개발 환경에서만)
     try:
-        from backend.utils.performance_monitor import setup_development_monitoring
+        from backend.utils.utils_performance_monitor import setup_development_monitoring
         setup_development_monitoring(app)
         print("[SUCCESS] 성능 모니터링이 성공적으로 설정되었습니다.")
     except ImportError as e:

@@ -5,8 +5,8 @@
 
 from flask import Blueprint, request, jsonify
 from backend.utils.cache_manager import chat_cache_manager
-from backend.utils.query_optimizer import query_optimizer
-from backend.utils.performance_monitor import performance_monitor, monitor_performance
+from backend.utils.utils_query_optimizer import query_optimizer
+from backend.utils.utils_performance_monitor import performance_monitor, monitor_performance
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 import time
 

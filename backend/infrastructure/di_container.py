@@ -126,7 +126,7 @@ def configure_services() -> None:
     from backend.infrastructure.unit_of_work_impl import (
         SQLUnitOfWorkFactory, SQLTransactionManager
     )
-    from backend.infrastructure.repositories import (
+    from backend.infrastructure.infrastructure_repositories import (
         SQLPartyRepository, SQLUserRepository, SQLPartyMemberRepository
     )
     from backend.application.services import PartyService, UserService
