@@ -12,6 +12,12 @@ export const useToday = () => {
                 // 안전한 API 호출 (근본적 해결책)
                 const { unifiedApiClient } = await import('../services/UnifiedApiClient');
                 
+                // API 클라이언트 초기화 대기
+                if (!unifiedApiClient || !unifiedApiClient.isInitialized) {
+                    console.log('🔄 [useToday] API 클라이언트 초기화 대기 중...');
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
+                }
+                
                 if (!unifiedApiClient) {
                     throw new Error('API 클라이언트가 초기화되지 않았습니다');
                 }
