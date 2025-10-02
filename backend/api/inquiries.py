@@ -388,7 +388,8 @@ def send_inquiry_notification(inquiry):
         
         msg = MIMEMultipart('alternative')
         msg['From'] = f'밥플떼기 <{email_service.username}>'
-        msg['To'] = 'kihun.seong.official@gmail.com'
+        from backend.config.auth_config import AuthConfig
+        msg['To'] = AuthConfig.INQUIRY_EMAIL
         msg['Subject'] = subject
         
         msg.attach(MIMEText(text_content, 'plain', 'utf-8'))

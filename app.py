@@ -12,8 +12,8 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 backend_path = os.path.join(project_root, 'backend')
 sys.path.insert(0, backend_path)
 
-# 백엔드 앱 import
-from backend.app.app import app
+# 백엔드 앱 import (새로운 wsgi.py 사용)
+from backend.app.wsgi import app
 
 # Render 환경에서 실행
 if __name__ == '__main__':

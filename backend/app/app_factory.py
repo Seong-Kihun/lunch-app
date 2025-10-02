@@ -42,6 +42,15 @@ def create_app(config_name=None):
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-flask-secret-key-change-in-production")
     
+    # PostgreSQL 연결 풀 설정 (프로덕션 최적화)
+    if os.getenv("DATABASE_URL", "").startswith("postgresql://"):
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            "pool_size": 10,
+            "pool_recycle": 3600,
+            "pool_pre_ping": True,
+            "max_overflow": 20
+        }
+    
     # 테스트 환경 설정
     if config_name == 'testing':
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
@@ -85,39 +94,13 @@ def create_app(config_name=None):
     from backend.utils.logging import info, warning
     info("extensions.py의 데이터베이스 객체를 import했습니다.")
     
-    # 인증 모델 import (별도 처리) - 메타데이터 충돌 방지
+    # 인증 모델 import (표준 SQLAlchemy 방식)
     try:
-        print(f"[DEBUG] 메타데이터 상태 (User import 전): {list(db.metadata.tables.keys())}")
-        
-        # 근본적 해결: 안전한 모델 등록
-        from backend.app.extensions import register_model_safely
-        
-        # 기존 메타데이터 완전 정리
-        tables_to_remove = []
-        for table_name in list(db.metadata.tables.keys()):
-            if table_name in ['users', 'friendships', 'refresh_tokens', 'revoked_tokens']:
-                tables_to_remove.append(table_name)
-        
-        for table_name in tables_to_remove:
-            print(f"[DEBUG] 기존 {table_name} 테이블 제거 중...")
-            db.metadata.remove(db.metadata.tables[table_name])
-        
+        # 표준 SQLAlchemy 선언적 매핑 사용
         from backend.auth.models import User, Friendship, RefreshToken, RevokedToken
         info("인증 모델을 불러왔습니다.")
         
-        # 안전한 모델 등록
-        register_model_safely(User)
-        register_model_safely(Friendship)
-        register_model_safely(RefreshToken)
-        register_model_safely(RevokedToken)
-        
-        print(f"[DEBUG] 메타데이터 상태 (User import 후): {list(db.metadata.tables.keys())}")
-        print(f"[DEBUG] User 테이블 정보: {db.metadata.tables.get('users')}")
-        print(f"[DEBUG] User 모델: {User}")
-        print(f"[DEBUG] Friendship 모델: {Friendship}")
-        
-        # 모든 모델을 메타데이터에 등록 (한 번만)
-        # import만으로도 메타데이터에 자동 등록되므로 db.create_all() 제거
+        print("[SUCCESS] 인증 모델이 표준 방식으로 등록되었습니다.")
         info("모든 모델이 메타데이터에 등록되었습니다.")
         
         # 전역 변수로 모델 저장 (다른 모듈에서 사용 가능)
@@ -249,108 +232,9 @@ def create_app(config_name=None):
         print(f"[WARNING] 인증 시스템 초기화 실패: {e}")
         print("[INFO] 인증 시스템이 비활성화되어 초기 데이터 생성을 건너뜁니다.")
 
-    # Render 환경에서 PostgreSQL 스키마 수정 (데이터베이스 초기화 전에 실행)
-    database_url = os.getenv('DATABASE_URL', '')
-    is_render = os.getenv('RENDER') or database_url.startswith('postgresql://')
-    
-    if is_render:
-        print("🔧 Render 환경 감지: PostgreSQL 스키마 수정을 시작합니다...")
-        try:
-            # PostgreSQL 스키마 수정 함수
-            def fix_postgresql_schema():
-                """PostgreSQL 데이터베이스 스키마를 수정합니다."""
-                try:
-                    import psycopg2  # type: ignore
-                    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT  # type: ignore
-                    
-                    print("🔧 PostgreSQL 스키마 수정을 시작합니다...")
-                    
-                    conn = None
-                    try:
-                        conn = psycopg2.connect(database_url)
-                        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-                        cur = conn.cursor()
-                        print("✅ PostgreSQL 데이터베이스 연결 성공")
-
-                        # users 테이블에 password_hash 관련 컬럼 추가
-                        print("🔧 users 테이블 스키마를 확인하고 필요한 컬럼을 추가합니다...")
-                        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
-                        existing_columns = [row[0] for row in cur.fetchall()]
-
-                        columns_to_add = {
-                            'password_hash': 'VARCHAR(255)',
-                            'last_password_change': 'TIMESTAMP WITHOUT TIME ZONE',
-                            'failed_login_attempts': 'INTEGER DEFAULT 0',
-                            'account_locked_until': 'TIMESTAMP WITHOUT TIME ZONE'
-                        }
-
-                        for col_name, col_type in columns_to_add.items():
-                            if col_name not in existing_columns:
-                                try:
-                                    alter_sql = f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"
-                                    cur.execute(alter_sql)
-                                    print(f"  ✅ users 테이블에 '{col_name}' 컬럼 추가 완료.")
-                                except Exception as e:
-                                    print(f"  ⚠️ users 테이블에 '{col_name}' 컬럼 추가 실패: {e}")
-                            else:
-                                print(f"  ℹ️ users 테이블에 '{col_name}' 컬럼이 이미 존재합니다.")
-                        
-                        # inquiries 테이블이 없으면 생성
-                        print("🔧 inquiries 테이블 존재 여부를 확인합니다...")
-                        cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'inquiries')")
-                        inquiries_exists = cur.fetchone()[0]
-
-                        if not inquiries_exists:
-                            print("  ℹ️ inquiries 테이블이 존재하지 않아 생성합니다...")
-                            cur.execute("""
-                                CREATE TABLE inquiries (
-                                    id SERIAL PRIMARY KEY,
-                                    user_id INTEGER REFERENCES users(id),
-                                    name VARCHAR(100) NOT NULL,
-                                    email VARCHAR(120) NOT NULL,
-                                    subject VARCHAR(200) NOT NULL,
-                                    message TEXT NOT NULL,
-                                    status VARCHAR(20) DEFAULT 'pending',
-                                    priority VARCHAR(20) DEFAULT 'normal',
-                                    category VARCHAR(50) DEFAULT 'general',
-                                    answer TEXT,
-                                    answered_by VARCHAR(100),
-                                    answered_at TIMESTAMP WITHOUT TIME ZONE,
-                                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                                )
-                            """)
-                            print("  ✅ inquiries 테이블 생성 완료.")
-                        else:
-                            print("  ℹ️ inquiries 테이블이 이미 존재합니다.")
-
-                        print("🎉 PostgreSQL 스키마 수정이 완료되었습니다!")
-                        return True
-
-                    except Exception as e:
-                        print(f"❌ PostgreSQL 스키마 수정 실패: {e}")
-                        return False
-                    finally:
-                        if conn:
-                            cur.close()
-                            conn.close()
-                            print("데이터베이스 연결 종료.")
-
-                except ImportError:
-                    print("⚠️ psycopg2가 설치되지 않았습니다. PostgreSQL 스키마 수정을 건너뜁니다.")
-                    return False
-                except Exception as e:
-                    print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
-                    return False
-            
-            # 스키마 수정 실행
-            fix_postgresql_schema()
-            
-        except Exception as e:
-            print(f"⚠️ PostgreSQL 스키마 수정 중 오류 발생: {e}")
-            print("앱을 계속 실행합니다.")
-    else:
-        print("ℹ️ 로컬 환경: PostgreSQL 스키마 수정을 건너뜁니다.")
+    # 스키마 수정은 Alembic 마이그레이션을 통해서만 수행합니다.
+    # 부팅 시 DDL 실행은 제거되었습니다.
+    print("🔧 스키마 수정은 Alembic 마이그레이션을 통해서만 수행됩니다.")
 
     # 데이터베이스 초기화
     try:
@@ -384,96 +268,56 @@ def create_app(config_name=None):
     except ImportError as e:
         print(f"[WARNING] 스케줄러 설정 실패: {e}")
 
-    # Blueprint 등록
+    # 통합 모니터링 시스템 초기화
     try:
-        from backend.routes.auth import auth_bp
-        app.register_blueprint(auth_bp)
-        print("[SUCCESS] 인증 Blueprint 등록 성공")
+        from backend.monitoring.unified_monitor import monitor
+        monitor.init_app(app)
+        print("[SUCCESS] 통합 모니터링 시스템 초기화 완료")
     except Exception as e:
-        print(f"[ERROR] 인증 Blueprint 등록 실패: {e}")
+        print(f"[WARNING] 모니터링 시스템 초기화 실패: {e}")
 
+    # 성능 최적화 시스템 초기화
     try:
-        from backend.auth.admin_routes import admin_bp
-        app.register_blueprint(admin_bp)
-        print("[SUCCESS] 관리자 인증 Blueprint 등록 성공")
+        # Redis 캐시 시스템 초기화
+        from backend.cache.redis_cache import cache
+        cache.init_app(app)
+        print("[SUCCESS] Redis 캐시 시스템 초기화 완료")
+        
+        # 데이터베이스 최적화
+        from backend.optimization.query_optimizer import create_database_indexes
+        create_database_indexes()
+        print("[SUCCESS] 데이터베이스 최적화 완료")
+        
     except Exception as e:
-        print(f"[ERROR] 관리자 인증 Blueprint 등록 실패: {e}")
+        print(f"[WARNING] 성능 최적화 시스템 초기화 실패: {e}")
 
+    # 통합 Blueprint 등록 시스템 사용
     try:
-        from backend.routes.schedules import schedules_bp
-        app.register_blueprint(schedules_bp)
-        print("[SUCCESS] 일정 관리 Blueprint 등록 성공")
+        from backend.api.unified_blueprint import UnifiedBlueprintManager
+        
+        # UnifiedBlueprintManager 초기화
+        blueprint_manager = UnifiedBlueprintManager(app)
+        
+        # 모든 Blueprint 등록
+        blueprint_manager.register_all_blueprints()
+        
+        # 모니터링 API 등록
+        from backend.monitoring.monitoring_api import monitoring_bp
+        app.register_blueprint(monitoring_bp)
+        
+        print("[SUCCESS] 통합 Blueprint 등록 시스템으로 모든 Blueprint 등록 완료")
+        
     except Exception as e:
-        print(f"[ERROR] 일정 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.proposals import proposals_bp
-        app.register_blueprint(proposals_bp)
-        print("[SUCCESS] 제안 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 제안 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.restaurants import restaurants_bp
-        app.register_blueprint(restaurants_bp, url_prefix='/api')
-        print("[SUCCESS] 식당 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 식당 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.parties import parties_bp
-        app.register_blueprint(parties_bp, url_prefix='/api')
-        print("[SUCCESS] 파티 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 파티 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.users import users_bp
-        app.register_blueprint(users_bp, url_prefix='/api')
-        print("[SUCCESS] 사용자 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 사용자 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.chats import chats_bp
-        app.register_blueprint(chats_bp, url_prefix='/api')
-        print("[SUCCESS] 채팅 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 채팅 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.voting import voting_bp
-        app.register_blueprint(voting_bp, url_prefix='/api')
-        print("[SUCCESS] 투표 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 투표 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.routes.matching import matching_bp
-        app.register_blueprint(matching_bp, url_prefix='/api')
-        print("[SUCCESS] 매칭 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 매칭 관리 Blueprint 등록 실패: {e}")
-
-    try:
-        from backend.api.inquiries import inquiries_bp
-        app.register_blueprint(inquiries_bp)
-        print("[SUCCESS] 문의사항 관리 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 문의사항 관리 Blueprint 등록 실패: {e}")
-
-    # 헬스체크 Blueprint 등록
-    try:
-        from backend.routes.health import health_bp
-        app.register_blueprint(health_bp)
-        print("[SUCCESS] 헬스체크 Blueprint 등록 성공")
-    except Exception as e:
-        print(f"[ERROR] 헬스체크 Blueprint 등록 실패: {e}")
-
-    # 개발용 API는 제거됨 - 프로덕션 환경으로 전환
-    print("[INFO] 프로덕션 환경: 개발용 API Blueprint 제거됨")
-
-    print("[SUCCESS] 모든 Blueprint 등록 완료")
+        print(f"[ERROR] 통합 Blueprint 등록 시스템 실패: {e}")
+        print("[FALLBACK] 개별 Blueprint 등록으로 폴백합니다.")
+        
+        # 폴백: 핵심 Blueprint만 등록
+        try:
+            from backend.routes.health import health_bp
+            app.register_blueprint(health_bp)
+            print("[SUCCESS] 헬스체크 Blueprint 등록 성공 (폴백)")
+        except Exception as fallback_e:
+            print(f"[ERROR] 폴백 Blueprint 등록 실패: {fallback_e}")
 
     return app
 

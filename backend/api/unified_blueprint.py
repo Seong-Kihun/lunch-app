@@ -29,12 +29,13 @@ class UnifiedBlueprintManager:
                 ('backend.auth.routes', 'auth_bp', '/api', False),  # 인증 API는 인증 불필요
             ],
             
-            # 주요 기능 API
+            # API v2 (새로운 버전 - 우선 사용)
             'main': [
-                ('backend.routes.schedules', 'schedules_bp', '/api', True),
-                ('backend.routes.users', 'users_bp', '/api', True),
-                ('backend.routes.restaurants', 'restaurants_bp', '/api', True),
-                ('backend.routes.parties', 'parties_bp', '/api', True),
+                ('backend.api.restaurants_v2', 'restaurants_v2_bp', '/api', True),
+                ('backend.api.parties', 'parties_bp', '/api', True),
+                ('backend.api.schedules', 'schedules_bp', '/api', True),
+                ('backend.api.schedules', 'personal_schedules_bp', '/api', True),
+                ('backend.api.users', 'api_users_bp', '/api', True),
             ],
             
             # 확장 기능 API
@@ -46,18 +47,9 @@ class UnifiedBlueprintManager:
                 ('backend.routes.points', 'points_bp', '/api', True),
             ],
             
-            # API v2 (새로운 버전)
-            'api_v2': [
-                ('backend.api.restaurants_v2', 'restaurants_v2_bp', '/api', True),
-                ('backend.api.parties', 'parties_bp', '/api', True),
-                ('backend.api.schedules', 'schedules_bp', '/api', True),
-                ('backend.api.schedules', 'personal_schedules_bp', '/api', True),
-                ('backend.api.users', 'api_users_bp', '/api', True),
-                ('backend.api.inquiries', 'inquiries_bp', '/api', True),
-            ],
-            
             # 유틸리티 API
             'utility': [
+                ('backend.api.inquiries', 'inquiries_bp', '/api', True),
                 ('backend.api.compatibility', 'compatibility_bp', '/api', True),
                 ('backend.api.clear_data', 'clear_data_bp', '/api', True),
             ],

@@ -3,7 +3,7 @@ services:
     name: lunch-app
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --config gunicorn.conf.py backend.app.wsgi:app
     pythonVersion: 3.13.4
     envVars:
       - key: PYTHON_VERSION
@@ -13,8 +13,14 @@ services:
       - key: FLASK_ENV
         value: production
       - key: DATABASE_URL
-        value: sqlite:///lunch_app.db
+        value: ${POSTGRES_URL}
       - key: SECRET_KEY
         value: your-secret-key-here
       - key: JWT_SECRET_KEY
         value: your-jwt-secret-key-here
+      - key: MAIL_USERNAME
+        value: your-gmail-username-here
+      - key: MAIL_PASSWORD
+        value: your-gmail-app-password-here
+      - key: INQUIRY_EMAIL
+        value: your-inquiry-email-here
