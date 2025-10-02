@@ -12,11 +12,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { RENDER_SERVER_URL } from '../../../config';
-import { apiClient } from '../../../utils/apiClient';
+import { unifiedApiClient } from '../../../services/UnifiedApiClient';
 
 // 디버깅을 위한 로그
-console.log('🔧 [SuggestGroupScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
+console.log('🔧 [SuggestGroupScreen] unifiedApiClient 사용');
 
 // 컨텍스트
 import { useAuth } from '../../../contexts/AuthContext';
@@ -52,9 +51,9 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
 
     const fetchMyProposals = async () => {
         try {
-            const response = await apiClient.get(`${RENDER_SERVER_URL}/proposals/mine?employee_id=${currentUser?.employee_id || '1'}`);
-            const data = await response.json();
-            if (response.ok) {
+            const response = await unifiedApiClient.get(`/proposals/mine?employee_id=${currentUser?.employee_id || '1'}`);
+            const data = response;
+            if (response.success) {
                 const sentProposals = data.sent_proposals || [];
                 const pendingProposals = sentProposals.filter(p => p.status === 'pending');
                 const proposedGroupKeys = new Set();
@@ -77,10 +76,10 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
         try {
             setLoading(true);
             // 가상 그룹 매칭 API 사용 - 여러 그룹 지원
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/random-lunch/${user.employee_id || '1'}`);
-            const groupsData = await response.json();
+            const response = await unifiedApiClient.get(`/dev/random-lunch/${user.employee_id || '1'}`);
+            const groupsData = response;
             
-            if (response.ok && groupsData && Array.isArray(groupsData)) {
+            if (response.success && groupsData && Array.isArray(groupsData)) {
                 // API가 배열을 반환하므로 각 그룹을 변환
                 const virtualGroups = groupsData.map(data => ({
                     id: data.id,
@@ -135,28 +134,23 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
                 return;
             }
 
-            const response = await fetch(`${RENDER_SERVER_URL}/proposals`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sender_id: currentUser?.employee_id || '1',
-                    recipient_ids: recipientIds,
-                    message: `${group.date} 점심 모임에 함께하시겠어요?`,
-                    type: 'random_lunch',
-                    group_data: {
-                        date: group.date,
-                        members: group.users.map(u => u.employee_id),
-                        restaurant: group.restaurant_name
-                    }
-                })
+            const response = await unifiedApiClient.post(`/proposals`, {
+                sender_id: currentUser?.employee_id || '1',
+                recipient_ids: recipientIds,
+                message: `${group.date} 점심 모임에 함께하시겠어요?`,
+                type: 'random_lunch',
+                group_data: {
+                    date: group.date,
+                    members: group.users.map(u => u.employee_id),
+                    restaurant: group.restaurant_name
+                }
             });
 
-            if (response.ok) {
+            if (response.success) {
                 Alert.alert('성공', '점심 모임 제안을 보냈습니다!');
                 fetchMyProposals(); // 제안 상태 새로고침
             } else {
-                const data = await response.json();
-                Alert.alert('오류', data.message || '제안 전송에 실패했습니다.');
+                Alert.alert('오류', response.message || '제안 전송에 실패했습니다.');
             }
         } catch (error) {
             console.error('제안 전송 오류:', error);

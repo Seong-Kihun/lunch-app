@@ -12,11 +12,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { RENDER_SERVER_URL } from '../../../config';
-import { apiClient } from '../../../utils/apiClient';
+import { unifiedApiClient } from '../../../services/UnifiedApiClient';
 
 // 디버깅을 위한 로그
-console.log('🔧 [MyProposalsScreen] RENDER_SERVER_URL:', RENDER_SERVER_URL);
+console.log('🔧 [MyProposalsScreen] unifiedApiClient 사용');
 
 // 컨텍스트
 import { useAuth } from '../../../contexts/AuthContext';
@@ -44,9 +43,9 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const fetchConfirmedGroups = async () => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/parties?employee_id=${currentUser?.employee_id || '1'}&is_from_match=true`);
-            const data = await response.json();
-            if (response.ok && Array.isArray(data)) {
+            const response = await unifiedApiClient.get(`/parties?employee_id=${currentUser?.employee_id || '1'}&is_from_match=true`);
+            const data = response;
+            if (Array.isArray(data)) {
                 // API 응답 데이터를 안전하게 처리 (members_employee_ids 필드 제거)
                 const safeData = data.map(party => {
                     // members_employee_ids 필드를 제거하고 필요한 필드만 추출
@@ -71,17 +70,14 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const handleRejectProposal = async (proposalId) => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/proposals/${proposalId}/reject`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.employee_id })
+            const response = await unifiedApiClient.post(`/proposals/${proposalId}/reject`, {
+                user_id: user.employee_id
             });
-            const data = await response.json();
-            if (response.ok) {
-                Alert.alert('알림', data.message || '제안을 거절했습니다.');
+            if (response.success) {
+                Alert.alert('알림', response.message || '제안을 거절했습니다.');
                 fetchMyProposals(); // 목록 새로고침
             } else {
-                Alert.alert('오류', data.message || '거절에 실패했습니다.');
+                Alert.alert('오류', response.message || '거절에 실패했습니다.');
             }
         } catch (error) {
             console.error('제안 거절 오류:', error);
@@ -92,9 +88,9 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
     const fetchMyProposals = async () => {
         try {
             setLoading(true);
-            const response = await apiClient.get(`${RENDER_SERVER_URL}/proposals/mine?employee_id=${user.employee_id}`);
-            const data = await response.json();
-            if (response.ok) {
+            const response = await unifiedApiClient.get(`/proposals/mine?employee_id=${user.employee_id}`);
+            const data = response;
+            if (response.success) {
                 // 취소된 제안만 제거
                 const filterProposals = (proposals) => proposals.filter(p => p.status !== 'cancelled');
                 const filteredData = {
@@ -122,9 +118,9 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const fetchGroupMembers = async (proposalId, recipientIds) => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/users/batch?ids=${recipientIds.join(',')}`);
-            const data = await response.json();
-            if (response.ok && Array.isArray(data)) {
+            const response = await unifiedApiClient.get(`/users/batch?ids=${recipientIds.join(',')}`);
+            const data = response;
+            if (Array.isArray(data)) {
                 setGroupMembersMap(prev => ({
                     ...prev,
                     [proposalId]: data
@@ -137,17 +133,14 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const handleAcceptProposal = async (proposalId) => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/proposals/${proposalId}/accept`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.employee_id })
+            const response = await unifiedApiClient.post(`/proposals/${proposalId}/accept`, {
+                user_id: user.employee_id
             });
-            const data = await response.json();
-            if (response.ok) {
-                Alert.alert('성공', data.message || '제안을 수락했습니다!');
+            if (response.success) {
+                Alert.alert('성공', response.message || '제안을 수락했습니다!');
                 fetchMyProposals(); // 목록 새로고침
             } else {
-                Alert.alert('오류', data.message || '수락에 실패했습니다.');
+                Alert.alert('오류', response.message || '수락에 실패했습니다.');
             }
         } catch (error) {
             console.error('제안 수락 오류:', error);
