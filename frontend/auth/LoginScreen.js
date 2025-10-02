@@ -21,7 +21,7 @@ import accountUnlockHelper from '../utils/accountUnlockHelper';
 // AuthManager 인스턴스 확인
 console.log('🔧 [LoginScreen] AuthManager 인스턴스:', authManager);
 console.log('🔧 [LoginScreen] AuthManager ID:', authManager?.constructor?.name);
-import { RENDER_SERVER_URL } from '../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 
 const LoginScreen = ({ navigation }) => {
   const [emailPrefix, setEmailPrefix] = useState('');

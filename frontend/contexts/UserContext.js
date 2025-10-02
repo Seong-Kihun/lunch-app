@@ -49,7 +49,7 @@ export const UserProvider = ({ children }) => {
         
         console.log(`🔑 토큰 전송: Bearer ${accessToken.substring(0, 20)}...`);
         
-        const response = await fetch(`${RENDER_SERVER_URL}/api/auth/profile`, {
+        const response = await unifiedApiClient.get(/api/auth/profile, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',

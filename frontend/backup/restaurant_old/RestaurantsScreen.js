@@ -18,8 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 // Context 및 유틸리티
 import { useAuth } from '../../auth/AuthContext';
 import { COLORS } from '../../utils/colors';
-import { RENDER_SERVER_URL } from '../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 export default function RestaurantsScreen({ navigation }) {
     const { user: currentUser } = useAuth();
     const [restaurants, setRestaurants] = useState([]);
@@ -52,7 +51,7 @@ export default function RestaurantsScreen({ navigation }) {
     const fetchRecommendations = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(`${RENDER_SERVER_URL}/restaurants/recommendations`);
+            const response = await unifiedApiClient.get(/restaurants/recommendations);
             if (response.ok) {
                 const data = await response.json();
                 setRestaurants(data);
@@ -75,7 +74,7 @@ export default function RestaurantsScreen({ navigation }) {
                 user_id: currentUser?.employee_id || '1'
             };
 
-            const response = await fetch(`${RENDER_SERVER_URL}/restaurants/${restaurantId}/visits`, {
+            const response = await unifiedApiClient.get(/restaurants/${restaurantId}/visits, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

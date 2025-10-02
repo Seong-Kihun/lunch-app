@@ -5,8 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
 import { useFocusEffect } from '@react-navigation/native';
-import { RENDER_SERVER_URL } from '../../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 const SearchUsersScreen = ({ navigation, route }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -54,7 +53,7 @@ const SearchUsersScreen = ({ navigation, route }) => {
         setIsLoading(true);
         try {
             // 가상 유저 검색 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/users`);
+            const response = await unifiedApiClient.get(/dev/users);
             if (response.ok) {
                 const allUsers = await response.json();
                 // 검색어로 필터링
@@ -67,7 +66,7 @@ const SearchUsersScreen = ({ navigation, route }) => {
                     filtered.map(async (user) => {
                         try {
                             // 실제 유저 프로필 API에서 상세 정보 가져오기
-                            const response = await fetch(`${RENDER_SERVER_URL}/users/${user.employee_id}`);
+                            const response = await unifiedApiClient.get(/users/${user.employee_id});
                             if (response.ok) {
                                 const profileData = await response.json();
                                 console.log(`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
@@ -114,7 +113,7 @@ const SearchUsersScreen = ({ navigation, route }) => {
         setIsLoading(true);
         try {
             // 가상 유저 검색 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/users`);
+            const response = await unifiedApiClient.get(/dev/users);
             if (response.ok) {
                 const allUsers = await response.json();
                 // 검색어로 필터링
@@ -127,7 +126,7 @@ const SearchUsersScreen = ({ navigation, route }) => {
                     filtered.map(async (user) => {
                         try {
                             // 실제 유저 프로필 API에서 상세 정보 가져오기
-                            const profileResponse = await fetch(`${RENDER_SERVER_URL}/users/${user.employee_id}`);
+                            const profileResponse = await unifiedApiClient.get(/users/${user.employee_id});
                             if (profileResponse.ok) {
                                 const profileData = await profileResponse.json();
                                 console.log(`🔍 [검색] 유저 ${user.employee_id} 프로필 데이터:`, profileData);
@@ -168,7 +167,7 @@ const SearchUsersScreen = ({ navigation, route }) => {
                 friend_id: userId
             });
             
-            const response = await fetch(`${RENDER_SERVER_URL}/friends/add`, {
+            const response = await unifiedApiClient.get(/friends/add, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

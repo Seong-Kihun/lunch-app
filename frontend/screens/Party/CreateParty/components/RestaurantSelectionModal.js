@@ -45,7 +45,7 @@ const RestaurantSelectionModal = ({
             setIsSearching(true);
             setSearchError(null);
 
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/restaurants?search=${encodeURIComponent(query)}&page=${page}&limit=${ITEMS_PER_PAGE}&sort=${sortBy}`);
+            const response = await unifiedApiClient.get(/dev/restaurants?search=${encodeURIComponent(query)}&page=${page}&limit=${ITEMS_PER_PAGE}&sort=${sortBy});
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -78,7 +78,7 @@ const RestaurantSelectionModal = ({
     // 자주 가는 식당 로드
     const loadFrequentRestaurants = useCallback(async () => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/restaurants?limit=10`);
+            const response = await unifiedApiClient.get(/dev/restaurants?limit=10);
             if (response.ok) {
                 const data = await response.json();
                 setFrequentRestaurants(data.restaurants || []);

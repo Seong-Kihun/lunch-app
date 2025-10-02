@@ -1,5 +1,4 @@
-import { RENDER_SERVER_URL } from '../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 새로운 포인트 시스템 관리 클래스
 class NewPointsManager {
     constructor() {

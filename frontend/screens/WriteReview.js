@@ -20,8 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { earnPoints, earnCategoryPoints } from '../utils/pointsManager';
 import PointsAnimation from '../components/PointsAnimation';
 import { useMission } from '../contexts/MissionContext';
-import { RENDER_SERVER_URL } from '../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // 색상 테마
@@ -225,7 +224,7 @@ const WriteReview = ({ route, navigation }) => {
         visit_date: visitDate.toISOString().split('T')[0] // YYYY-MM-DD 형식
       };
 
-      const response = await fetch(`${RENDER_SERVER_URL}/api/v2/restaurants/${restaurant.id}/reviews`, {
+      const response = await unifiedApiClient.get(/api/v2/restaurants/${restaurant.id}/reviews, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -10,8 +10,7 @@ import {
     Keyboard,
     Alert
 } from 'react-native';
-import { RENDER_SERVER_URL } from '../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 컴포넌트
 import SelectionModal from '../../components/common/SelectionModal';
 
@@ -30,7 +29,7 @@ export default function AddRestaurantScreen({ navigation, currentColors }) {
         }
 
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/restaurants`, {
+            const response = await unifiedApiClient.get(/restaurants, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

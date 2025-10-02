@@ -18,7 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 // Context 및 유틸리티
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS } from '../../utils/colors';
-import { RENDER_SERVER_URL } from '../../config';
+import { unifiedApiClient } from '../../services/UnifiedApiClient';
 
 export default function RestaurantsScreen({ navigation }) {
     const { user: currentUser } = useAuth();

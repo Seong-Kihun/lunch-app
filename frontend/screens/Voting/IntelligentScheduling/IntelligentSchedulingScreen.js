@@ -14,8 +14,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { RENDER_SERVER_URL } from '../../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 컨텍스트
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -41,7 +40,7 @@ export default function IntelligentSchedulingScreen({ navigation, currentColors,
     const fetchIntelligentSuggestions = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${RENDER_SERVER_URL}/voting/intelligent-suggestions?employee_id=${currentUser?.employee_id || '1'}`);
+            const response = await unifiedApiClient.get(/voting/intelligent-suggestions?employee_id=${currentUser?.employee_id || '1'});
             const data = await response.json();
             if (response.ok && Array.isArray(data)) {
                 setSuggestions(data);
@@ -63,7 +62,7 @@ export default function IntelligentSchedulingScreen({ navigation, currentColors,
 
         try {
             setVoting(true);
-            const response = await fetch(`${RENDER_SERVER_URL}/voting/vote`, {
+            const response = await unifiedApiClient.get(/voting/vote, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

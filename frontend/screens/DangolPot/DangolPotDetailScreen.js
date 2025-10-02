@@ -10,8 +10,7 @@ import {
     Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { RENDER_SERVER_URL } from '../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 컨텍스트
 import { useMission } from '../../contexts/MissionContext';
 
@@ -24,7 +23,7 @@ export default function DangolPotDetailScreen({ route, navigation, currentColors
     const { handleActionCompletion } = useMission();
 
     const fetchDetails = useCallback(() => {
-        fetch(`${RENDER_SERVER_URL}/dangolpots/${potId}`).then(res => res.json()).then(data => {
+        unifiedApiClient.get(/dangolpots/${potId}).then(res => res.json()).then(data => {
             setPot(data);
             setIsMember(data.members.some(m => m.employee_id === currentUser?.employee_id || '1'));
         }).catch(console.error);
@@ -35,7 +34,7 @@ export default function DangolPotDetailScreen({ route, navigation, currentColors
     }, [fetchDetails]));
 
     const handleJoin = async () => {
-        const response = await fetch(`${RENDER_SERVER_URL}/dangolpots/${pot.id}/join`, { 
+        const response = await unifiedApiClient.get(/dangolpots/${pot.id}/join, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ employee_id: currentUser?.employee_id || '1' }) 
@@ -61,7 +60,7 @@ export default function DangolPotDetailScreen({ route, navigation, currentColors
                 { text: '취소', style: 'cancel' },
                 { text: '삭제', style: 'destructive', onPress: async () => {
                     try {
-                        const response = await fetch(`${RENDER_SERVER_URL}/dangolpots/${pot.id}?employee_id=${currentUser?.employee_id || '1'}`, { method: 'DELETE' });
+                        const response = await unifiedApiClient.get(/dangolpots/${pot.id}?employee_id=${currentUser?.employee_id || '1'}, { method: 'DELETE' });
                         const data = await response.json();
                         if (response.ok) {
                             Alert.alert('성공', '단골파티가 삭제되었습니다.');

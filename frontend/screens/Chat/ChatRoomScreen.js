@@ -23,7 +23,7 @@ import io from 'socket.io-client';
 
 // Context 및 유틸리티
 import { useMission } from '../../contexts/MissionContext';
-import { RENDER_SERVER_URL } from '../../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 import { getAccessToken } from '../../utils/secureStorage';
 import COLORS from '../../components/common/Colors';
 import basicStyles from '../../components/common/BasicStyles';
@@ -169,7 +169,7 @@ export default function ChatRoomScreen({ route, navigation }) {
         try {
             // 개발 환경에서는 인증 없이 진행
             // 채팅방 정보 로드 - 개발용 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/chat/room/members/${chatType}/${chatId}`, {
+            const response = await unifiedApiClient.get(/dev/chat/room/members/${chatType}/${chatId}, {
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -191,7 +191,7 @@ export default function ChatRoomScreen({ route, navigation }) {
         try {
             // 개발 환경에서는 인증 없이 진행
             // 메시지 로드 - 개발용 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/chat/messages/${chatType}/${chatId}`, {
+            const response = await unifiedApiClient.get(/dev/chat/messages/${chatType}/${chatId}, {
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -236,7 +236,7 @@ export default function ChatRoomScreen({ route, navigation }) {
 
             console.log('📤 메시지 전송:', messageData);
 
-            const response = await fetch(`${RENDER_SERVER_URL}/dev/chat/messages`, {
+            const response = await unifiedApiClient.get(/dev/chat/messages, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

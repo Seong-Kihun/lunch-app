@@ -23,7 +23,7 @@ import SearchBar from '../../components/RestaurantNew/SearchBar';
 import FilterChips from '../../components/RestaurantNew/FilterChips';
 
 // 유틸리티
-import { RENDER_SERVER_URL } from '../../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 import { COLORS } from '../../utils/colors';
 
 const { width } = Dimensions.get('window');
@@ -112,7 +112,7 @@ const RestaurantHome = ({ navigation }) => {
       
       params.append('limit', '1000'); // 모든 식당을 가져오기 위해 큰 값 설정
 
-      const response = await fetch(`${RENDER_SERVER_URL}/dev/api/v2/restaurants?${params}`);
+      const response = await unifiedApiClient.get(/dev/api/v2/restaurants?${params});
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -147,7 +147,7 @@ const RestaurantHome = ({ navigation }) => {
   // 카테고리 목록 로드
   const loadCategories = async () => {
     try {
-      const response = await fetch(`${RENDER_SERVER_URL}/api/v2/restaurants/categories`);
+      const response = await unifiedApiClient.get(/api/v2/restaurants/categories);
       
       if (response.ok) {
         const data = await response.json();

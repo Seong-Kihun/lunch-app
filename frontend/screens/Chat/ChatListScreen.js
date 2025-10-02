@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { RENDER_SERVER_URL } from '../../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 import { getAccessToken } from '../../utils/secureStorage';
 import COLORS from '../../components/common/Colors';
 import basicStyles from '../../components/common/BasicStyles';

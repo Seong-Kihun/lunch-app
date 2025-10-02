@@ -10,8 +10,7 @@ import {
     Alert,
     Keyboard
 } from 'react-native';
-import { RENDER_SERVER_URL } from '../../config';
-
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 컴포넌트
 import SelectionModal from '../../components/common/SelectionModal';
 
@@ -31,7 +30,7 @@ export default function EditDangolPotScreen({ route, navigation, currentColors, 
         }
 
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/dangolpots/${potData.id}`, {
+            const response = await unifiedApiClient.get(/dangolpots/${potData.id}, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

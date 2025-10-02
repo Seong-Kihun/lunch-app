@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Saf
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { RENDER_SERVER_URL } from '../../../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 import { COLORS } from '../../../utils/colors';
 import { useMission } from '../../../contexts/MissionContext';
 
@@ -37,7 +37,7 @@ export default function PartyDetailScreen({ route, navigation }) {
         
         // 로컬에 없으면 서버에서 가져오기
         console.log('🔍 [파티상세] 서버에서 파티 데이터 가져오기:', partyId);
-        fetch(`${RENDER_SERVER_URL}/parties/${partyId}`).then(res => res.json()).then(setParty).catch(err => { console.error(err); setParty(null); });
+        unifiedApiClient.get(/parties/${partyId}).then(res => res.json()).then(setParty).catch(err => { console.error(err); setParty(null); });
     }, [partyId, partyData]);
 
     useFocusEffect(useCallback(() => {
@@ -347,7 +347,7 @@ export default function PartyDetailScreen({ route, navigation }) {
     // 백엔드 응답 구조에 맞춰 수정: host 객체 사용 (기존 변수는 제거됨)
 
     const handleJoinParty = async () => {
-        const response = await fetch(`${RENDER_SERVER_URL}/parties/${party.id}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: global.myEmployeeId }) });
+        const response = await unifiedApiClient.get(/parties/${party.id}/join, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: global.myEmployeeId }) });
         const data = await response.json();
         Alert.alert("알림", data.message);
         if(response.ok) fetchPartyDetails();
@@ -361,7 +361,7 @@ export default function PartyDetailScreen({ route, navigation }) {
                 { text: '취소', style: 'cancel' },
                 { text: '나가기', style: 'destructive', onPress: async () => {
                     try {
-                        const response = await fetch(`${RENDER_SERVER_URL}/parties/${party.id}/leave`, { 
+                        const response = await unifiedApiClient.get(/parties/${party.id}/leave, { 
                             method: 'POST', 
                             headers: { 'Content-Type': 'application/json' }, 
                             body: JSON.stringify({ employee_id: global.myEmployeeId }) 
@@ -390,7 +390,7 @@ export default function PartyDetailScreen({ route, navigation }) {
                 { text: '취소', style: 'cancel' },
                 { text: '삭제', style: 'destructive', onPress: async () => {
                     try {
-                        const response = await fetch(`${RENDER_SERVER_URL}/parties/${party.id}?employee_id=${global.myEmployeeId}`, { method: 'DELETE' });
+                        const response = await unifiedApiClient.get(/parties/${party.id}?employee_id=${global.myEmployeeId}, { method: 'DELETE' });
                         const data = await response.json();
                         if (response.ok) {
                             // 로컬 상태 업데이트

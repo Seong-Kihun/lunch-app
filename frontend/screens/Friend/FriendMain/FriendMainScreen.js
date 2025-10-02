@@ -6,7 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import { RENDER_SERVER_URL } from '../../../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 // 가상 유저 데이터 import 제거
 import { apiClient } from '../../../utils/apiClient';
 
@@ -103,7 +103,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             if (global.myEmployeeId) {
                 console.log('🔍 [친구] 프로필 조회 시작:', global.myEmployeeId);
                 
-                const profileResponse = await fetch(`${RENDER_SERVER_URL}/users/${global.myEmployeeId}`);
+                const profileResponse = await unifiedApiClient.get(/users/${global.myEmployeeId});
                 if (profileResponse.ok) {
                     const profileData = await profileResponse.json();
                     console.log('🔍 [친구] 프로필 조회 성공:', profileData);
@@ -258,7 +258,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/friends/add`, {
+            const response = await unifiedApiClient.get(/friends/add, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -303,7 +303,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await fetch(`${RENDER_SERVER_URL}/friends/remove`, {
+            const response = await unifiedApiClient.get(/friends/remove, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

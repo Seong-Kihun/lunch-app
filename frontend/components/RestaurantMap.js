@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RENDER_SERVER_URL } from '../config';
+import { unifiedApiClient } from '../services/UnifiedApiClient';
 import {
   View,
   Text,
@@ -561,7 +561,7 @@ const RestaurantMap = (props) => {
         return;
       }
       
-      const response = await fetch(`${RENDER_SERVER_URL}/restaurants/popular?period=weekly&limit=5`);
+      const response = await unifiedApiClient.get(/restaurants/popular?period=weekly&limit=5);
       if (response.ok) {
         const data = await response.json();
         setPopularRestaurants(data.restaurants || []);
@@ -584,7 +584,7 @@ const RestaurantMap = (props) => {
       
       // 임시 사용자 ID (실제로는 로그인된 사용자 ID 사용)
       const userId = 'KOICA001';
-      const response = await fetch(`${RENDER_SERVER_URL}/restaurants/recommendations/${userId}?limit=5`);
+      const response = await unifiedApiClient.get(/restaurants/recommendations/${userId}?limit=5);
       if (response.ok) {
         const data = await response.json();
         setPersonalizedRecommendations(data.recommendations || []);
@@ -625,7 +625,7 @@ const RestaurantMap = (props) => {
   // 오프라인 지원
   const checkOfflineStatus = async () => {
     try {
-      const response = await fetch(`${RENDER_SERVER_URL}/health`, { 
+      const response = await unifiedApiClient.get(/health, { 
         method: 'HEAD',
         timeout: 5000 
       });
@@ -667,7 +667,7 @@ const RestaurantMap = (props) => {
   const addRestaurantVisit = async (restaurantId, visitDate, visitTime, partySize) => {
     try {
       const userId = 'KOICA001'; // 임시 사용자 ID
-      const response = await fetch(`${RENDER_SERVER_URL}/restaurants/visits`, {
+      const response = await unifiedApiClient.get(/restaurants/visits, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1377,7 +1377,7 @@ const RestaurantMap = (props) => {
       console.log('식당 데이터 로드 시작');
       
       // 개발용 API에서 식당 데이터 가져오기
-      const response = await fetch(`${RENDER_SERVER_URL}/dev/restaurants?limit=1000`);
+      const response = await unifiedApiClient.get(/dev/restaurants?limit=1000);
       
       if (response.ok) {
         const data = await response.json();

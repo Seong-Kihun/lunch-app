@@ -39,7 +39,7 @@ const AttendeeSelectionModal = ({
             
             if (searchQuery.trim()) {
                 // 검색 시: 전체 가상 유저 가져오기
-                const allUsersResponse = await fetch(`${RENDER_SERVER_URL}/dev/users`);
+                const allUsersResponse = await unifiedApiClient.get(/dev/users);
                 if (allUsersResponse.ok) {
                     const allUsers = await allUsersResponse.json();
                     setFriends(allUsers);
