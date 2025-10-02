@@ -96,7 +96,9 @@ import { initializeNetwork, getServerURL } from './config/networkConfig';
 import NetworkStatus from './components/NetworkStatus';
 // 오프라인 모드 제거 - 프로덕션 환경 최적화
 
-// API 호출은 unifiedApiClient를 사용합니다
+// 통합 서비스 사용
+import AppErrorBoundary from './components/AppErrorBoundary'
+import { useAppState } from './hooks/useAppState'
 
 
 
@@ -805,6 +807,7 @@ export default function App() {
     console.log('🚀 [App] 메인 App 컴포넌트 렌더링됨');
     
     return (
+        <AppErrorBoundary>
         <QueryClientProvider client={queryClient}>
         <AuthProvider>
         <UnifiedNetworkProvider>
@@ -826,5 +829,6 @@ export default function App() {
         </UnifiedNetworkProvider>
         </AuthProvider>
         </QueryClientProvider>
+        </AppErrorBoundary>
     );
 }
