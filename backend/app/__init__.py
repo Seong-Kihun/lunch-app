@@ -39,13 +39,21 @@ socketio = SocketIO(app, cors_allowed_origins=os.environ.get('ALLOWED_ORIGINS', 
 # 기존 라우트들 등록 (호환성 유지)
 try:
     # 기존 라우트들을 가져와서 등록
-    from backend.routes import auth, party, user, restaurant, review
+    from backend.routes import health, users, parties, restaurants, chats, schedules, proposals, voting, matching, notifications, points, file_upload, optimized_chat
     
-    app.register_blueprint(auth.bp, url_prefix='/api/auth')
-    app.register_blueprint(party.bp, url_prefix='/api/parties')
-    app.register_blueprint(user.bp, url_prefix='/api/users')
-    app.register_blueprint(restaurant.bp, url_prefix='/api/restaurants')
-    app.register_blueprint(review.bp, url_prefix='/api/reviews')
+    app.register_blueprint(health.bp, url_prefix='/api')
+    app.register_blueprint(users.bp, url_prefix='/api/users')
+    app.register_blueprint(parties.bp, url_prefix='/api/parties')
+    app.register_blueprint(restaurants.bp, url_prefix='/api/restaurants')
+    app.register_blueprint(chats.bp, url_prefix='/api/chats')
+    app.register_blueprint(schedules.bp, url_prefix='/api/schedules')
+    app.register_blueprint(proposals.bp, url_prefix='/api/proposals')
+    app.register_blueprint(voting.bp, url_prefix='/api/voting')
+    app.register_blueprint(matching.bp, url_prefix='/api/matching')
+    app.register_blueprint(notifications.bp, url_prefix='/api/notifications')
+    app.register_blueprint(points.bp, url_prefix='/api/points')
+    app.register_blueprint(file_upload.bp, url_prefix='/api/upload')
+    app.register_blueprint(optimized_chat.bp, url_prefix='/api/chat')
     
 except ImportError as e:
     print(f"Warning: Could not import routes: {e}")
