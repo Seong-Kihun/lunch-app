@@ -22,7 +22,7 @@ import InquiryScreen from './screens/InquiryScreen';
 
 // 네트워크 관련 - 통합 시스템 사용
 import { UnifiedNetworkProvider, useUnifiedNetwork } from './contexts/UnifiedNetworkContext';
-import unifiedApiClient from './services/UnifiedApiClient';
+// UnifiedApiClient 제거됨 - AppService 사용
 import networkMonitor from './services/NetworkMonitor';
 
 // 핵심 화면 컴포넌트 Import
