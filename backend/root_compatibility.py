@@ -56,6 +56,87 @@ def root_login():
         return test_login(data['employee_id'])
     return jsonify({"error": "employee_id가 필요합니다"}), 400
 
+@root_compatibility_bp.route('/dev/my_dangolpots/<employee_id>', methods=['GET'])
+def root_dev_my_dangolpots(employee_id):
+    """루트 레벨 개발용 내 단골파티 조회 API"""
+    logger.info(f"루트 레벨 개발용 내 단골파티 조회 API 호출됨: {employee_id}")
+    
+    try:
+        response_data = {
+            'success': True,
+            'dangolpots': [],
+            'employee_id': employee_id,
+            'message': '내 단골파티 조회 완료'
+        }
+        
+        try:
+            from backend.app.extensions import db
+            
+            # 기존 테이블이 이미 정의되어 있는지 확인
+            if 'dangol_pot' in db.metadata.tables:
+                logger.info("dangol_pot 테이블이 이미 메타데이터에 존재함")
+                DangolPot = db.metadata.tables['dangol_pot']
+            else:
+                from models.dangol_pot_models import DangolPot
+                logger.info("DangolPot 모델 새로 import")
+            
+            logger.info("모델 import 성공")
+            
+            try:
+                # 내 단골파티 조회
+                my_dangolpots = db.session.query(DangolPot).filter(
+                    DangolPot.c.host_employee_id == employee_id
+                ).all()
+                
+                logger.info(f"내 단골파티 조회 성공: {len(my_dangolpots)}개")
+                
+                for pot in my_dangolpots:
+                    try:
+                        pot_data = {
+                            'id': getattr(pot, 'id', None),
+                            'title': getattr(pot, 'title', ''),
+                            'description': getattr(pot, 'description', ''),
+                            'host_employee_id': getattr(pot, 'host_employee_id', ''),
+                            'max_members': getattr(pot, 'max_members', 0),
+                            'current_members': getattr(pot, 'current_members', 0),
+                            'is_active': getattr(pot, 'is_active', True),
+                            'created_at': str(getattr(pot, 'created_at', '')),
+                            'restaurant_name': getattr(pot, 'restaurant_name', ''),
+                            'restaurant_address': getattr(pot, 'restaurant_address', ''),
+                            'meeting_time': getattr(pot, 'meeting_time', ''),
+                            'meeting_location': getattr(pot, 'meeting_location', '')
+                        }
+                        response_data['dangolpots'].append(pot_data)
+                    except Exception as format_error:
+                        logger.warning(f"단골파티 데이터 포맷팅 오류: {format_error}")
+                        continue
+                
+                logger.info(f"최종 단골파티 데이터: {len(response_data['dangolpots'])}개")
+                
+            except Exception as query_error:
+                logger.error(f"단골파티 조회 오류: {query_error}")
+                response_data['message'] = '단골파티 조회 중 오류가 발생했습니다.'
+                response_data['error'] = str(query_error)
+                
+        except Exception as import_error:
+            logger.error(f"모델 import 오류: {import_error}")
+            response_data['message'] = '시스템 초기화 중 오류가 발생했습니다.'
+            response_data['error'] = str(import_error)
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"개발용 내 단골파티 API 전체 오류: {e}")
+        logger.error(f"오류 타입: {type(e).__name__}")
+        
+        return jsonify({
+            'success': False,
+            'error': f'서버 내부 오류가 발생했습니다: {str(e)}',
+            'error_type': 'internal_server_error',
+            'dangolpots': [],
+            'employee_id': employee_id
+        }), 500
+
 @root_compatibility_bp.route('/dev/schedules', methods=['GET'])
 def root_dev_schedules():
     """루트 레벨 개발용 일정 조회 API - 안전한 방식으로 재작성"""
@@ -79,9 +160,18 @@ def root_dev_schedules():
         }
         
         try:
-            # 모델 import 시도
-            from models.schedule_models import PersonalSchedule
+            # SQLAlchemy 메타데이터 충돌 방지를 위한 안전한 import
             from backend.app.extensions import db
+            
+            # 기존 테이블이 이미 정의되어 있는지 확인
+            if 'personal_schedules' in db.metadata.tables:
+                logger.info("personal_schedules 테이블이 이미 메타데이터에 존재함")
+                # 기존 테이블 사용
+                PersonalSchedule = db.metadata.tables['personal_schedules']
+            else:
+                # 새로 import
+                from models.schedule_models import PersonalSchedule
+                logger.info("PersonalSchedule 모델 새로 import")
             
             logger.info("모델 import 성공")
             
