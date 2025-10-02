@@ -5,7 +5,7 @@
 """
 
 import os
-from backend.app.app import app
+# 레거시 import 제거 - CLI에서 create_app() 사용
 from backend.app.extensions import db
 
 # 🚨 중요: 메타데이터 충돌 방지를 위한 동적 모델 접근
@@ -51,7 +51,9 @@ from backend.models.schedule_models import PersonalSchedule, ScheduleException
 # from models.app_models import Party, PartyMember, DangolPot, DangolPotMember, ChatRoom, ChatParticipant, LunchProposal, ProposalAcceptance, ChatMessage, Notification, UserAnalytics, RestaurantAnalytics, Restaurant, Review, Friendship, UserActivity, RestaurantVisit
 
 def init_database():
-    """데이터베이스 테이블을 초기화합니다."""
+    """데이터베이스 테이블을 초기화합니다. (CLI에서 호출)"""
+    from backend.app.app_factory import create_app
+    app = create_app()
     with app.app_context():
         try:
             print("🔧 데이터베이스 초기화 시작...")

@@ -6,7 +6,7 @@ from flask import Blueprint
 from auth.middleware import check_authentication
 
 # 포인트 Blueprint 생성
-points_bp = Blueprint('points', __name__, url_prefix='/api/points')
+points_bp = Blueprint('points', __name__, url_prefix='/points')
 
 # 인증 미들웨어 적용
 @points_bp.before_request

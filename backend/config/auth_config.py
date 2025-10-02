@@ -10,12 +10,39 @@ class AuthConfig:
     
     @classmethod
     def validate_jwt_secret(cls):
-        """JWT 보안 키 유효성 검사"""
-        if cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production':
-            if os.getenv('FLASK_ENV') == 'production':
-                raise ValueError("프로덕션 환경에서는 JWT_SECRET_KEY 환경변수를 반드시 설정해야 합니다!")
-            else:
+        """JWT 보안 키 유효성 검사 (프로덕션에서 하드 실패)"""
+        # 프로덕션 환경에서 기본값 사용 시 즉시 실패
+        if os.getenv('FLASK_ENV') == 'production':
+            if (cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production' or 
+                cls.JWT_SECRET_KEY == 'your-jwt-secret-key-here' or
+                len(cls.JWT_SECRET_KEY) < 32):
+                raise ValueError(
+                    "🚨 프로덕션 보안 위험: JWT_SECRET_KEY가 기본값이거나 너무 짧습니다! "
+                    "반드시 강력한 환경변수를 설정하세요."
+                )
+        else:
+            if cls.JWT_SECRET_KEY == 'dev-jwt-secret-key-change-in-production':
                 print("[WARNING] 개발 환경에서 기본 JWT_SECRET_KEY를 사용합니다. 프로덕션에서는 환경변수를 설정하세요!")
+    
+    @classmethod
+    def validate_production_secrets(cls):
+        """프로덕션 환경 보안 검증 (하드 실패)"""
+        if os.getenv('FLASK_ENV') == 'production':
+            # SECRET_KEY 검증
+            if (cls.SECRET_KEY == 'dev-flask-secret-key-change-in-production' or
+                cls.SECRET_KEY == 'your-secret-key-here' or
+                len(cls.SECRET_KEY) < 32):
+                raise ValueError(
+                    "🚨 프로덕션 보안 위험: SECRET_KEY가 기본값이거나 너무 짧습니다! "
+                    "반드시 강력한 환경변수를 설정하세요."
+                )
+            
+            # 이메일 설정 검증
+            if not cls.MAIL_USERNAME or cls.MAIL_USERNAME == 'your-gmail-username-here':
+                print("[WARNING] 이메일 기능이 비활성화됩니다. MAIL_USERNAME을 설정하세요.")
+            
+            if not cls.MAIL_PASSWORD or cls.MAIL_PASSWORD == 'your-gmail-app-password-here':
+                print("[WARNING] 이메일 기능이 비활성화됩니다. MAIL_PASSWORD를 설정하세요.")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # 1일
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=365)  # 1년
     

@@ -25,7 +25,8 @@ class PerformanceOptimizer:
     def create_app_context(self):
         """Flask 앱 컨텍스트 생성"""
         try:
-            from backend.app.app import app
+            from backend.app.app_factory import create_app
+            app = create_app()
             self.app = app
             return True
         except Exception as e:

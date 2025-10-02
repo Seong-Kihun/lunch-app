@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import time
 
 # Blueprint 생성
-optimized_chat_bp = Blueprint('optimized_chat', __name__, url_prefix='/api/optimized/chat')
+optimized_chat_bp = Blueprint('optimized_chat', __name__, url_prefix='/optimized/chat')
 
 # 인증 미들웨어 적용
 @optimized_chat_bp.before_request

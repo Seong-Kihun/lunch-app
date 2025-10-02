@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import json
 
 # Blueprint 생성
-notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
+notifications_bp = Blueprint('notifications', __name__, url_prefix='/notifications')
 
 # 인증 미들웨어 적용
 @notifications_bp.before_request

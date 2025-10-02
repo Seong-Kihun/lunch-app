@@ -15,6 +15,7 @@ def create_app(config_name=None):
     # 보안 키 검증 (프로덕션에서 기본 키 사용 시 부팅 차단)
     from backend.config.auth_config import AuthConfig
     AuthConfig.validate_jwt_secret()
+    AuthConfig.validate_production_secrets()
     
     app = Flask(__name__)
     

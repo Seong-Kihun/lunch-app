@@ -5,7 +5,7 @@
 from flask import Blueprint
 
 # 인증 Blueprint 생성
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @auth_bp.route('/')
 def auth_home():

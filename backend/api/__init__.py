@@ -13,7 +13,7 @@ from . import parties, dangolpots, schedules, users, compatibility
 from auth.routes import auth_bp
 
 def init_app(app):
-    """Flask 앱에 API Blueprint를 등록"""
+    """Flask 앱에 API Blueprint를 등록 (수동 호출만 가능)"""
     # 하위 Blueprint들을 api_bp에 등록
     api_bp.register_blueprint(auth_bp, url_prefix='')
     api_bp.register_blueprint(parties.parties_bp, url_prefix='')
@@ -25,3 +25,7 @@ def init_app(app):
     
     # 메인 API Blueprint를 앱에 등록
     app.register_blueprint(api_bp)
+    
+    return api_bp
+
+# 자동 등록 제거 - UnifiedBlueprintManager에서만 호출

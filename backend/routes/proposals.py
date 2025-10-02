@@ -6,12 +6,9 @@ from flask import Blueprint
 from auth.middleware import check_authentication
 
 # 제안 관리 Blueprint 생성
-proposals_bp = Blueprint('proposals', __name__, url_prefix='/api/proposals')
+proposals_bp = Blueprint('proposals', __name__, url_prefix='/proposals')
 
-# 인증 미들웨어 적용
-@proposals_bp.before_request
-def _proposals_guard():
-    return check_authentication()
+# 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
 @proposals_bp.route('/')
 def proposals_home():
