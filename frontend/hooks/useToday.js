@@ -9,25 +9,10 @@ export const useToday = () => {
         queryKey: ['today'],
         queryFn: async () => {
             try {
-                // 안전한 API 호출 (근본적 해결책)
-                const { unifiedApiClient } = await import('../services/UnifiedApiClient');
+                // 통합 API 서비스 사용 (근본적 해결책)
+                const appService = (await import('../services/AppService')).default;
                 
-                // API 클라이언트 초기화 대기
-                if (!unifiedApiClient || !unifiedApiClient.isInitialized) {
-                    console.log('🔄 [useToday] API 클라이언트 초기화 대기 중...');
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
-                }
-                
-                if (!unifiedApiClient) {
-                    throw new Error('API 클라이언트가 초기화되지 않았습니다');
-                }
-                
-                const result = await unifiedApiClient.get('/api/today');
-                
-                if (!result.success) {
-                    throw new Error(result.error || '오늘 날짜 조회에 실패했습니다');
-                }
-                
+                const result = await appService.get('/api/today');
                 return result.data;
             } catch (error) {
                 console.error('❌ [useToday] API 호출 실패:', error);

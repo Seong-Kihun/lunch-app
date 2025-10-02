@@ -15,8 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-import { useAuth } from '../contexts/AuthContext';
+import appService from '../services/AppService'import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -77,7 +76,7 @@ const InquiryScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      const response = await unifiedApiClient.get(/api/inquiries, {
+      const response = await appService./api/inquiries, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

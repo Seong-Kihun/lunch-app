@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 기본 사용자 정보 (Context에서 가져와야 함)
+import appService from '../services/AppService'// 기본 사용자 정보 (Context에서 가져와야 함)
 const getCurrentUser = () => {
     try {
         // global.currentUser에서 사용자 정보 가져오기
@@ -97,7 +96,7 @@ export const AppointmentProvider = ({ children }) => {
                 return {};
             }
             
-            const response = await unifiedApiClient.get(/events/${currentUser.employee_id});
+            const response = await appService./events/${currentUser.employee_id});
             
             if (response.ok) {
                 const data = await response.json();
@@ -236,7 +235,7 @@ export const AppointmentProvider = ({ children }) => {
             
             if (appointmentData.type === '개인 일정') {
                 // 개인 일정은 그룹 파티와 동일한 API 사용 (임시)
-                response = await unifiedApiClient.get(/parties, {
+                response = await appService./parties, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -264,7 +263,7 @@ export const AppointmentProvider = ({ children }) => {
                 }
             } else if (appointmentData.type === '그룹 파티') {
                 // 그룹 파티 API 사용 (기존 시스템과 동일)
-                response = await unifiedApiClient.get(/parties, {
+                response = await appService./parties, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

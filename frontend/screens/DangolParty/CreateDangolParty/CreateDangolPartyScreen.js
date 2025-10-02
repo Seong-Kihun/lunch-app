@@ -22,8 +22,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 // 공통 요소들 import
 import { COLORS } from '../../../utils/colors';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-import FormComponents, {
+import appService from '../services/AppService'import FormComponents, {
     FormSection,
     FormInput,
     FormSelect,
@@ -123,7 +122,7 @@ export default function CreateDangolPartyScreen({ navigation, route }) {
 
         setIsLoading(true);
         try {
-            const response = await unifiedApiClient.get(/dangolpots, {
+            const response = await appService./dangolpots, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-import { getAccessToken } from '../../utils/secureStorage';
+import appService from '../services/AppService'import { getAccessToken } from '../../utils/secureStorage';
 import COLORS from '../../components/common/Colors';
 import basicStyles from '../../components/common/BasicStyles';
 import ChatList from '../../components/chat/ChatList';

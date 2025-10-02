@@ -14,8 +14,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 컨텍스트
+import appService from '../services/AppService'// 컨텍스트
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function SuggestedDatesScreen({ navigation, currentColors, currentUser }) {
@@ -40,7 +39,7 @@ export default function SuggestedDatesScreen({ navigation, currentColors, curren
     const fetchSuggestedDates = async () => {
         try {
             setLoading(true);
-            const response = await unifiedApiClient.get(/voting/suggested-dates?employee_id=${currentUser?.employee_id || '1'});
+            const response = await appService./voting/suggested-dates?employee_id=${currentUser?.employee_id || '1'});
             const data = await response.json();
             if (response.ok && Array.isArray(data)) {
                 setSuggestedDates(data);
@@ -62,7 +61,7 @@ export default function SuggestedDatesScreen({ navigation, currentColors, curren
 
         try {
             setVoting(true);
-            const response = await unifiedApiClient.get(/voting/vote-date, {
+            const response = await appService./voting/vote-date, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

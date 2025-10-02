@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-import { getMyEmployeeId } from '../components/common/Utils';
+import appService from '../services/AppService'import { getMyEmployeeId } from '../components/common/Utils';
 import { apiClient } from '../utils/apiClient';
 
 /**
@@ -96,7 +95,7 @@ export const useJoinParty = () => {
             try {
                 console.log('🔍 [useJoinParty] 파티 참여 API 호출:', partyId);
                 
-                const response = await unifiedApiClient.get(/parties/${partyId}/join, {
+                const response = await appService./parties/${partyId}/join, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -133,7 +132,7 @@ export const useLeaveParty = () => {
             try {
                 console.log('🔍 [useLeaveParty] 파티 나가기 API 호출:', partyId);
                 
-                const response = await unifiedApiClient.get(/parties/${partyId}/leave, {
+                const response = await appService./parties/${partyId}/leave, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -170,7 +169,7 @@ export const useDeleteParty = () => {
             try {
                 console.log('🔍 [useDeleteParty] 파티 삭제 API 호출:', partyId);
                 
-                const response = await unifiedApiClient.get(/parties/${partyId}, {
+                const response = await appService./parties/${partyId}, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -208,7 +207,7 @@ export const useUpdateParty = () => {
             try {
                 console.log('🔍 [useUpdateParty] 파티 수정 API 호출:', partyId, updateData);
                 
-                const response = await unifiedApiClient.get(/parties/${partyId}?employee_id=1, {
+                const response = await appService./parties/${partyId}?employee_id=1, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

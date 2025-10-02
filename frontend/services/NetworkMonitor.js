@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import unifiedApiClient from './UnifiedApiClient';
+import appService from './AppService';
 // 오프라인 모드 제거 - 프로덕션 환경 최적화
 
 class NetworkMonitor {
@@ -70,8 +70,8 @@ class NetworkMonitor {
       
       const startTime = Date.now();
       
-      // UnifiedApiClient의 백엔드 상태 분석 활용
-      const analysis = await unifiedApiClient.analyzeBackendStatus();
+      // AppService의 백엔드 상태 분석 활용
+      const analysis = await appService.get('/api/health');
       
       const responseTime = Date.now() - startTime;
       

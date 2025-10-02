@@ -187,11 +187,11 @@ class AuthManager {
       // 통합 API 클라이언트를 동적으로 import하여 순환 참조 방지
       console.log('🔐 [AuthManager] 통합 API 클라이언트를 통한 로그인 요청');
       
-      const { default: unifiedApiClient } = await import('./UnifiedApiClient');
+      const appService = (await import('./AppService')).default;
       
       let data;
       try {
-        data = await unifiedApiClient.post('/api/auth/login', credentials);
+        data = await appService.post('/api/auth/login', credentials);
       } catch (loginError) {
         // 개발 환경에서 백엔드 서버 문제 시 대안 처리
         if (isDevelopment && loginError.message.includes('계정이 잠겨있습니다')) {

@@ -23,8 +23,8 @@ class AccountUnlockHelper {
       console.log(`🔍 [AccountUnlockHelper] ${email} 계정 상태 확인 중...`);
       
       // 백엔드 API 상태 분석을 통한 계정 상태 확인
-      const { default: unifiedApiClient } = await import('../services/UnifiedApiClient');
-      const analysis = await unifiedApiClient.analyzeBackendStatus();
+      const appService = (await import('../services/AppService')).default;
+      const analysis = await appService.get('/api/health');
       
       console.log('📊 [AccountUnlockHelper] 백엔드 상태 분석 결과:', analysis);
       
@@ -62,10 +62,10 @@ class AccountUnlockHelper {
       console.log(`🔓 [AccountUnlockHelper] ${email} 계정 잠금 해제 시도...`);
       
       // 관리자 API를 통한 계정 잠금 해제 시도
-      const { default: unifiedApiClient } = await import('../services/UnifiedApiClient');
+      const appService = (await import('../services/AppService')).default;
       
       try {
-        const response = await unifiedApiClient.post(`/api/admin/unlock-account/${email}`);
+        const response = await appService.post(`/api/admin/unlock-account/${email}`);
         console.log('✅ [AccountUnlockHelper] 계정 잠금 해제 성공:', response);
         
         Alert.alert(

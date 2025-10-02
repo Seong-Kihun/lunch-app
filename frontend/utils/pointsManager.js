@@ -1,8 +1,7 @@
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 포인트 획득 함수
+import appService from '../services/AppService'// 포인트 획득 함수
 export const earnPoints = async (activityType, points, description = null) => {
     try {
-        const response = await unifiedApiClient.get(/api/points/earn, {
+        const response = await appService./api/points/earn, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -30,7 +29,7 @@ export const earnPoints = async (activityType, points, description = null) => {
 // 카테고리별 포인트 획득 함수
 export const earnCategoryPoints = async (category, activityType, points) => {
     try {
-        const response = await unifiedApiClient.get(/api/activities/category, {
+        const response = await appService./api/activities/category, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -57,7 +56,7 @@ export const earnCategoryPoints = async (category, activityType, points) => {
 // 포인트 히스토리 조회 함수
 export const getPointsHistory = async (userId) => {
     try {
-        const response = await unifiedApiClient.get(/api/points/history/${userId});
+        const response = await appService./api/points/history/${userId});
         
         if (response.ok) {
             return await response.json();
@@ -74,7 +73,7 @@ export const getPointsHistory = async (userId) => {
 // 내 포인트 순위 조회 함수
 export const getMyPointsRanking = async (userId) => {
     try {
-        const response = await unifiedApiClient.get(/api/points/my-ranking/${userId});
+        const response = await appService./api/points/my-ranking/${userId});
         
         if (response.ok) {
             return await response.json();
@@ -91,7 +90,7 @@ export const getMyPointsRanking = async (userId) => {
 // 이색 랭킹 조회 함수
 export const getSpecialRanking = async (category) => {
     try {
-        const response = await unifiedApiClient.get(/api/rankings/special/${category});
+        const response = await appService./api/rankings/special/${category});
         
         if (response.ok) {
             return await response.json();
@@ -108,7 +107,7 @@ export const getSpecialRanking = async (category) => {
 // 배지 목록 조회 함수
 export const getBadges = async () => {
     try {
-        const response = await unifiedApiClient.get(/api/badges);
+        const response = await appService./api/badges);
         
         if (response.ok) {
             return await response.json();
@@ -125,7 +124,7 @@ export const getBadges = async () => {
 // 내 배지 목록 조회 함수
 export const getMyBadges = async (userId) => {
     try {
-        const response = await unifiedApiClient.get(/api/badges/my-badges/${userId});
+        const response = await appService./api/badges/my-badges/${userId});
         
         if (response.ok) {
             return await response.json();
@@ -142,7 +141,7 @@ export const getMyBadges = async (userId) => {
 // 배지 획득 조건 확인 함수
 export const checkBadgeEarned = async (badgeType) => {
     try {
-        const response = await unifiedApiClient.get(/api/badges/check, {
+        const response = await appService./api/badges/check, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSpecialRanking, getMyPointsRanking } from '../utils/pointsManager';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 가상 유저 데이터 import 제거
+import appService from '../services/AppService'// 가상 유저 데이터 import 제거
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -106,7 +105,7 @@ const RankingScreen = ({ navigation }) => {
                 }
             } else {
                 // 주간/월간/올타임 랭킹 API 호출
-                const response = await unifiedApiClient.get(/api/rankings/${activeTab});
+                const response = await appService./api/rankings/${activeTab});
                 if (response.ok) {
                     const result = await response.json();
                     data = result.rankings || [];

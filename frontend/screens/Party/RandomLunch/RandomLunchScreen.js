@@ -16,7 +16,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { IS_DEVELOPMENT } from '../../../config/config';
 import { apiClient } from '../../../utils/apiClient';
-import unifiedApiClient from '../../../services/UnifiedApiClient';
+import appService from '../../../services/AppService';
 import * as Notifications from 'expo-notifications';
 // 가상 유저 데이터 import 제거
 
@@ -519,7 +519,7 @@ export default function RandomLunchScreen({ navigation, route }) {
             
             // 먼저 백엔드 API 시도 (통합 API 클라이언트 사용)
             try {
-                const responseData = await unifiedApiClient.get(`/dev/random-lunch/${userId}`);
+                const responseData = await appService.get(`/dev/random-lunch/${userId}`);
                 
                 // console.log('🔍 [랜덤런치] 백엔드 API 응답:', response.status, responseData);
                 

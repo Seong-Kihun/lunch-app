@@ -14,9 +14,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS } from '../../utils/colors';
-import unifiedApiClient from '../../services/UnifiedApiClient';
-
-// 컨텍스트
+import appService from '../services/AppService'// 컨텍스트
 import { useMission } from '../../contexts/MissionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -43,8 +41,8 @@ export default function DangolPotContainerScreen({ navigation, route }) {
         try {
             // 통합 API 클라이언트 사용 (근본적 해결책)
             const [myPotsResponse, allPotsResponse] = await Promise.all([
-                unifiedApiClient.get(`/dev/my_dangolpots/${currentUser?.employee_id || '1'}`),
-                unifiedApiClient.get('/dangolpots')
+                appService.`/dev/my_dangolpots/${currentUser?.employee_id || '1'}`),
+                appService.'/dangolpots')
             ]);
             
             if (myPotsResponse.success && Array.isArray(myPotsResponse.dangolpots)) {

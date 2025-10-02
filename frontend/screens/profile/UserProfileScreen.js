@@ -6,8 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../utils/commonStyles';
-import { unifiedApiClient } from '../../services/UnifiedApiClient';
-import { createFormStyles } from '../../components/common/FormStyles';
+import appService from '../services/AppService'import { createFormStyles } from '../../components/common/FormStyles';
 // 가상 유저 데이터 import 제거
 
 // 새로운 컴포넌트들 import

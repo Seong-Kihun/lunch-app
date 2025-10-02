@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-class DataCleanupManager {
+import appService from '../services/AppService'class DataCleanupManager {
     constructor() {
         this.cleanupSchedule = '0 0 * * *'; // 매일 자정
         this.retentionPolicies = {

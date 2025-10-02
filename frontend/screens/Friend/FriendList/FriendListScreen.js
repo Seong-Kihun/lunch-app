@@ -5,8 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import { unifiedApiClient } from '../../../services/UnifiedApiClient';
-// 가상 유저 데이터 import 제거
+import appService from '../services/AppService'// 가상 유저 데이터 import 제거
 
 const FriendListScreen = ({ navigation }) => {
     const [friends, setFriends] = useState([]);
@@ -34,7 +33,7 @@ const FriendListScreen = ({ navigation }) => {
         try {
             setIsLoading(true);
             // 친구 목록 API 사용
-            const response = await unifiedApiClient.get(`/api/friends?employee_id=${global.myEmployeeId || '1'}`);
+            const response = await appService.`/api/friends?employee_id=${global.myEmployeeId || '1'}`);
             if (response.success) {
                 // 실제 친구 데이터 사용
                 const friendsWithLastLunch = response.friends || [];
@@ -63,7 +62,7 @@ const FriendListScreen = ({ navigation }) => {
                     style: 'destructive', 
                     onPress: async () => {
                         try {
-                            const response = await unifiedApiClient.post('/api/friends/remove', {
+                            const response = await appService.'/api/friends/remove', {
                                 employee_id: friendId
                             });
                             if (response.success) {

@@ -24,8 +24,7 @@ import { useMission } from '../../contexts/MissionContext';
 import { usePoints } from '../../contexts/PointsContext';
 import { toLocalDateString, toKoreanDateString } from '../../utils/dateUtils';
 import { apiClient } from '../../utils/apiClient';
-import unifiedApiClient from '../../services/UnifiedApiClient';
-import { getKoreanToday, safeNavigateToTab } from '../../components/common/Utils';
+import appService from '../services/AppService'import { getKoreanToday, safeNavigateToTab } from '../../components/common/Utils';
 import { useToday } from '../../hooks/useToday';
 import ScheduleDetailModal from '../../components/schedule/ScheduleDetailModal';
 import MissionModal from '../../components/MissionModal';
@@ -154,7 +153,7 @@ export default function HomeScreen({ navigation, route }) {
                 endDateStr
             });
             
-        const data = await unifiedApiClient.get('/dev/schedules', {
+        const data = await appService.'/dev/schedules', {
             employee_id: myEmployeeId,
             start_date: startDateStr,
             end_date: endDateStr

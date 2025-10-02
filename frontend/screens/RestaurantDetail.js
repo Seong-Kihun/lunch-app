@@ -7,8 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RestaurantRequestModal from '../components/RestaurantRequestModal';
 import { useMission } from '../contexts/MissionContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-const RestaurantDetail = ({ route, navigation }) => {
+import appService from '../services/AppService'const RestaurantDetail = ({ route, navigation }) => {
   const { restaurant } = route.params || {};
   const { colors: currentColors } = useTheme();
   
@@ -47,7 +46,7 @@ const RestaurantDetail = ({ route, navigation }) => {
   const loadUserActions = async () => {
     try {
       // 오찬 추천 상태 불러오기
-      const recommendResponse = await unifiedApiClient.get(/dev/api/v2/restaurants/${restaurant.id}/recommend/status?user_id=KOICA001);
+      const recommendResponse = await appService./dev/api/v2/restaurants/${restaurant.id}/recommend/status?user_id=KOICA001);
       if (recommendResponse.ok) {
         const recommendResult = await recommendResponse.json();
         if (recommendResult.success) {
@@ -57,7 +56,7 @@ const RestaurantDetail = ({ route, navigation }) => {
       }
       
       // 저장 상태 불러오기
-      const savedResponse = await unifiedApiClient.get(/dev/api/v2/restaurants/${restaurant.id}/save/status?user_id=KOICA001);
+      const savedResponse = await appService./dev/api/v2/restaurants/${restaurant.id}/save/status?user_id=KOICA001);
       if (savedResponse.ok) {
         const savedResult = await savedResponse.json();
         if (savedResult.success) {
@@ -416,7 +415,7 @@ const RestaurantDetail = ({ route, navigation }) => {
   // 오찬 추천 기능 (백엔드 API 사용)
   const handleLunchRecommend = async () => {
     try {
-      const response = await unifiedApiClient.get(/api/v2/restaurants/${restaurant.id}/recommend, {
+      const response = await appService./api/v2/restaurants/${restaurant.id}/recommend, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -609,7 +608,7 @@ const RestaurantDetail = ({ route, navigation }) => {
   // 리뷰 가져오기 (백엔드 API 사용)
   const fetchReviews = async () => {
     try {
-      const response = await unifiedApiClient.get(/api/v2/restaurants/${restaurant.id}/reviews);
+      const response = await appService./api/v2/restaurants/${restaurant.id}/reviews);
       if (response.ok) {
         const result = await response.json();
         if (result.success) {

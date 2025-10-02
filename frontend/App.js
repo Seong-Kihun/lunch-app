@@ -98,7 +98,6 @@ import NetworkStatus from './components/NetworkStatus';
 
 // 통합 서비스 사용
 import AppErrorBoundary from './components/AppErrorBoundary'
-import { useAppState } from './hooks/useAppState'
 
 
 

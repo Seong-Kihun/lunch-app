@@ -10,8 +10,7 @@ import {
     Alert,
     Keyboard
 } from 'react-native';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 컴포넌트
+import appService from '../services/AppService'// 컴포넌트
 import SelectionModal from '../../components/common/SelectionModal';
 
 export default function EditDangolPotScreen({ route, navigation, currentColors, currentUser }) {
@@ -30,7 +29,7 @@ export default function EditDangolPotScreen({ route, navigation, currentColors, 
         }
 
         try {
-            const response = await unifiedApiClient.get(/dangolpots/${potData.id}, {
+            const response = await appService./dangolpots/${potData.id}, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

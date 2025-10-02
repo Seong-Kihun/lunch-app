@@ -4,9 +4,7 @@
  * 통합 API 클라이언트를 사용하여 안정적인 네트워크 통신을 제공합니다.
  */
 
-import unifiedApiClient from '../../services/UnifiedApiClient';
-
-class RestaurantService {
+import appService from '../services/AppService'class RestaurantService {
     /**
      * 식당 목록 조회
      * @param {Object} params - 쿼리 파라미터
@@ -15,7 +13,7 @@ class RestaurantService {
     async getRestaurants(params = {}) {
         try {
             console.log('🔍 [RestaurantService] 식당 목록 조회 시작:', params);
-            const response = await unifiedApiClient.get('/api/v2/restaurants/', params);
+            const response = await appService.'/api/v2/restaurants/', params);
             console.log('✅ [RestaurantService] 식당 목록 조회 성공:', response?.restaurants?.length || 0, '개');
             return response;
         } catch (error) {
@@ -31,7 +29,7 @@ class RestaurantService {
      */
     async getRestaurant(restaurantId) {
         try {
-            const response = await unifiedApiClient.get(`/api/v2/restaurants/${restaurantId}`);
+            const response = await appService.`/api/v2/restaurants/${restaurantId}`);
             return response;
         } catch (error) {
             console.error('식당 상세 조회 실패:', error);
@@ -45,7 +43,7 @@ class RestaurantService {
      */
     async getCategories() {
         try {
-            const response = await unifiedApiClient.get('/api/v2/restaurants/categories');
+            const response = await appService.'/api/v2/restaurants/categories');
             return response;
         } catch (error) {
             console.error('카테고리 조회 실패:', error);
@@ -60,7 +58,7 @@ class RestaurantService {
      */
     async getNearbyRestaurants(params) {
         try {
-            const response = await unifiedApiClient.get('/api/v2/restaurants/nearby', params);
+            const response = await appService.'/api/v2/restaurants/nearby', params);
             return response;
         } catch (error) {
             console.error('근처 식당 조회 실패:', error);
@@ -151,7 +149,7 @@ class RestaurantService {
      */
     async getRestaurantStats() {
         try {
-            const response = await unifiedApiClient.get('/api/v2/restaurants/stats');
+            const response = await appService.'/api/v2/restaurants/stats');
             return response;
         } catch (error) {
             console.error('식당 통계 조회 실패:', error);

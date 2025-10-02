@@ -12,9 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { unifiedApiClient } from '../../../services/UnifiedApiClient';
-
-// 디버깅을 위한 로그
+import appService from '../services/AppService'// 디버깅을 위한 로그
 console.log('🔧 [SuggestGroupScreen] unifiedApiClient 사용');
 
 // 컨텍스트
@@ -51,7 +49,7 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
 
     const fetchMyProposals = async () => {
         try {
-            const response = await unifiedApiClient.get(`/proposals/mine?employee_id=${currentUser?.employee_id || '1'}`);
+            const response = await appService.`/proposals/mine?employee_id=${currentUser?.employee_id || '1'}`);
             const data = response;
             if (response.success) {
                 const sentProposals = data.sent_proposals || [];
@@ -76,7 +74,7 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
         try {
             setLoading(true);
             // 가상 그룹 매칭 API 사용 - 여러 그룹 지원
-            const response = await unifiedApiClient.get(`/dev/random-lunch/${user.employee_id || '1'}`);
+            const response = await appService.`/dev/random-lunch/${user.employee_id || '1'}`);
             const groupsData = response;
             
             if (response.success && groupsData && Array.isArray(groupsData)) {
@@ -134,7 +132,7 @@ export default function SuggestGroupScreen({ navigation, route, currentColors, c
                 return;
             }
 
-            const response = await unifiedApiClient.post(`/proposals`, {
+            const response = await appService.`/proposals`, {
                 sender_id: currentUser?.employee_id || '1',
                 recipient_ids: recipientIds,
                 message: `${group.date} 점심 모임에 함께하시겠어요?`,

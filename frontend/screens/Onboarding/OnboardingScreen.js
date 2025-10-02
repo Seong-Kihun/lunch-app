@@ -215,10 +215,8 @@ export default function OnboardingScreen() {
             
             console.log('🔧 [OnboardingScreen] 서버 URL 사용:', currentServerURL);
             
-            // UnifiedApiClient를 사용하여 인증 토큰 포함
-            const { default: unifiedApiClient } = await import('../../services/UnifiedApiClient');
-            
-            const userResponse = await unifiedApiClient.put(`/users/${currentUser.employee_id}`, userData);
+            // AppService를 사용하여 인증 토큰 포함
+            const userResponse = await appService.put(`/users/${currentUser.employee_id}`, userData);
             
             console.log('✅ 사용자 기본 정보 저장 성공');
             
@@ -230,7 +228,7 @@ export default function OnboardingScreen() {
                 frequentAreas: []
             };
             
-            const preferencesResponse = await unifiedApiClient.put(`/users/${currentUser.employee_id}/preferences`, preferencesData);
+            const preferencesResponse = await appService.`/users/${currentUser.employee_id}/preferences`, preferencesData);
             
             console.log('✅ 사용자 선호도 저장 성공');
             

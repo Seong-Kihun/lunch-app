@@ -12,9 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { unifiedApiClient } from '../../../services/UnifiedApiClient';
-
-// 디버깅을 위한 로그
+import appService from '../services/AppService'// 디버깅을 위한 로그
 console.log('🔧 [MyProposalsScreen] unifiedApiClient 사용');
 
 // 컨텍스트
@@ -43,7 +41,7 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const fetchConfirmedGroups = async () => {
         try {
-            const response = await unifiedApiClient.get(`/parties?employee_id=${currentUser?.employee_id || '1'}&is_from_match=true`);
+            const response = await appService.`/parties?employee_id=${currentUser?.employee_id || '1'}&is_from_match=true`);
             const data = response;
             if (Array.isArray(data)) {
                 // API 응답 데이터를 안전하게 처리 (members_employee_ids 필드 제거)
@@ -70,7 +68,7 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const handleRejectProposal = async (proposalId) => {
         try {
-            const response = await unifiedApiClient.post(`/proposals/${proposalId}/reject`, {
+            const response = await appService.`/proposals/${proposalId}/reject`, {
                 user_id: user.employee_id
             });
             if (response.success) {
@@ -88,7 +86,7 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
     const fetchMyProposals = async () => {
         try {
             setLoading(true);
-            const response = await unifiedApiClient.get(`/proposals/mine?employee_id=${user.employee_id}`);
+            const response = await appService.`/proposals/mine?employee_id=${user.employee_id}`);
             const data = response;
             if (response.success) {
                 // 취소된 제안만 제거
@@ -118,7 +116,7 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const fetchGroupMembers = async (proposalId, recipientIds) => {
         try {
-            const response = await unifiedApiClient.get(`/users/batch?ids=${recipientIds.join(',')}`);
+            const response = await appService.`/users/batch?ids=${recipientIds.join(',')}`);
             const data = response;
             if (Array.isArray(data)) {
                 setGroupMembersMap(prev => ({
@@ -133,7 +131,7 @@ export default function MyProposalsScreen({ navigation, currentColors, currentUs
 
     const handleAcceptProposal = async (proposalId) => {
         try {
-            const response = await unifiedApiClient.post(`/proposals/${proposalId}/accept`, {
+            const response = await appService.`/proposals/${proposalId}/accept`, {
                 user_id: user.employee_id
             });
             if (response.success) {

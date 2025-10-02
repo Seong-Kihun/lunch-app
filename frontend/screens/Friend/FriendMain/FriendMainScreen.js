@@ -6,8 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../utils/commonStyles';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
-// 가상 유저 데이터 import 제거
+import appService from '../services/AppService'// 가상 유저 데이터 import 제거
 import { apiClient } from '../../../utils/apiClient';
 
 const FriendMainScreen = ({ navigation, route }) => {
@@ -103,7 +102,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             if (global.myEmployeeId) {
                 console.log('🔍 [친구] 프로필 조회 시작:', global.myEmployeeId);
                 
-                const profileResponse = await unifiedApiClient.get(/users/${global.myEmployeeId});
+                const profileResponse = await appService./users/${global.myEmployeeId});
                 if (profileResponse.ok) {
                     const profileData = await profileResponse.json();
                     console.log('🔍 [친구] 프로필 조회 성공:', profileData);
@@ -258,7 +257,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await unifiedApiClient.get(/friends/add, {
+            const response = await appService./friends/add, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -303,7 +302,7 @@ const FriendMainScreen = ({ navigation, route }) => {
             });
             
             // UserProfileScreen과 동일한 API 사용
-            const response = await unifiedApiClient.get(/friends/remove, {
+            const response = await appService./friends/remove, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
