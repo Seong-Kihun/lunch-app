@@ -16,7 +16,7 @@ import math
 logger = logging.getLogger(__name__)
 
 # Blueprint 생성
-restaurants_v2_bp = Blueprint('restaurants_v2', __name__, url_prefix='/api/v2/restaurants')
+restaurants_v2_bp = Blueprint('restaurants_v2', __name__, url_prefix='/v2/restaurants')
 
 # 인증 미들웨어는 UnifiedBlueprintManager에서 중앙 관리됨
 
