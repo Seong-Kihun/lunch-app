@@ -2,7 +2,7 @@ services:
   - type: web
     name: lunch-app
     env: python
-    buildCommand: pip install -r requirements.txt && python scripts/migrate_database.py
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --config gunicorn.conf.py backend.app.wsgi:app
     pythonVersion: 3.12.7
     envVars:

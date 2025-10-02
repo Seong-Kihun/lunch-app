@@ -12,14 +12,11 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, project_root)
 
 # 환경변수 로드
-from backend.config.env_loader import load_environment_variables
-load_environment_variables()
+from dotenv import load_dotenv
+load_dotenv()
 
-# 앱 팩토리에서 앱 생성
-from backend.app.app_factory import create_app
-
-# WSGI 애플리케이션 생성
-app = create_app()
+# 기존 앱 구조 사용 (호환성 유지)
+from backend.app import app
 
 # Render 환경에서 실행
 if __name__ == '__main__':

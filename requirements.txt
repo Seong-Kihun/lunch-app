@@ -7,6 +7,13 @@ Flask-CORS==4.0.0
 python-socketio==5.10.0
 Werkzeug==3.0.1
 
+# 새로운 아키텍처 의존성
+structlog>=23.0.0
+pydantic-settings>=2.2.0
+dependency-injector>=4.41.0
+prometheus-client>=0.17.0
+import-linter>=1.11.0
+
 # 데이터베이스
 SQLAlchemy>=2.0.25,<3.0.0
 alembic==1.13.1
