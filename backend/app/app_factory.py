@@ -238,7 +238,7 @@ def create_app(config_name=None):
 
     # 데이터베이스 초기화
     try:
-        from backend.database.init_db import init_database
+        from backend.database.database_init import init_database
         init_database(app)
         print("[SUCCESS] 데이터베이스가 Flask 앱과 연결되었습니다.")
     except ImportError as e:
@@ -299,7 +299,7 @@ def create_app(config_name=None):
         blueprint_manager = UnifiedBlueprintManager(app)
         
         # 모든 Blueprint 등록
-        blueprint_manager.register_all_blueprints()
+        blueprint_manager.register_all_blueprints(app)
         
         # 모니터링 API 등록
         from backend.monitoring.monitoring_api import monitoring_bp

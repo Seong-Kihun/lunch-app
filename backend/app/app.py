@@ -33,7 +33,7 @@ warnings.warn(
 # 데이터베이스 초기화 (레거시 호환성)
 with app.app_context():
     try:
-        from backend.database.init_db import init_database
+        from backend.database.database_init import init_database
         init_database(app)
         print("[SUCCESS] 레거시 데이터베이스 초기화 완료")
     except Exception as e:
