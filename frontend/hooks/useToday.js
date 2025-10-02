@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { unifiedApiClient } from '../services/UnifiedApiClient';
 
 /**
- * 백엔드에서 "오늘" 날짜를 가져오는 훅 (통합 API 클라이언트 사용)
+ * 백엔드에서 "오늘" 날짜를 가져오는 훅 (안전한 API 호출)
  * 앱 전체에서 일관된 "오늘" 날짜를 사용하기 위해 백엔드 API 활용
  */
 export const useToday = () => {
@@ -10,7 +9,13 @@ export const useToday = () => {
         queryKey: ['today'],
         queryFn: async () => {
             try {
-                // 통합 API 클라이언트 사용 (근본적 해결책)
+                // 안전한 API 호출 (근본적 해결책)
+                const { unifiedApiClient } = await import('../services/UnifiedApiClient');
+                
+                if (!unifiedApiClient) {
+                    throw new Error('API 클라이언트가 초기화되지 않았습니다');
+                }
+                
                 const result = await unifiedApiClient.get('/api/today');
                 
                 if (!result.success) {
