@@ -77,15 +77,15 @@ def root_dev_my_dangolpots(employee_id):
                 logger.info("dangol_pot 테이블이 이미 메타데이터에 존재함")
                 DangolPot = db.metadata.tables['dangol_pot']
             else:
-                from models.dangol_pot_models import DangolPot
+                from backend.models.app_models import DangolPot
                 logger.info("DangolPot 모델 새로 import")
             
             logger.info("모델 import 성공")
             
             try:
-                # 내 단골파티 조회
-                my_dangolpots = db.session.query(DangolPot).filter(
-                    DangolPot.c.host_employee_id == employee_id
+                # 내 단골파티 조회 (실제 모델 구조에 맞게 수정)
+                my_dangolpots = DangolPot.query.filter(
+                    DangolPot.host_id == employee_id
                 ).all()
                 
                 logger.info(f"내 단골파티 조회 성공: {len(my_dangolpots)}개")
@@ -93,18 +93,22 @@ def root_dev_my_dangolpots(employee_id):
                 for pot in my_dangolpots:
                     try:
                         pot_data = {
-                            'id': getattr(pot, 'id', None),
-                            'title': getattr(pot, 'title', ''),
-                            'description': getattr(pot, 'description', ''),
-                            'host_employee_id': getattr(pot, 'host_employee_id', ''),
-                            'max_members': getattr(pot, 'max_members', 0),
-                            'current_members': getattr(pot, 'current_members', 0),
-                            'is_active': getattr(pot, 'is_active', True),
-                            'created_at': str(getattr(pot, 'created_at', '')),
-                            'restaurant_name': getattr(pot, 'restaurant_name', ''),
-                            'restaurant_address': getattr(pot, 'restaurant_address', ''),
-                            'meeting_time': getattr(pot, 'meeting_time', ''),
-                            'meeting_location': getattr(pot, 'meeting_location', '')
+                            'id': pot.id,
+                            'name': pot.name,
+                            'title': pot.name,  # 호환성을 위해 title도 추가
+                            'description': pot.description or '',
+                            'tags': pot.tags or '',
+                            'category': pot.category or '',
+                            'host_id': pot.host_id,
+                            'host_employee_id': pot.host_id,  # 호환성을 위해 추가
+                            'created_at': str(pot.created_at) if pot.created_at else '',
+                            'max_members': 0,  # 기본값
+                            'current_members': 0,  # 기본값
+                            'is_active': True,  # 기본값
+                            'restaurant_name': '',  # 기본값
+                            'restaurant_address': '',  # 기본값
+                            'meeting_time': '',  # 기본값
+                            'meeting_location': ''  # 기본값
                         }
                         response_data['dangolpots'].append(pot_data)
                     except Exception as format_error:
