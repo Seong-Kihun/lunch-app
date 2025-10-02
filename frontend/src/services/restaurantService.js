@@ -29,7 +29,7 @@ import appService from '../services/AppService'class RestaurantService {
      */
     async getRestaurant(restaurantId) {
         try {
-            const response = await appService.`/api/v2/restaurants/${restaurantId}`);
+            const response = await appService.get(`/api/v2/restaurants/${restaurantId}`);
             return response;
         } catch (error) {
             console.error('식당 상세 조회 실패:', error);

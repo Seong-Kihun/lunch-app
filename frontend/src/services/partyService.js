@@ -30,7 +30,7 @@ import appService from '../services/AppService'class PartyService {
     async getParty(partyId) {
         try {
             console.log('🔍 [PartyService] 파티 상세 조회 시작:', partyId);
-            const response = await appService.`/api/parties/${partyId}`);
+            const response = await appService.get(`/api/parties/${partyId}`);
             console.log('✅ [PartyService] 파티 상세 조회 성공');
             return response;
         } catch (error) {
@@ -64,7 +64,7 @@ import appService from '../services/AppService'class PartyService {
     async joinParty(partyId) {
         try {
             console.log('🔍 [PartyService] 파티 참여 시작:', partyId);
-            const response = await appService.`/api/parties/${partyId}/join`);
+            const response = await appService.post(`/api/parties/${partyId}/join`);
             console.log('✅ [PartyService] 파티 참여 성공');
             return response;
         } catch (error) {
@@ -81,7 +81,7 @@ import appService from '../services/AppService'class PartyService {
     async leaveParty(partyId) {
         try {
             console.log('🔍 [PartyService] 파티 나가기 시작:', partyId);
-            const response = await appService.`/api/parties/${partyId}/leave`);
+            const response = await appService.post(`/api/parties/${partyId}/leave`);
             console.log('✅ [PartyService] 파티 나가기 성공');
             return response;
         } catch (error) {
@@ -116,7 +116,7 @@ import appService from '../services/AppService'class PartyService {
     async updateParty(partyId, updateData) {
         try {
             console.log('🔍 [PartyService] 파티 수정 시작:', partyId, updateData);
-            const response = await appService.`/api/parties/${partyId}`, updateData);
+            const response = await appService.put(`/api/parties/${partyId}`, updateData);
             console.log('✅ [PartyService] 파티 수정 성공');
             return response;
         } catch (error) {
@@ -133,7 +133,7 @@ import appService from '../services/AppService'class PartyService {
     async deleteParty(partyId) {
         try {
             console.log('🔍 [PartyService] 파티 삭제 시작:', partyId);
-            const response = await appService.`/api/parties/${partyId}`);
+            const response = await appService.get(`/api/parties/${partyId}`);
             console.log('✅ [PartyService] 파티 삭제 성공');
             return response;
         } catch (error) {

@@ -228,7 +228,7 @@ export default function OnboardingScreen() {
                 frequentAreas: []
             };
             
-            const preferencesResponse = await appService.`/users/${currentUser.employee_id}/preferences`, preferencesData);
+            const preferencesResponse = await appService.put(`/users/${currentUser.employee_id}/preferences`, preferencesData);
             
             console.log('✅ 사용자 선호도 저장 성공');
             

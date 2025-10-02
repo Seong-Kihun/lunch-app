@@ -33,7 +33,7 @@ const FriendListScreen = ({ navigation }) => {
         try {
             setIsLoading(true);
             // 친구 목록 API 사용
-            const response = await appService.`/api/friends?employee_id=${global.myEmployeeId || '1'}`);
+            const response = await appService.get(`/api/friends?employee_id=${global.myEmployeeId || '1'}`);
             if (response.success) {
                 // 실제 친구 데이터 사용
                 const friendsWithLastLunch = response.friends || [];

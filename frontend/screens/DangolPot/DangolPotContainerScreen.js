@@ -41,8 +41,8 @@ export default function DangolPotContainerScreen({ navigation, route }) {
         try {
             // 통합 API 클라이언트 사용 (근본적 해결책)
             const [myPotsResponse, allPotsResponse] = await Promise.all([
-                appService.`/dev/my_dangolpots/${currentUser?.employee_id || '1'}`),
-                appService.'/dangolpots')
+                appService.get(`/dev/my_dangolpots/${currentUser?.employee_id || '1'}`),
+                appService.get('/dangolpots')
             ]);
             
             if (myPotsResponse.success && Array.isArray(myPotsResponse.dangolpots)) {
