@@ -1,8 +1,61 @@
-# 🍽️ Lunch App - 정리된 프로젝트 구조
+# Lunch App - 안정화된 프로젝트 구조
 
 점심 약속 관리 및 식당 추천 애플리케이션
 
-## 📁 프로젝트 구조
+## 빠른 시작
+
+### 백엔드 실행
+```bash
+# 개발 환경
+cd backend
+python -m backend.run_server --env dev
+
+# 프로덕션 환경 (Render)
+gunicorn --config gunicorn.conf.py backend.app.wsgi:app
+```
+
+### 프론트엔드 실행
+```bash
+# 모바일 앱 (Expo)
+cd frontend
+npm start
+
+# 웹 앱
+cd frontend
+npm run web
+```
+
+### 헬스체크
+```bash
+# 시스템 상태 확인
+curl http://localhost:5000/healthz
+
+# 데이터베이스 상태 확인
+curl http://localhost:5000/healthz/db
+```
+
+## 환경 설정
+
+1. 환경 변수 설정:
+```bash
+cp docs/env_template.txt .env
+# .env 파일에서 필요한 값들 수정
+```
+
+2. 데이터베이스 마이그레이션:
+```bash
+cd backend
+alembic upgrade head
+```
+
+## 시스템 요구사항
+
+- **Python**: 3.12.7 (모든 환경 통일)
+- **Node.js**: 18+ (프론트엔드)
+- **데이터베이스**: SQLite (개발) / PostgreSQL (프로덕션)
+- **WSGI**: Gunicorn with sync workers
+
+## 프로젝트 구조
 
 ```
 lunch_app_organized/

@@ -1,99 +1,32 @@
-# 🚀 Lunch App 환경변수 설정 템플릿
+# 환경 변수 설정 예시
 # 이 파일을 .env로 복사하고 실제 값으로 수정하세요
 
-# ===========================================
-# 🔒 보안 설정 (필수 - 반드시 변경하세요!)
-# ===========================================
-SECRET_KEY=your-super-secret-production-key-change-this-immediately
-JWT_SECRET_KEY=your-jwt-secret-key-change-this-immediately
+# 데이터베이스 설정
+DATABASE_URL=sqlite:///site.db
+# 프로덕션에서는 PostgreSQL 사용:
+# DATABASE_URL=postgresql+psycopg2://username:password@localhost:5432/lunch_app
 
-# ===========================================
-# 🌍 환경 설정
-# ===========================================
+# 보안 키 (반드시 변경하세요!)
+SECRET_KEY=your-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
+
+# 이메일 설정 (선택사항)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+INQUIRY_EMAIL=inquiry@yourcompany.com
+
+# CORS 설정 (쉼표로 구분)
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006
+
+# Flask 환경
 FLASK_ENV=development
-ENV=development
+FLASK_DEBUG=True
 
-# ===========================================
-# 🗄️ 데이터베이스 설정
-# ===========================================
-# SQLite (개발용)
-DATABASE_URL=sqlite:///lunch_app.db
-
-# PostgreSQL (프로덕션 권장)
-# DATABASE_URL=postgresql://username:password@localhost:5432/lunch_app_prod
-
-# ===========================================
-# 🚀 Redis 캐시 설정
-# ===========================================
-REDIS_URL=redis://localhost:6379/0
-OFFLINE_MODE=false
-
-# ===========================================
-# ⚡ Celery 백그라운드 작업
-# ===========================================
-CELERY_BROKER_URL=redis://localhost:6379/1
-CELERY_RESULT_BACKEND=redis://localhost:6379/2
-
-# ===========================================
-# 📧 이메일 서비스 (선택사항)
-# ===========================================
-# Gmail SMTP 설정
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-
-# ===========================================
-# 🔧 개발 도구 설정
-# ===========================================
-# 로깅 레벨
-LOG_LEVEL=INFO
-
-# 디버그 모드 (프로덕션에서는 false)
-DEBUG=true
-
-# ===========================================
-# 📊 모니터링 설정
-# ===========================================
-# 성능 모니터링 활성화
-PERFORMANCE_MONITORING=true
-
-# 에러 모니터링 활성화
-ERROR_MONITORING=true
-
-# ===========================================
-# 🌐 네트워크 설정
-# ===========================================
-# 서버 호스트 (0.0.0.0은 모든 인터페이스)
-HOST=0.0.0.0
-
-# 서버 포트
+# 포트 설정
 PORT=5000
 
-# ===========================================
-# 🔐 추가 보안 설정
-# ===========================================
-# CORS 설정
-CORS_ORIGINS=http://localhost:3000,http://localhost:19006
-
-# 세션 설정
-SESSION_COOKIE_SECURE=false
-SESSION_COOKIE_HTTPONLY=true
-SESSION_COOKIE_SAMESITE=Lax
-
-# ===========================================
-# 📱 프론트엔드 설정
-# ===========================================
-# React Native 개발 서버 URL
-REACT_APP_SERVER_URL=http://localhost:5000
-EXPO_PUBLIC_SERVER_URL=http://localhost:5000
-
-# ===========================================
-# 🎯 프로덕션 전용 설정
-# ===========================================
-# 프로덕션 환경에서는 다음을 설정하세요:
-# FLASK_ENV=production
-# ENV=production
-# DEBUG=false
-# SESSION_COOKIE_SECURE=true
-# CORS_ORIGINS=https://yourdomain.com
+# Python 경로 (Render에서 사용)
+PYTHONPATH=/opt/render/project/src

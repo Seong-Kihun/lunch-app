@@ -33,7 +33,7 @@ class UnifiedBlueprintManager:
         self.blueprint_config = {
             # 핵심 API (최우선) - 절대 경로 사용
             'core': [
-                ('backend.routes.health', 'health_bp', '/health', False),  # 헬스체크는 인증 불필요
+                ('backend.routes.health', 'health_bp', '/healthz', False),  # 헬스체크는 인증 불필요
                 ('backend.auth.routes', 'auth_bp', '/api/auth', False),  # 인증 API는 인증 불필요
             ],
             

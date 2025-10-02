@@ -1,113 +1,111 @@
 """
-헬스체크 및 시스템 상태 확인 엔드포인트
+헬스체크 및 시스템 상태 API
 """
 
 from flask import Blueprint, jsonify
 from backend.app.extensions import db
+from backend.utils.logging import info, error
 import os
-import sys
-from datetime import datetime
+import time
 
-health_bp = Blueprint('health', __name__)  # url_prefix는 UnifiedBlueprintManager에서 설정
+health_bp = Blueprint('health', __name__)
 
-@health_bp.route('/health', methods=['GET'])
+@health_bp.route('/healthz', methods=['GET'])
 def health_check():
-    """
-    기본 헬스체크 엔드포인트
-    """
+    """기본 헬스체크 엔드포인트"""
     try:
-        # 기본 시스템 정보
-        system_info = {
+        return jsonify({
             'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'version': '1.0.0',
-            'environment': os.getenv('FLASK_ENV', 'development'),
-            'python_version': sys.version,
-            'platform': sys.platform
-        }
-        
-        return jsonify(system_info), 200
-        
+            'timestamp': time.time(),
+            'version': '1.0.0'
+        }), 200
     except Exception as e:
+        error(f"헬스체크 실패: {e}")
         return jsonify({
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': time.time()
         }), 500
 
-@health_bp.route('/health/detailed', methods=['GET'])
-def detailed_health_check():
-    """
-    상세 헬스체크 엔드포인트 (데이터베이스 연결 포함)
-    """
+@health_bp.route('/healthz/db', methods=['GET'])
+def database_health_check():
+    """데이터베이스 연결 상태 확인"""
     try:
-        health_status = {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'checks': {}
-        }
-        
-        # 데이터베이스 연결 확인
-        try:
-            # 간단한 쿼리로 데이터베이스 연결 테스트
-            db.session.execute('SELECT 1')
-            health_status['checks']['database'] = {
-                'status': 'healthy',
-                'message': 'Database connection successful'
-            }
-        except Exception as e:
-            health_status['checks']['database'] = {
-                'status': 'unhealthy',
-                'message': f'Database error: {str(e)}'
-            }
-        
-        # 환경 변수 확인
-        required_env_vars = ['DATABASE_URL', 'JWT_SECRET_KEY']
-        missing_vars = []
-        for var in required_env_vars:
-            if not os.getenv(var):
-                missing_vars.append(var)
-        
-        health_status['checks']['environment'] = {
-            'status': 'healthy' if not missing_vars else 'unhealthy',
-            'message': 'All required environment variables present' if not missing_vars else f'Missing: {", ".join(missing_vars)}'
-        }
-        
-        # 전체 상태 결정
-        all_healthy = all(
-            check['status'] == 'healthy' 
-            for check in health_status['checks'].values()
-        )
-        
-        if not all_healthy:
-            health_status['status'] = 'degraded'
-        
-        return jsonify(health_status), 200 if all_healthy else 503
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
-        }), 500
-
-@health_bp.route('/health/ready', methods=['GET'])
-def readiness_check():
-    """
-    준비 상태 확인 엔드포인트 (Kubernetes 등에서 사용)
-    """
-    try:
-        # 데이터베이스 연결 확인
+        # 데이터베이스 연결 테스트
         db.session.execute('SELECT 1')
         
+        # 데이터베이스 URL 정보 (민감한 정보는 제거)
+        db_url = os.getenv('DATABASE_URL', 'Not set')
+        if db_url.startswith('postgresql://'):
+            db_type = 'PostgreSQL'
+        elif db_url.startswith('sqlite://'):
+            db_type = 'SQLite'
+        else:
+            db_type = 'Unknown'
+        
         return jsonify({
-            'status': 'ready',
-            'timestamp': datetime.utcnow().isoformat()
+            'status': 'healthy',
+            'database': {
+                'type': db_type,
+                'connected': True,
+                'url_masked': db_url.split('@')[-1] if '@' in db_url else 'Local file'
+            },
+            'timestamp': time.time()
         }), 200
         
     except Exception as e:
+        error(f"데이터베이스 헬스체크 실패: {e}")
         return jsonify({
-            'status': 'not_ready',
+            'status': 'unhealthy',
+            'database': {
+                'connected': False,
+                'error': str(e)
+            },
+            'timestamp': time.time()
+        }), 500
+
+@health_bp.route('/healthz/full', methods=['GET'])
+def full_health_check():
+    """전체 시스템 상태 확인"""
+    try:
+        # 데이터베이스 상태
+        db_status = 'healthy'
+        db_error = None
+        try:
+            db.session.execute('SELECT 1')
+        except Exception as e:
+            db_status = 'unhealthy'
+            db_error = str(e)
+        
+        # 환경 변수 확인
+        required_env_vars = ['SECRET_KEY', 'JWT_SECRET_KEY']
+        missing_env_vars = [var for var in required_env_vars if not os.getenv(var)]
+        
+        # CORS 설정 확인
+        allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
+        cors_configured = len([o for o in allowed_origins if o.strip()]) > 0
+        
+        return jsonify({
+            'status': 'healthy' if db_status == 'healthy' and not missing_env_vars else 'degraded',
+            'timestamp': time.time(),
+            'components': {
+                'database': {
+                    'status': db_status,
+                    'error': db_error
+                },
+                'environment': {
+                    'missing_vars': missing_env_vars,
+                    'cors_configured': cors_configured
+                },
+                'python_version': os.getenv('PYTHON_VERSION', 'Unknown'),
+                'flask_env': os.getenv('FLASK_ENV', 'Unknown')
+            }
+        }), 200
+        
+    except Exception as e:
+        error(f"전체 헬스체크 실패: {e}")
+        return jsonify({
+            'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
-        }), 503
+            'timestamp': time.time()
+        }), 500

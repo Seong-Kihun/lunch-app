@@ -12,6 +12,15 @@ def create_app(config_name=None):
     from backend.config.env_loader import load_environment_variables
     load_environment_variables()
     
+    # 데이터베이스 URL 정규화
+    from backend.utils.database_url_normalizer import normalize_database_url, validate_database_url
+    normalize_database_url()
+    is_valid, message = validate_database_url()
+    if not is_valid:
+        print(f"[WARNING] 데이터베이스 URL 검증 실패: {message}")
+    else:
+        print(f"[SUCCESS] 데이터베이스 URL 검증 성공: {message}")
+    
     # 보안 키 검증 (프로덕션에서 기본 키 사용 시 부팅 차단)
     from backend.config.auth_config import AuthConfig
     AuthConfig.validate_jwt_secret()
@@ -26,8 +35,15 @@ def create_app(config_name=None):
     # CORS 화이트리스트 설정
     allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
     if not allowed_origins:
-        # 개발 환경 기본값
-        allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+        # 개발 환경 기본값 (웹 + 모바일 개발 서버)
+        allowed_origins = [
+            "http://localhost:3000",      # 웹 개발 서버
+            "http://127.0.0.1:3000",     # 웹 개발 서버 (로컬)
+            "http://localhost:19006",     # Expo 개발 서버
+            "http://127.0.0.1:19006",    # Expo 개발 서버 (로컬)
+            "http://localhost:8081",      # React Native Metro 서버
+            "http://127.0.0.1:8081",     # React Native Metro 서버 (로컬)
+        ]
     
     cors_config = {
         "origins": allowed_origins,

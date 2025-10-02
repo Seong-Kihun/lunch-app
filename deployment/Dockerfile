@@ -21,5 +21,5 @@ COPY . .
 # 포트 노출
 EXPOSE 5000
 
-# 애플리케이션 실행
-CMD ["python", "app.py"]
+# 애플리케이션 실행 (Render와 동일한 방식)
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "backend.app.wsgi:app"]

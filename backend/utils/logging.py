@@ -230,20 +230,40 @@ def log_performance_metric(
 
 # 전역 로거 설정
 def init_app_logging(app):
-    """Flask 앱용 로깅 초기화"""
-    log_level = app.config.get('LOG_LEVEL', 'INFO')
-    log_file = app.config.get('LOG_FILE', 'logs/app.log')
-    use_json = app.config.get('LOG_FORMAT', 'text').lower() == 'json'
-    
-    setup_logging(
-        log_level=log_level,
-        log_file=log_file,
-        use_json=use_json,
-        enable_console=True
-    )
-    
-    # Flask 앱 로거 설정
-    app.logger.setLevel(logging.INFO)
+    """Flask 앱용 로깅 초기화 (폴백 메커니즘 포함)"""
+    try:
+        log_level = app.config.get('LOG_LEVEL', 'INFO')
+        log_file = app.config.get('LOG_FILE', 'logs/app.log')
+        use_json = app.config.get('LOG_FORMAT', 'text').lower() == 'json'
+        
+        setup_logging(
+            log_level=log_level,
+            log_file=log_file,
+            use_json=use_json,
+            enable_console=True
+        )
+        
+        # Flask 앱 로거 설정
+        app.logger.setLevel(logging.INFO)
+        
+        print("[SUCCESS] 고급 로깅 시스템이 초기화되었습니다.")
+        
+    except Exception as e:
+        # 폴백: 기본 Python 로깅 사용
+        print(f"[WARNING] 고급 로깅 시스템 초기화 실패, 기본 로깅으로 폴백: {e}")
+        
+        # 기본 로깅 설정
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('logs/app.log', mode='a')
+            ]
+        )
+        
+        app.logger.setLevel(logging.INFO)
+        print("[SUCCESS] 기본 로깅 시스템이 초기화되었습니다.")
     
     # SQLAlchemy 로깅 설정
     if app.config.get('SQLALCHEMY_ECHO'):

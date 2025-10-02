@@ -2,12 +2,12 @@ services:
   - type: web
     name: lunch-app
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python scripts/migrate_database.py
     startCommand: gunicorn --config gunicorn.conf.py backend.app.wsgi:app
-    pythonVersion: 3.13.4
+    pythonVersion: 3.12.7
     envVars:
       - key: PYTHON_VERSION
-        value: 3.13.4
+        value: 3.12.7
       - key: PYTHONPATH
         value: /opt/render/project/src
       - key: FLASK_ENV
@@ -34,3 +34,5 @@ services:
         fromService:
           type: secret
           name: lunch-app-inquiry-email
+      - key: ALLOWED_ORIGINS
+        value: https://lunch-app-frontend.onrender.com,http://localhost:3000,http://localhost:19006,http://localhost:8081
