@@ -831,6 +831,91 @@ def root_dev_parties():
             'error': str(e)
         }), 500
 
+@root_compatibility_bp.route('/dev/random-lunch/<string:employee_id>', methods=['GET'])
+def root_dev_random_lunch(employee_id):
+    """루트 레벨 개발용 랜덤런치 API - 근본적 해결책"""
+    logger.info(f"루트 레벨 개발용 랜덤런치 API 호출됨: {employee_id}")
+    
+    try:
+        # 데이터베이스 연결 테스트
+        from backend.app.extensions import db
+        from backend.models.app_models import User, PersonalSchedule
+        
+        # 간단한 쿼리로 연결 테스트
+        if hasattr(User, 'query'):
+            test_query = User.query.limit(1).all()
+        else:
+            test_query = db.session.query(User).limit(1).all()
+        logger.info("데이터베이스 연결 성공")
+        
+        # 사용자 확인
+        if hasattr(User, 'query'):
+            user = User.query.filter_by(employee_id=employee_id).first()
+        else:
+            user = db.session.query(User).filter(User.c.employee_id == employee_id).first()
+        
+        if not user:
+            logger.warning(f"사용자를 찾을 수 없음: {employee_id}")
+            return jsonify({
+                'success': True,
+                'groups': [],
+                'message': '사용자를 찾을 수 없습니다.'
+            })
+        
+        # 오늘 날짜 기준으로 랜덤 그룹 생성 (개발용)
+        from datetime import datetime, timezone, timedelta
+        
+        # 한국 시간대 (UTC+9)
+        korean_tz = timezone(timedelta(hours=9))
+        now_korean = datetime.now(korean_tz)
+        today = now_korean.strftime('%Y-%m-%d')
+        
+        # 개발용 랜덤 그룹 데이터 생성
+        random_groups = [
+            {
+                'id': f'group_{employee_id}_1',
+                'date': today,
+                'time': '12:00',
+                'restaurant': '맛있는 식당',
+                'address': '서울시 강남구',
+                'members': [
+                    {'employee_id': employee_id, 'nickname': user.nickname, 'email': user.email},
+                    {'employee_id': 'KOICA001', 'nickname': '김철수', 'email': 'kim@koica.go.kr'},
+                    {'employee_id': 'KOICA002', 'nickname': '이영희', 'email': 'lee@koica.go.kr'}
+                ],
+                'max_members': 4,
+                'current_members': 3,
+                'status': 'active'
+            },
+            {
+                'id': f'group_{employee_id}_2',
+                'date': today,
+                'time': '12:30',
+                'restaurant': '좋은 식당',
+                'address': '서울시 서초구',
+                'members': [
+                    {'employee_id': employee_id, 'nickname': user.nickname, 'email': user.email},
+                    {'employee_id': 'KOICA003', 'nickname': '박민수', 'email': 'park@koica.go.kr'}
+                ],
+                'max_members': 3,
+                'current_members': 2,
+                'status': 'active'
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'groups': random_groups,
+            'message': '랜덤런치 그룹 조회 완료'
+        })
+        
+    except Exception as e:
+        logger.error(f"랜덤런치 API 오류: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'랜덤런치 조회 실패: {str(e)}'
+        }), 500
+
 @root_compatibility_bp.route('/dev/chat/messages/<string:chat_type>/<int:chat_id>', methods=['GET'])
 def root_dev_chat_messages(chat_type, chat_id):
     """루트 레벨 개발용 채팅 메시지 API"""

@@ -949,7 +949,7 @@ export default function RandomLunchScreen({ navigation, route }) {
         
         try {
             const employeeId = user?.employee_id || global.myEmployeeId || 'default_id';
-            const response = await fetch(`${RENDER_SERVER_URL}/events/${employeeId}`);
+            const response = await unifiedApiClient.get(`/events/${employeeId}`);
             if (response.ok) {
                 const data = await response.json();
                 const scheduleDates = new Set();
@@ -1008,9 +1008,17 @@ export default function RandomLunchScreen({ navigation, route }) {
         //     return;
         // }
         
-        // 🚨 중요: 네트워크 연결 상태 확인
-        if (!global.IS_DEVELOPMENT && (!RENDER_SERVER_URL || RENDER_SERVER_URL === 'https://your-server-url')) {
-            console.warn('⚠️ [랜덤런치] 유효하지 않은 서버 URL - 제안 조회 건너뜀');
+        // 🚨 중요: 네트워크 연결 상태 확인 (통합 API 클라이언트 사용)
+        try {
+            // 통합 API 클라이언트가 초기화되었는지 확인
+            if (!unifiedApiClient) {
+                console.warn('⚠️ [랜덤런치] API 클라이언트가 초기화되지 않음 - 제안 조회 건너뜀');
+                setProposals({ sent_proposals: [], received_proposals: [] });
+                setProposedGroups(new Set());
+                return;
+            }
+        } catch (error) {
+            console.warn('⚠️ [랜덤런치] API 클라이언트 확인 실패 - 제안 조회 건너뜀:', error);
             setProposals({ sent_proposals: [], received_proposals: [] });
             setProposedGroups(new Set());
             return;
@@ -1034,7 +1042,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                 return;
             }
             
-            const response = await apiClient.get(`${RENDER_SERVER_URL}/api/proposals/mine?employee_id=${employeeId}`);
+            const response = await unifiedApiClient.get(`/api/proposals/mine?employee_id=${employeeId}`);
             const data = await response.json();
             
 
@@ -1128,7 +1136,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                 return;
             }
             
-            const response = await fetch(`${RENDER_SERVER_URL}/parties?employee_id=${employeeId}&is_from_match=true`);
+            const response = await unifiedApiClient.get(`/parties?employee_id=${employeeId}&is_from_match=true`);
             const data = await response.json();
             
             if (response.ok && Array.isArray(data)) {
@@ -1171,11 +1179,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                 return;
             }
             
-            const response = await fetch(`${RENDER_SERVER_URL}/users/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_ids: userIds })
-            });
+            const response = await unifiedApiClient.post('/users/batch', { user_ids: userIds });
             
             const data = await response.json();
             
@@ -1209,11 +1213,7 @@ export default function RandomLunchScreen({ navigation, route }) {
         // }
         
         try {
-            const response = await apiClient.post(`${RENDER_SERVER_URL}/api/proposals/${proposalId}/reject`, null, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.employee_id })
-            });
+            const response = await unifiedApiClient.post(`/api/proposals/${proposalId}/reject`, { user_id: user.employee_id });
             const data = await response.json();
             if (response.ok) {
                 Alert.alert('알림', data.message || '제안을 거절했습니다.');
@@ -1237,11 +1237,7 @@ export default function RandomLunchScreen({ navigation, route }) {
         // }
         
         try {
-            const response = await apiClient.post(`${RENDER_SERVER_URL}/api/proposals/${proposalId}/accept`, null, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.employee_id })
-            });
+            const response = await unifiedApiClient.post(`/api/proposals/${proposalId}/accept`, { user_id: user.employee_id });
             const data = await response.json();
             
             if (response.ok) {
@@ -1274,11 +1270,7 @@ export default function RandomLunchScreen({ navigation, route }) {
 
     const handleCancelSentProposal = async (proposalId) => {
         try {
-            const response = await fetch(`${RENDER_SERVER_URL}/proposals/${proposalId}/cancel`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employee_id: user.employee_id })
-            });
+            const response = await unifiedApiClient.post(`/proposals/${proposalId}/cancel`, { employee_id: user.employee_id });
             
             if (response.ok) {
                 Alert.alert('알림', '제안이 취소되었습니다.');
@@ -1305,7 +1297,7 @@ export default function RandomLunchScreen({ navigation, route }) {
             try {
                 // 해당 날짜에 내가 보낸 제안 찾기
                 const employeeId = user?.employee_id || global.myEmployeeId || 'default_id';
-            const response = await apiClient.get(`${RENDER_SERVER_URL}/api/proposals/mine?employee_id=${employeeId}`);
+            const response = await unifiedApiClient.get(`/api/proposals/mine?employee_id=${employeeId}`);
                 const data = await response.json();
                 
                 if (response.ok) {
@@ -1325,11 +1317,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                     });
                     
                     if (myProposal) {
-                        const cancelResponse = await apiClient.post(`${RENDER_SERVER_URL}/api/proposals/${myProposal.id}/cancel`, null, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ employee_id: user.employee_id })
-                        });
+                        const cancelResponse = await unifiedApiClient.post(`/api/proposals/${myProposal.id}/cancel`, { employee_id: user.employee_id });
                         
                         if (cancelResponse.ok) {
                             setProposedGroups(prev => {
@@ -1371,10 +1359,7 @@ export default function RandomLunchScreen({ navigation, route }) {
             const recipientIds = group.users
                 .map(user => user.employee_id)
                 .filter(id => id && id.trim().length > 0);
-            const response = await apiClient.post(`${RENDER_SERVER_URL}/api/proposals`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const response = await unifiedApiClient.post('/api/proposals', {
                     proposer_id: user.employee_id,
                     recipient_ids: recipientIds,
                     proposed_date: toKoreanDateString(currentDate)
@@ -1562,8 +1547,9 @@ export default function RandomLunchScreen({ navigation, route }) {
     // WebSocket 연결 함수
     const connectWebSocket = useCallback(() => {
         try {
-            // WebSocket 서버 URL (백엔드에서 제공하는 WebSocket 엔드포인트)
-            const wsUrl = RENDER_SERVER_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws/random-lunch';
+            // WebSocket 서버 URL (통합 API 클라이언트에서 서버 URL 가져오기)
+            const serverURL = await unifiedApiClient.getServerURL();
+            const wsUrl = serverURL.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws/random-lunch';
             
             console.log('🔌 [WebSocket] 연결 시도:', wsUrl);
             
@@ -1890,10 +1876,7 @@ export default function RandomLunchScreen({ navigation, route }) {
                             // 그룹 나가기 시작 (로그 간소화)
                             
                             // 백엔드 API 호출하여 그룹에서 나가기
-                            const response = await fetch(`${RENDER_SERVER_URL}/parties/${group.id}/leave`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
+                            const response = await unifiedApiClient.post(`/parties/${group.id}/leave`, {
                                     'Authorization': `Bearer ${global.myToken || 'dev-token'}`
                                 },
                                 body: JSON.stringify({
