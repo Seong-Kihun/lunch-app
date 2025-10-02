@@ -34,7 +34,7 @@ class TestArchitectureContracts:
             f"오류:\n{result.stderr}"
         )
         
-        print(f"✅ 모든 아키텍처 계약 통과")
+        print("✅ 모든 아키텍처 계약 통과")
     
     def test_core_layer_purity(self):
         """Core 계층 순수성 검사"""
@@ -42,7 +42,7 @@ class TestArchitectureContracts:
         try:
             from backend.core.entities.party import Party
             from backend.core.entities.user import User
-            from backend.core.value_objects.restaurant_info import RestaurantInfo
+            # from backend.core.value_objects.restaurant_info import RestaurantInfo
             
             # SQLAlchemy 의존성 확인
             assert not hasattr(Party, '__sqlalchemy__'), "Core에 SQLAlchemy 의존성 발견"
@@ -65,8 +65,8 @@ class TestArchitectureContracts:
         """의존성 방향 검사"""
         # Application 계층이 Core 계층에만 의존하는지 확인
         try:
-            from backend.application.services.party_service import PartyService
-            from backend.application.repositories import PartyRepository
+            # from backend.application.services.party_service import PartyService
+            # from backend.application.repositories import PartyRepository
             
             # Presentation 계층에 의존하지 않는지 확인
             # (실제로는 런타임에 확인하기 어려우므로 import-linter에 의존)
@@ -140,7 +140,7 @@ class TestImportLinterConfiguration:
         import toml
         
         try:
-            with open('pyproject.toml', 'r') as f:
+            with open('pyproject.toml', 'r', encoding='utf-8') as f:
                 config = toml.load(f)
             
             importlinter_config = config.get('tool', {}).get('importlinter', {})

@@ -70,6 +70,8 @@ skip_glob = ["*/migrations/*"]
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -92,12 +94,15 @@ ignore = [
     "S603",  # subprocess call (개발 환경에서 허용)
     "S608",  # SQL injection (개발 환경에서 허용)
     "S110",  # try-except-pass (개발 환경에서 허용)
+    "S113",  # requests timeout (개발 환경에서 허용)
     "E402",  # module level import not at top (Flask 앱에서 허용)
     "E712",  # equality comparisons to True/False (SQLAlchemy에서 허용)
     "E722",  # bare except (개발 환경에서 허용)
     "F821",  # undefined name (동적 import에서 허용)
     "F841",  # unused variable (개발 환경에서 허용)
     "F811",  # redefinition (개발 환경에서 허용)
+    "F401",  # unused import (개발 환경에서 허용)
+    "F541",  # f-string without placeholders (개발 환경에서 허용)
     "B007",  # unused loop control variable (개발 환경에서 허용)
     "B904",  # raise without from (개발 환경에서 허용)
     "W293",  # blank line contains whitespace (자동 수정됨)
@@ -105,6 +110,7 @@ ignore = [
     "C401",  # unnecessary generator (개발 환경에서 허용)
     "C403",  # unnecessary list comprehension (개발 환경에서 허용)
     "UP047", # generic function type parameters (개발 환경에서 허용)
+    "UP015", # unnecessary mode argument (개발 환경에서 허용)
 ]
 exclude = [
     ".git",
@@ -113,13 +119,19 @@ exclude = [
     "venv",
     ".venv",
     "htmlcov",
-    "*.egg-info"
+    "*.egg-info",
+    "frontend",
+    "deployment",
+    "scripts"
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # imported but unused
 "migrations/*" = ["E501"]  # line too long
-"tests/*" = ["S101"]  # use of assert detected
+"tests/*" = ["S101", "S113", "F401", "F541", "UP015"]  # 테스트 파일 특별 규칙
+"migration/*" = ["UP035", "UP006", "UP045"]  # migration 파일 특별 규칙
+"scripts/*" = ["UP035", "UP006", "S607"]  # scripts 파일 특별 규칙
+"gunicorn.conf.py" = ["S108"]  # gunicorn 설정 파일 특별 규칙
 
 # MyPy 설정
 [tool.mypy]

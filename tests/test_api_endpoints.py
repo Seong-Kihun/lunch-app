@@ -5,7 +5,6 @@ API 엔드포인트 테스트 스크립트
 """
 
 import requests
-import json
 import sys
 from datetime import datetime
 
@@ -22,13 +21,13 @@ def test_endpoint(method, endpoint, data=None, expected_status=200):
     
     try:
         if method.upper() == "GET":
-            response = requests.get(url, headers=TEST_HEADERS)
+            response = requests.get(url, headers=TEST_HEADERS, timeout=10)
         elif method.upper() == "POST":
-            response = requests.post(url, headers=TEST_HEADERS, json=data)
+            response = requests.post(url, headers=TEST_HEADERS, json=data, timeout=10)
         elif method.upper() == "PUT":
-            response = requests.put(url, headers=TEST_HEADERS, json=data)
+            response = requests.put(url, headers=TEST_HEADERS, json=data, timeout=10)
         elif method.upper() == "DELETE":
-            response = requests.delete(url, headers=TEST_HEADERS)
+            response = requests.delete(url, headers=TEST_HEADERS, timeout=10)
         else:
             print(f"❌ 지원하지 않는 HTTP 메서드: {method}")
             return False
