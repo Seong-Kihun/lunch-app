@@ -602,6 +602,46 @@ def root_friends(employee_id):
             'error': str(e)
         }), 500
 
+@root_compatibility_bp.route('/api/today', methods=['GET'])
+def root_today():
+    """루트 레벨 오늘 날짜 API - 근본적 해결책"""
+    logger.info("루트 레벨 오늘 날짜 API 호출됨")
+    
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        # 한국 시간대 (UTC+9)
+        korean_tz = timezone(timedelta(hours=9))
+        now_korean = datetime.now(korean_tz)
+        
+        # 오늘 날짜 문자열 (YYYY-MM-DD)
+        today_date = now_korean.strftime('%Y-%m-%d')
+        
+        # 오늘 날짜의 시작 시간 (00:00:00)
+        today_datetime = now_korean.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'today_date': today_date,
+                'today_datetime': today_datetime.isoformat(),
+                'current_utc': datetime.now(timezone.utc).isoformat(),
+                'current_korean': now_korean.isoformat(),
+                'timezone_info': {
+                    'utc_offset': '+00:00',
+                    'korean_offset': '+09:00'
+                }
+            },
+            'message': '오늘 날짜 조회 완료'
+        })
+        
+    except Exception as e:
+        logger.error(f"오늘 날짜 API 오류: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'오늘 날짜 조회 실패: {str(e)}'
+        }), 500
+
 @root_compatibility_bp.route('/api/chats/<int:user_id>', methods=['GET'])
 def root_chats(user_id):
     """루트 레벨 채팅 목록 API"""
